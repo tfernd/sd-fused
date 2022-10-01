@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 import torch
 from torch import Tensor
@@ -10,7 +11,9 @@ from transformers.models.clip.tokenization_clip import CLIPTokenizer
 
 
 class ClipEmbedding:
-    def __init__(self, tokenizer_path: str, text_encoder_path: str) -> None:
+    def __init__(
+        self, tokenizer_path: str | Path, text_encoder_path: str | Path
+    ) -> None:
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)
 
@@ -26,5 +29,8 @@ class ClipEmbedding:
 
         return emb.cpu()
 
-    def __call__(self, text: str = "") -> Tensor:
-        return self.create_embedding(text)
+    def __call__(self, text: str | list[str] = "") -> Tensor:
+        if isinstance(text, str):
+            return self.create_embedding(text)
+
+        return torch.cat([self.create_embedding(t) for t in text], dim=0)

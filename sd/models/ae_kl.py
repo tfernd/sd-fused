@@ -55,14 +55,11 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
         self.quant_conv = Conv2d(2 * latent_channels)
         self.post_quant_conv = Conv2d(latent_channels)
 
-    # TODO create class for this
-    @property
-    def device(self) -> torch.device:
-        return next(self.parameters()).device
-
     @torch.no_grad()
     def encode(self, x: Tensor) -> DiagonalGaussianDistribution:
-        x = x.to(self.device)
+        device = next(self.encoder.parameters()).device
+
+        x = x.to(device)
 
         x = normalize(x)
         x = self.encoder(x)
@@ -74,7 +71,9 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
 
     @torch.no_grad()
     def decode(self, z: Tensor) -> Tensor:
-        z = z.to(self.device)
+        device = next(self.decoder.parameters()).device
+
+        z = z.to(device)
 
         z = self.post_quant_conv(z)
         out = self.decoder(z)

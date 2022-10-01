@@ -244,9 +244,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
 
     def split_attention(
         self, *, cross_attention_chunks: Optional[int] = None
-    ) -> Self:
+    ) -> None:
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
                 module.split_attention_chunks = cross_attention_chunks
-
-        return self

@@ -78,6 +78,9 @@ class DDIMScheduler:
         use_clipped_model_output: bool = False,  # ! remove?
         generator: Optional[torch.Generator] = None,
     ) -> Tensor:
+        device = noise_pred.device
+        latents = latents.to(device)
+
         # 1. get previous step value (=t-1)
         prev_timestep = (
             timestep - self.num_train_timesteps // self.num_inference_steps
