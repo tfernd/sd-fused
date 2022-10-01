@@ -1,0 +1,7 @@
+ipywidgets>=7,<8
+diffusers==0.2.4
+transformers
+scipy
+ftfy
+einops
+typing_extensions

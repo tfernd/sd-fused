@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+import torch
+from torch import Tensor
+
+
+def normalize(data: Tensor) -> Tensor:
+    """Normalize a byte-Tensor to the [-1, 1] range."""
+
+    assert data.dtype == torch.uint8
+
+    return data.div(255 / 2).sub_(1)
+
+
+def denormalize(data: Tensor) -> Tensor:
+    """Denormalize a tensor of the range [-1, 1] to a byte-Tensor."""
+
+    return data.add(1).mul_(255 / 2).clamp_(0, 255).byte()
