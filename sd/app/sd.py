@@ -90,13 +90,13 @@ class StableDiffusion:
         negative_prompt = self.clip.parse_text(negative_prompt)
         neg_emb = self.clip(negative_prompt)
         neg_emb = neg_emb.to(self.device).to(self.dtype)
-        neg_emb = neg_emb.expand(batch_size)
+        neg_emb = neg_emb.expand(batch_size, -1, -1)
 
         if prompt is not None:
             prompt = self.clip.parse_text(prompt)
             text_emb = self.clip(prompt)
             text_emb = text_emb.to(self.device).to(self.dtype)
-            text_emb = text_emb.expand(batch_size)
+            text_emb = text_emb.expand(batch_size, -1, -1)
             context = (text_emb, neg_emb)
         else:
             context = neg_emb
