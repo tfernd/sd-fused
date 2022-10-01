@@ -3,7 +3,10 @@ from __future__ import annotations
 import torch.nn as nn
 
 
-class LayerNorm(nn.LayerNorm):
+
+from .ops import Ops
+
+class LayerNorm(Ops, nn.LayerNorm):
     def __init__(
         self,
         normalized_shape: int,

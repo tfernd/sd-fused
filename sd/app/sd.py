@@ -18,8 +18,8 @@ from ..utils import image2tensor, clear_cuda
 
 MAGIC = 0.18215
 
+
 class StableDiffusion:
-    device: torch.device = torch.device("cpu")
     low_ram: bool = False
 
     def __init__(self, path: str | Path) -> None:
@@ -39,8 +39,6 @@ class StableDiffusion:
 
     def cuda(self) -> Self:
         clear_cuda()
-
-        self.device = torch.device("cuda")
 
         self.unet.cuda()
         self.vae.cuda()
@@ -95,7 +93,7 @@ class StableDiffusion:
         clear_cuda()
         for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
             noise_pred = self.pred_noise(latents, timestep, context, scale)
-            latents = scheduler.step(noise_pred, timestep, latents, eta=eta,)
+            latents = scheduler.step(noise_pred, timestep, latents, eta=eta)
         clear_cuda()
 
         # decode latent space
@@ -112,7 +110,7 @@ class StableDiffusion:
         latents: Tensor,
         timestep: int,
         context: Tensor | tuple[Tensor, Tensor],
-        scale:float,
+        scale: float,
     ) -> Tensor:
         # unconditional
         if isinstance(context, Tensor):
@@ -125,7 +123,7 @@ class StableDiffusion:
             pred_noise_neg = self.unet(latents, timestep, context=neg_emb)
         else:
             context = torch.cat(context, dim=0)
-            latents = torch.cat([latents]*2, dim=0)
+            latents = torch.cat([latents] * 2, dim=0)
 
             pred_noise_tn = self.unet(latents, timestep, context=context)
             pred_noise_text, pred_noise_neg = pred_noise_tn.chunk(2, dim=0)

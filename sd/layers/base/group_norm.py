@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import torch.nn as nn
 
+from .ops import Ops
 
-class GroupNorm(nn.GroupNorm):
+
+class GroupNorm(Ops, nn.GroupNorm):
     def __init__(
         self,
         num_groups: int,

@@ -10,7 +10,7 @@ from torch import Tensor
 
 from ..layers.embedding import Timesteps, TimestepEmbedding
 from ..layers.activation import SiLU
-from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel
+from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel, Ops
 from ..layers.blocks import (
     UNetMidBlock2DCrossAttn,
     DownBlock2D,
@@ -21,7 +21,7 @@ from ..layers.blocks import (
 from ..layers.attention import CrossAttention
 
 
-class UNet2DConditional(HalfWeightsModel, nn.Module):
+class UNet2DConditional(Ops,HalfWeightsModel, nn.Module):
     def __init__(
         self,
         *,
@@ -164,19 +164,14 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             block_out_channels[0], out_channels, kernel_size=3, padding=1
         )
 
-    # TODO create class for this
-    @property
-    def device(self) -> torch.device:
-        return next(self.parameters()).device
-
     @torch.no_grad()
-    def forward(self, x: Tensor, timestep: int, *, context: Tensor,) -> Tensor:
+    def forward(self, x: Tensor, timestep: int, *, context: Tensor) -> Tensor:
         B, C, H, W = x.shape
 
-        x = x.to(self.device)
-        context = context.to(self.device)
+        x = x.to(self.dtype).to(self.device)
+        context = context.to(self.dtype).to(self.device)
 
-        # 1. time
+        # 1. time embedding
         timesteps = torch.tensor([timestep], device=self.device)
         timesteps = timesteps.expand(B)
 
