@@ -5,5 +5,3 @@ from .group_norm import GroupNorm
 from .layer_norm import LayerNorm
 
 from .half_weights import HalfWeights, HalfWeightsModel
-
-from .ops import Ops

@@ -22,6 +22,9 @@ MAGIC = 0.18215
 class StableDiffusion:
     low_ram: bool = False
 
+    device: torch.device = torch.device("cpu")
+    dtype: torch.dtype = torch.float32
+
     def __init__(self, path: str | Path) -> None:
         path = Path(path)
 
@@ -40,6 +43,8 @@ class StableDiffusion:
     def cuda(self) -> Self:
         clear_cuda()
 
+        self.device = torch.device("cuda")
+
         self.unet.cuda()
         self.vae.cuda()
 
@@ -54,6 +59,8 @@ class StableDiffusion:
     def half(self) -> Self:
         self.unet.half()
         self.vae.half()
+
+        self.dtype = torch.float16
 
         return self
 
@@ -75,19 +82,18 @@ class StableDiffusion:
         timesteps: list[int] = scheduler.timesteps.tolist()
 
         # prompt
-        text_emb = self.clip(prompt) if prompt is not None else None
-        neg_emb = self.clip(negative_prompt)
-        if text_emb is not None:
-            assert text_emb.shape == neg_emb.shape
-
+        neg_emb = self.clip(negative_prompt).to(self.device).to(self.dtype)
+        if prompt is not None:
+            text_emb = self.clip(prompt).to(self.device).to(self.dtype)
             context = (text_emb, neg_emb)
         else:
             context = neg_emb
 
-        # seed
+        # seed and noise
         seed = seed or random.randint(0, 2 ** 16)
         torch.manual_seed(seed)
         latents = torch.randn(1, 4, height // 8, width // 8)
+        latents = latents.to(self.device).to(self.dtype)
 
         # generation
         clear_cuda()

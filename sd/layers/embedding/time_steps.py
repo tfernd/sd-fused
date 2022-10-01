@@ -62,5 +62,5 @@ class Timesteps(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = x[..., None]
 
-        return x.mul(self.freq).add_(self.phase).mul_(self.amplitude)
+        return x.mul(self.freq).add_(self.phase).sin_().mul_(self.amplitude)
         # return self.amplitude * torch.sin(x * self.freq + self.phase)

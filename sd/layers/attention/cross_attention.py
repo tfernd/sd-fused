@@ -75,7 +75,8 @@ class CrossAttention(nn.Module):
             return self.to_out(x)
 
         # split-attention score
-        x = torch.empty(*q.shape[0:2], v.shape[2], device=q.device, dtype=q.dtype)
+        shape = (*q.shape[0:2], v.shape[2])
+        x = torch.zeros(shape, device=q.device, dtype=q.dtype)
         for i in range(0, k.shape[0], self.split_attention_chunks):
             idx = slice(i, i + self.split_attention_chunks)
 

@@ -9,12 +9,13 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..utils import normalize, denormalize
-from ..layers.base import Conv2d, HalfWeightsModel, Ops
+from ..layers.base import Conv2d, HalfWeightsModel
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder.encoder import Encoder
 from ..layers.auto_encoder.decoder import Decoder
 
-class AutoencoderKL(Ops,HalfWeightsModel, nn.Module):
+
+class AutoencoderKL(HalfWeightsModel, nn.Module):
     def __init__(
         self,
         *,
@@ -56,8 +57,6 @@ class AutoencoderKL(Ops,HalfWeightsModel, nn.Module):
 
     @torch.no_grad()
     def encode(self, x: Tensor) -> DiagonalGaussianDistribution:
-        x = x.to(self.dtype).to(self.device)
-
         x = normalize(x)
         x = self.encoder(x)
 
@@ -68,8 +67,6 @@ class AutoencoderKL(Ops,HalfWeightsModel, nn.Module):
 
     @torch.no_grad()
     def decode(self, z: Tensor) -> Tensor:
-        z = z.to(self.dtype).to(self.device)
-
         z = self.post_quant_conv(z)
         out = self.decoder(z)
 
