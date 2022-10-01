@@ -4,9 +4,10 @@ from typing import Optional
 import torch.nn as nn
 
 from .half_weights import HalfWeights
+from .ops import Ops
 
 
-class Linear(HalfWeights, nn.Linear):
+class Linear(Ops, HalfWeights, nn.Linear):
     def __init__(
         self,
         in_features: int,

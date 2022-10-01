@@ -4,9 +4,9 @@ from typing import Optional
 import torch.nn as nn
 
 from .half_weights import HalfWeights
+from .ops import Ops
 
-
-class Conv2d(HalfWeights, nn.Conv2d):
+class Conv2d(Ops, HalfWeights, nn.Conv2d):
     def __init__(
         self,
         in_channels: int,
