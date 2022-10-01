@@ -7,14 +7,16 @@ from PIL import Image
 from tqdm.auto import tqdm
 
 import random
-import torch
 from einops import rearrange
+import torch
+from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
 from ..utils import image2tensor, clear_cuda
 
+MAGIC = 0.18215
 
 class StableDiffusion:
     device: torch.device = torch.device("cpu")
@@ -38,17 +40,22 @@ class StableDiffusion:
     def cuda(self) -> Self:
         clear_cuda()
 
-        if not self.low_ram:
-            self.vae.cuda()
-        self.unet.cuda()
-
         self.device = torch.device("cuda")
+
+        self.unet.cuda()
+        self.vae.cuda()
 
         return self
 
     def half_weights(self) -> Self:
-        self.vae.half_weights()
         self.unet.half_weights()
+        self.vae.half_weights()
+
+        return self
+
+    def half(self) -> Self:
+        self.unet.half()
+        self.vae.half()
 
         return self
 
@@ -75,41 +82,55 @@ class StableDiffusion:
         if text_emb is not None:
             assert text_emb.shape == neg_emb.shape
 
+            context = (text_emb, neg_emb)
+        else:
+            context = neg_emb
+
         # seed
         seed = seed or random.randint(0, 2 ** 16)
         torch.manual_seed(seed)
         latents = torch.randn(1, 4, height // 8, width // 8)
 
+        # generation
         clear_cuda()
         for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
-            # TODO create new function for this!
-            # low-vram
-            pred_noise_text = self.unet(
-                latents, timestep=timestep, context=text_emb
-            )
-            pred_noise_neg = self.unet(
-                latents, timestep=timestep, context=neg_emb
-            )
-
-            diff = pred_noise_text - pred_noise_neg
-            noise_pred = pred_noise_neg + diff.mul_(scale)
-            del diff, pred_noise_text, pred_noise_neg
-
+            noise_pred = self.pred_noise(latents, timestep, context, scale)
             latents = scheduler.step(noise_pred, timestep, latents, eta=eta,)
         clear_cuda()
 
-        MAGIC = 0.18215
-
-        if self.low_ram:
-            self.vae.decoder.to(self.device, non_blocking=True)
-            self.vae.post_quant_conv.to(self.device, non_blocking=True)
-
+        # decode latent space
         out = self.vae.decode(latents.div_(MAGIC)).cpu()
-
-        if self.low_ram:
-            self.vae.decoder.to("cpu", non_blocking=True)
-            self.vae.post_quant_conv.to("cpu", non_blocking=True)
-
         clear_cuda()
 
-        return Image.fromarray(rearrange(out, "1 C H W -> H W C").numpy())
+        # create image
+        img = Image.fromarray(rearrange(out, "1 C H W -> H W C").numpy())
+
+        return img
+
+    def pred_noise(
+        self,
+        latents: Tensor,
+        timestep: int,
+        context: Tensor | tuple[Tensor, Tensor],
+        scale:float,
+    ) -> Tensor:
+        # unconditional
+        if isinstance(context, Tensor):
+            return self.unet(latents, timestep=timestep, context=context)
+
+        if self.low_ram:
+            text_emb, neg_emb = context
+
+            pred_noise_text = self.unet(latents, timestep, context=text_emb)
+            pred_noise_neg = self.unet(latents, timestep, context=neg_emb)
+        else:
+            context = torch.cat(context, dim=0)
+            latents = torch.cat([latents]*2, dim=0)
+
+            pred_noise_tn = self.unet(latents, timestep, context=context)
+            pred_noise_text, pred_noise_neg = pred_noise_tn.chunk(2, dim=0)
+            del pred_noise_tn
+
+        diff = pred_noise_text.sub_(pred_noise_neg)
+
+        return diff.mul_(scale).add_(pred_noise_neg)

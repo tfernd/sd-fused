@@ -170,7 +170,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         return next(self.parameters()).device
 
     @torch.no_grad()
-    def forward(self, x: Tensor, *, timestep: int, context: Tensor,) -> Tensor:
+    def forward(self, x: Tensor, timestep: int, *, context: Tensor,) -> Tensor:
         B, C, H, W = x.shape
 
         x = x.to(self.device)
@@ -245,6 +245,9 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
     def split_attention(
         self, *, cross_attention_chunks: Optional[int] = None
     ) -> None:
+        if cross_attention_chunks is not None:
+            assert cross_attention_chunks >= 1
+
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
                 module.split_attention_chunks = cross_attention_chunks
