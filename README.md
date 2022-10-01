@@ -2,7 +2,6 @@
 
 Yes. You read it correctly. 512x512 image generation with less than 3 Gb generation without CPU/GPU swapping.
 
-Generation on a Quadro T2000 takes about 30s.
-
+Generation on a Quadro T2000 takes about 30s (16 steps).
 
 ## How and why?

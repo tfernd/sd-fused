@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image
 from tqdm.auto import tqdm
 
+import random
 import torch
 from einops import rearrange
 
@@ -63,21 +64,25 @@ class StableDiffusion:
         width: int = 512,
         seed: Optional[int] = None
     ) -> Image.Image:
+        # scheduler
         scheduler = DDIMScheduler()
         scheduler.set_timesteps(steps)
         timesteps: list[int] = scheduler.timesteps.tolist()
 
+        # prompt
         text_emb = self.clip(prompt) if prompt is not None else None
         neg_emb = self.clip(negative_prompt)
         if text_emb is not None:
             assert text_emb.shape == neg_emb.shape
 
-        if seed is not None:
-            torch.manual_seed(seed)
+        # seed
+        seed = seed or random.randint(0, 2 ** 16)
+        torch.manual_seed(seed)
         latents = torch.randn(1, 4, height // 8, width // 8)
 
         clear_cuda()
         for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
+            # TODO create new function for this!
             # low-vram
             pred_noise_text = self.unet(
                 latents, timestep=timestep, context=text_emb
@@ -90,12 +95,7 @@ class StableDiffusion:
             noise_pred = pred_noise_neg + diff.mul_(scale)
             del diff, pred_noise_text, pred_noise_neg
 
-            latents = scheduler.step(
-                noise_pred=noise_pred,
-                timestep=timestep,
-                latents=latents,
-                eta=eta,
-            )
+            latents = scheduler.step(noise_pred, timestep, latents, eta=eta,)
         clear_cuda()
 
         MAGIC = 0.18215

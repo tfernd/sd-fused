@@ -22,7 +22,6 @@ class Timesteps(nn.Module):
         num_channels: int,
         flip_sin_to_cos: bool,
         downscale_freq_shift: float,
-        #
         scale: float = 1,
         max_period: int = 10_000,
     ) -> None:
