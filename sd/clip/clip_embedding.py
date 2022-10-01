@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import re
 
 import torch
 from torch import Tensor
@@ -16,6 +17,14 @@ class ClipEmbedding:
     ) -> None:
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)
+
+    @staticmethod
+    def parse_text(text: str) -> str:
+        text = text.strip()
+        text = text.replace("\n", " ")
+        text = re.sub(r"[ ]+", r" ", text)
+
+        return text
 
     @lru_cache(maxsize=None)
     @torch.no_grad()

@@ -64,7 +64,7 @@ class StableDiffusion:
 
         return self
 
-    def generate(
+    def text2img(
         self,
         *,
         prompt: Optional[str] = None,
@@ -74,25 +74,38 @@ class StableDiffusion:
         scale: float = 7.5,
         height: int = 512,
         width: int = 512,
-        seed: Optional[int] = None
-    ) -> Image.Image:
+        seed: Optional[int] = None,
+        batch_size: int = 1,
+    ) -> list[Image.Image]:
+        # allowed sizes are multiple of 64
+        height -= height % 64
+        width -= width % 64
+
         # scheduler
         scheduler = DDIMScheduler()
         scheduler.set_timesteps(steps)
         timesteps: list[int] = scheduler.timesteps.tolist()
 
         # prompt
-        neg_emb = self.clip(negative_prompt).to(self.device).to(self.dtype)
+        negative_prompt = self.clip.parse_text(negative_prompt)
+        neg_emb = self.clip(negative_prompt)
+        neg_emb = neg_emb.to(self.device).to(self.dtype)
+        neg_emb = neg_emb.expand(batch_size)
+
         if prompt is not None:
-            text_emb = self.clip(prompt).to(self.device).to(self.dtype)
+            prompt = self.clip.parse_text(prompt)
+            text_emb = self.clip(prompt)
+            text_emb = text_emb.to(self.device).to(self.dtype)
+            text_emb = text_emb.expand(batch_size)
             context = (text_emb, neg_emb)
         else:
             context = neg_emb
 
         # seed and noise
+        # TODO separated seeds!
         seed = seed or random.randint(0, 2 ** 16)
         torch.manual_seed(seed)
-        latents = torch.randn(1, 4, height // 8, width // 8)
+        latents = torch.randn(batch_size, 4, height // 8, width // 8)
         latents = latents.to(self.device).to(self.dtype)
 
         # generation
@@ -100,6 +113,7 @@ class StableDiffusion:
         for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
             noise_pred = self.pred_noise(latents, timestep, context, scale)
             latents = scheduler.step(noise_pred, timestep, latents, eta=eta)
+            del noise_pred
         clear_cuda()
 
         # decode latent space
@@ -107,9 +121,10 @@ class StableDiffusion:
         clear_cuda()
 
         # create image
-        img = Image.fromarray(rearrange(out, "1 C H W -> H W C").numpy())
+        out = rearrange(out, "B C H W -> B H W C").numpy()
+        imgs = [Image.fromarray(v) for v in out]
 
-        return img
+        return imgs
 
     def pred_noise(
         self,
