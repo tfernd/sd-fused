@@ -44,6 +44,10 @@ class AttentionBlock(nn.Module):
         self.separate_heads = Rearrange(
             "B HW (heads C) -> B heads HW C", heads=num_heads,
         )
+        # pre-transpose to avoid transposing afterwards
+        self.separate_heads_t = Rearrange(
+            "B HW (heads C) -> B heads C HW", heads=num_heads,
+        )
         self.join_heads = Rearrange("B heads HW C -> B HW (heads C)")
 
     def forward(self, x: Tensor) -> Tensor:
@@ -57,11 +61,11 @@ class AttentionBlock(nn.Module):
 
         # key, query, value projections
         q = self.separate_heads(self.query(x)).mul_(self.scale)
-        k = self.separate_heads(self.key(x)).mul_(self.scale)
+        k = self.separate_heads_t(self.key(x)).mul_(self.scale)
         v = self.separate_heads(self.value(x))
         del x
 
-        attn = softmax_(q @ k.transpose(-1, -2), dim=-1)
+        attn = softmax_(q @ k, dim=-1)
         del q, k
 
         # projection
