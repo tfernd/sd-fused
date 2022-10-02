@@ -60,7 +60,7 @@ class CrossAttention(nn.Module):
         B, T, C = x.shape
 
         context = context if context is not None else x
-        
+
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x)).mul_(self.scale)
         del x
