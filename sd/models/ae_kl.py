@@ -13,6 +13,7 @@ from ..layers.base import Conv2d, HalfWeightsModel
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder.encoder import Encoder
 from ..layers.auto_encoder.decoder import Decoder
+from ..layers.attention import AttentionBlock
 
 
 class AutoencoderKL(HalfWeightsModel, nn.Module):
@@ -54,6 +55,13 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
 
         self.quant_conv = Conv2d(2 * latent_channels)
         self.post_quant_conv = Conv2d(latent_channels)
+
+        self.pre_multiply_weights_by_scale()
+
+    def pre_multiply_weights_by_scale(self) -> None:
+        for name, module in self.named_modules():
+            if isinstance(module, AttentionBlock):
+                module.pre_multiply_weights_by_scale()
 
     @torch.no_grad()
     def encode(self, x: Tensor) -> DiagonalGaussianDistribution:

@@ -16,6 +16,8 @@ from ..base import Linear
 class CrossAttention(nn.Module):
     split_attention_chunks: Optional[int] = None
 
+    _pre_multiplied: bool = False
+
     def __init__(
         self,
         *,
@@ -53,18 +55,27 @@ class CrossAttention(nn.Module):
             "(B heads) T C -> B T (heads C)", heads=num_heads
         )
 
+    def pre_multiply_weights_by_scale(self) -> None:
+        if not self._pre_multiplied:
+            self._pre_multiplied = True
+
+            self.to_q.weight.data *= self.scale
+            self.to_k.weight.data *= self.scale
+
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
         device = x.device
         B, T, C = x.shape
 
+        assert self._pre_multiplied
+
         context = context if context is not None else x
 
         # key, query, value projections
-        q = self.heads_to_batch(self.to_q(x)).mul_(self.scale)
+        q = self.heads_to_batch(self.to_q(x))
         del x
-        k = self.heads_to_batch_t(self.to_k(context)).mul_(self.scale)
+        k = self.heads_to_batch_t(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del context
 
