@@ -14,8 +14,6 @@ from ..base import GroupNorm, Linear
 
 
 class AttentionBlock(nn.Module):
-    _pre_multiplied: bool = False
-    
     def __init__(
         self,
         *,
@@ -52,24 +50,8 @@ class AttentionBlock(nn.Module):
         )
         self.join_heads = Rearrange("B heads HW C -> B HW (heads C)")
 
-    def pre_multiply_weights_by_scale(self) -> None:
-        if not self._pre_multiplied:
-            self._pre_multiplied = True
-            
-            self.query.weight.data *= self.scale
-            self.key.weight.data *= self.scale
-
-            if self.query.bias is not None:
-                self.query.bias.data *= self.scale
-
-            if self.key.bias is not None:
-                self.key.bias.data *= self.scale
-
-
     def forward(self, x: Tensor) -> Tensor:
         B, C, H, W = x.shape
-
-        assert self._pre_multiplied
 
         xin = x
 
@@ -78,8 +60,8 @@ class AttentionBlock(nn.Module):
         x = self.channel_last_and_spatial_join(x)
 
         # key, query, value projections
-        q = self.separate_heads(self.query(x))
-        k = self.separate_heads_t(self.key(x))
+        q = self.separate_heads(self.query(x).mul_(self.scale))
+        k = self.separate_heads_t(self.key(x).mul_(self.scale))
         v = self.separate_heads(self.value(x))
         del x
 

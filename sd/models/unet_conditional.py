@@ -18,7 +18,7 @@ from ..layers.blocks import (
     CrossAttnDownBlock2D,
     CrossAttnUpBlock2D,
 )
-from ..layers.attention import AttentionBlock, CrossAttention
+from ..layers.attention import CrossAttention
 
 
 class UNet2DConditional(HalfWeightsModel, nn.Module):
@@ -163,13 +163,6 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         self.conv_out = Conv2d(
             block_out_channels[0], out_channels, kernel_size=3, padding=1
         )
-
-        self.pre_multiply_weights_by_scale()
-
-    def pre_multiply_weights_by_scale(self) -> None:
-        for name, module in self.named_modules():
-            if isinstance(module, (AttentionBlock, CrossAttention)):
-                module.pre_multiply_weights_by_scale()
 
     @torch.no_grad()
     def forward(self, x: Tensor, timestep: int, *, context: Tensor) -> Tensor:
