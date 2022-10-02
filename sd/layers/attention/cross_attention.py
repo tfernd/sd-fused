@@ -45,6 +45,10 @@ class CrossAttention(nn.Module):
         self.heads_to_batch = Rearrange(
             "B T (heads C) -> (B heads) T C", heads=num_heads
         )
+        # pre-transpose to avoid transposing afterwards
+        self.heads_to_batch_t = Rearrange(
+            "B T (heads C) -> (B heads) C T", heads=num_heads
+        )
         self.heads_to_channel = Rearrange(
             "(B heads) T C -> B T (heads C)", heads=num_heads
         )
@@ -55,17 +59,18 @@ class CrossAttention(nn.Module):
         device = x.device
         B, T, C = x.shape
 
+        context = context if context is not None else x
+        
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x)).mul_(self.scale)
-        context = context if context is not None else x
         del x
-        k = self.heads_to_batch(self.to_k(context)).mul_(self.scale)
+        k = self.heads_to_batch_t(self.to_k(context)).mul_(self.scale)
         v = self.heads_to_batch(self.to_v(context))
         del context
 
         # attention score
         if self.split_attention_chunks is None:
-            attn = softmax_(q @ k.transpose(-1, -2), dim=-1)
+            attn = softmax_(q @ k, dim=-1)
             del q, k
 
             # projection
@@ -75,12 +80,12 @@ class CrossAttention(nn.Module):
             return self.to_out(x)
 
         # split-attention score
-        shape = (*q.shape[0:2], v.shape[2])
+        shape = (*q.shape[0], v.shape[2])
         x = torch.zeros(shape, device=q.device, dtype=q.dtype)
         for i in range(0, k.shape[0], self.split_attention_chunks):
             idx = slice(i, i + self.split_attention_chunks)
 
-            attn = softmax_(q[idx] @ k[idx].transpose(-1, -2), dim=-1)
+            attn = softmax_(q[idx] @ k[idx], dim=-1)
             x[idx] = attn @ v[idx]
             del attn
 
