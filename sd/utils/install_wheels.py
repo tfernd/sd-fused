@@ -14,14 +14,15 @@ FLASH_ATTENTION = False
 def install_wheels() -> None:
     global FLASH_ATTENTION
 
-    gpu = torch.cuda.get_device_name()
+    gpu_name = torch.cuda.get_device_name()
+    beg, gpu = gpu_name.split(' ')
 
     if gpu in WHEELS:
         url = WHEELS[gpu]
         pip.main(["install", url])
         FLASH_ATTENTION = True
     else:
-        print(f"GPU ({gpu}) not supported yet.")
+        print(f"GPU ({gpu_name}) not supported yet.")
 
 
 def has_flash_attention() -> bool:
