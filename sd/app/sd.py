@@ -103,6 +103,7 @@ class StableDiffusion:
         self.dtype = torch.float32
 
         return self
+
     def set_inplace(self, inplace: bool = True) -> Self:
         self.vae.set_inplace(inplace)
         self.unet.set_inplace(inplace)
@@ -116,10 +117,10 @@ class StableDiffusion:
 
         return self
 
-    def flash_attention(self, flash: bool = True) -> Self:
-        self.unet.flash_attention(flash)
+    # def flash_attention(self, flash: bool = True) -> Self:
+    #     self.unet.flash_attention(flash)
 
-        return self
+    #     return self
 
     @torch.no_grad()
     def text2img(
