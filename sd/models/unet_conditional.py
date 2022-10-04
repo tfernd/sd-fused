@@ -243,7 +243,7 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
                 if cross_attention_chunks is not None:
-                    module.flash_attention = True
+                    module.flash_attention = False
 
                 module.split_attention_chunks = cross_attention_chunks
 

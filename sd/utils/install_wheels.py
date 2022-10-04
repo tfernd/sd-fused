@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from subprocess import getoutput
+import torch
 import pip
-
-from ..layers.attention import FLASH_ATTENTION
 
 # from https://github.com/TheLastBen/fast-stable-diffusion
 WHEELS = {
@@ -16,10 +14,9 @@ FLASH_ATTENTION = False
 def install_wheels() -> None:
     global FLASH_ATTENTION
 
-    s = getoutput("nvidia-smi")
+    device_name = torch.cuda.get_device_name()
     for gpu, url in WHEELS.items():
-        if s in gpu:  # TODO not the best way to check...
-            # %pip install $url
+        if gpu == device_name:
             pip.main(["install", url])
             FLASH_ATTENTION = True
             break

@@ -173,3 +173,8 @@ class StableDiffusion:
         diff = pred_noise_text.sub_(pred_noise_neg)
 
         return diff.mul_(scale).add_(pred_noise_neg)
+
+    def __repr__(self) -> str:
+        name = self.__class__.__qualname__
+
+        return f"{name}()"
