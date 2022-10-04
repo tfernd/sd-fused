@@ -19,7 +19,7 @@ from ..layers.blocks import (
     CrossAttnDownBlock2D,
     CrossAttnUpBlock2D,
 )
-from ..utils import FLASH_ATTENTION
+from ..utils import has_flash_attention
 
 
 class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
@@ -248,13 +248,11 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
                 module.split_attention_chunks = cross_attention_chunks
 
-    # TODO FIX
-    # def flash_attention(self, flash: bool = True) -> None:
-    #     global FLASH_ATTENTION
-    #     for name, module in self.named_modules():
-    #         if isinstance(module, CrossAttention):
-    #             if flash:
-    #                 # assert FLASH_ATTENTION # ! temp
-    #                 module.split_attention_chunks = None
+    def flash_attention(self, flash: bool = True) -> None:
+        for name, module in self.named_modules():
+            if isinstance(module, CrossAttention):
+                if flash:
+                    assert has_flash_attention()
+                    module.split_attention_chunks = None
 
-    #             module.flash_attention = flash
+                module.flash_attention = flash

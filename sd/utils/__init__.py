@@ -7,4 +7,4 @@ from .softmax import softmax
 
 from .clear_cuda import clear_cuda
 
-from .install_wheels import install_wheels, FLASH_ATTENTION
+from .install_wheels import install_wheels, has_flash_attention
