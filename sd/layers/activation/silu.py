@@ -3,10 +3,14 @@ from __future__ import annotations
 import torch.nn as nn
 from torch import Tensor
 
+from ..base import InPlace
 
-class SiLU(nn.Module):
+
+class SiLU(InPlace,nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
     def forward(self, x: Tensor) -> Tensor:
-        return x.sigmoid().mul_(x)
+        if self.inplace:
+            return x.sigmoid().mul_(x)
+        return x * x.sigmoid()

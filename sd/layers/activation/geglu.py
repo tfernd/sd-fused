@@ -4,10 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from ..base import Linear
+from ..base import Linear, InPlace
 
 
-class GEGLU(nn.Module):
+class GEGLU(InPlace, nn.Module):
     def __init__(self, dim_in: int, dim_out: int) -> None:
         super().__init__()
 
@@ -19,4 +19,6 @@ class GEGLU(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x, gate = self.proj(x).chunk(2, dim=-1)
 
-        return F.gelu(gate).mul_(x)
+        if self.inplace:
+            return F.gelu(gate).mul_(x)
+        return x * F.gelu(gate)

@@ -56,6 +56,12 @@ class StableDiffusion:
 
         return self
 
+    def set_inplace(self, inplace: bool=True) -> Self:
+        self.vae.set_inplace(inplace)
+        self.unet.set_inplace(inplace)
+
+        return self
+
     def half(self) -> Self:
         self.unet.half()
         self.vae.half()
