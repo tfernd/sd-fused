@@ -1,7 +1,7 @@
-# Stable-Diffusion with very low memory (2.9 Gb)
+# Stable-Diffusion with very low memory (3.3 Gb)
 
-Yes. You read it correctly. 512x512 image generation with less than 3 Gb generation without CPU/GPU swapping!
+Yes. You read it correctly. 512x512 image generation with about 3 Gb generation without CPU/GPU swapping!
 
-Generation on a Quadro T2000 (very bad graphics card) takes about 30s (with 16 steps).
+Generation on a Quadro T2000 (very very bad graphics card) takes about 49s (with 28 steps).
 
 ## How and why?
