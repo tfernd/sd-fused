@@ -119,10 +119,10 @@ class StableDiffusion:
 
         return self
 
-    # def flash_attention(self, flash: bool = True) -> Self:
-    #     self.unet.flash_attention(flash)
+    def flash_attention(self, flash: bool = True) -> Self:
+        self.unet.flash_attention(flash)
 
-    #     return self
+        return self
 
     @torch.no_grad()
     def text2img(
