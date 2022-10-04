@@ -20,10 +20,13 @@ class DiagonalGaussianDistribution(InPlace):
 
         self.mean = mean
 
+        limits = (-30, 20)
         if self.inplace:
-            self.std = logvar.clamp_(-30, 20).div_(2).exp_()
+            logvar = logvar.clamp_(*limits)
+            self.std = logvar.div_(2).exp_()
         else:
-            self.std = logvar.clamp(-30, 20).div(2).exp()
+            logvar = logvar.clamp(*limits)
+            self.std = torch.exp(logvar / 2)
 
     def sample(self, generator: Optional[torch.Generator] = None) -> Tensor:
         if self.deterministic:

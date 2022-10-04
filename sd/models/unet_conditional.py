@@ -179,6 +179,7 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
         x = self.conv_in(x)
 
         # 3. down
+        # TODO it is possible to make it a list[list[Tensor]]? or is the number of elements wrong?
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
             assert isinstance(block, (CrossAttnDownBlock2D, DownBlock2D))
@@ -247,12 +248,13 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
                 module.split_attention_chunks = cross_attention_chunks
 
-    def flash_attention(self, flash: bool = True) -> None:
-        global FLASH_ATTENTION
-        for name, module in self.named_modules():
-            if isinstance(module, CrossAttention):
-                if flash:
-                    # assert FLASH_ATTENTION # ! temp
-                    module.split_attention_chunks = None
+    # TODO FIX
+    # def flash_attention(self, flash: bool = True) -> None:
+    #     global FLASH_ATTENTION
+    #     for name, module in self.named_modules():
+    #         if isinstance(module, CrossAttention):
+    #             if flash:
+    #                 # assert FLASH_ATTENTION # ! temp
+    #                 module.split_attention_chunks = None
 
-                module.flash_attention = flash
+    #             module.flash_attention = flash

@@ -5,8 +5,8 @@ from functools import partial
 import torch.nn as nn
 from torch import Tensor
 
-from ..activation import SiLU
 from ...layers.blocks import DownEncoderBlock2D, UNetMidBlock2D
+from ..activation import SiLU
 from ..base import Conv2d, GroupNorm
 
 

@@ -62,7 +62,6 @@ class CrossAttnDownBlock2D(nn.Module):
             )
 
         if add_downsample:
-            # TODO remove ModuleList?
             self.downsamplers = nn.ModuleList()
             self.downsamplers.append(
                 Downsample2D(

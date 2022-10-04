@@ -34,6 +34,7 @@ class AttentionBlock(InPlace, nn.Module):
 
         self.group_norm = GroupNorm(num_groups, num_channels)
 
+        # TODO pre-multiply query, key, value weights by self.scale?
         self.query = Linear(num_channels)
         self.key = Linear(num_channels)
         self.value = Linear(num_channels)

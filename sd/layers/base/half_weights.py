@@ -12,9 +12,13 @@ class HalfWeights(nn.Module):
 
     use_half_weights: bool = False
 
-    def half_weights(self) -> None:
-        self.use_half_weights = True
-        self.half()
+    def half_weights(self, use: bool = True) -> None:
+        self.use_half_weights = use
+
+        if use:
+            self.half()
+        else:
+            self.float()
 
     def forward(self, x: Tensor) -> Tensor:
         if not self.use_half_weights:
@@ -28,9 +32,9 @@ class HalfWeights(nn.Module):
 
 
 class HalfWeightsModel(nn.Module):
-    def half_weights(self) -> Self:
+    def half_weights(self, use: bool = True) -> Self:
         for name, module in self.named_modules():
             if isinstance(module, HalfWeights):
-                module.half_weights()
+                module.half_weights(use)
 
         return self

@@ -3,8 +3,10 @@ from typing import Optional
 from typing_extensions import Self
 
 from pathlib import Path
-from PIL import Image
 from tqdm.auto import tqdm
+
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 
 import random
 from einops import rearrange
@@ -43,6 +45,7 @@ SIZES = Literal[
 class StableDiffusion:
     version: str = "0.1"
     repo: str = "https://github.com/tfernd/sd"
+    model_name: str = "stable-diffusion"
 
     low_ram: bool = False
 
@@ -50,10 +53,14 @@ class StableDiffusion:
     dtype: torch.dtype = torch.float32
 
     def __init__(
-        self, path: str | Path, save_dir: str | Path = "./gallery"
+        self,
+        path: str | Path,
+        save_dir: str | Path = "./gallery",
+        model_name: str = "stable-diffusion-1.4",
     ) -> None:
         self.path = path = Path(path)
         self.save_dir = Path(save_dir)
+        self.model_name = model_name
 
         self.clip = ClipEmbedding(path / "tokenizer", path / "text_encoder")
 
@@ -161,10 +168,33 @@ class StableDiffusion:
         out = rearrange(out, "B C H W -> B H W C").numpy()
         imgs = [Image.fromarray(v) for v in out]
 
+        self.save_dir.mkdir(parents=True, exist_ok=True)
         for seed, img in zip(seeds, imgs):
-            # TODO create path-name to save
-            # TODO add info to png file about parameters used
-            pass
+            ID = random.randint(0, 2 ** 64)
+            path = self.save_dir / f"{ID:x}.png"
+
+            _metadata = dict(
+                seed=seed,
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                eta=eta,
+                steps=steps,
+                scale=scale,
+                height=height,
+                width=width,
+                version=self.version,
+                repo=self.repo,
+                model=self.model_name,
+            )
+            metadata = PngInfo()
+            for key, value in _metadata.items():
+                if isinstance(value, (int, float)):
+                    value = str(value)
+                elif value is None:
+                    value = "null"
+                metadata.add_text(key, value)
+
+            img.save(path, pnginfo=metadata)
 
         return imgs
 

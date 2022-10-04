@@ -81,7 +81,7 @@ class AutoencoderKL(InPlaceModel, HalfWeightsModel, nn.Module):
     ) -> Tensor:
         posterior = self.encode(x)
 
-        z = posterior.sample(generator) if sample else posterior.mode
+        z = posterior.sample(generator) if sample else posterior.mean
 
         return self.decode(z)
 

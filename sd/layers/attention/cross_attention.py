@@ -12,7 +12,6 @@ try:
 except ImportError:
     memory_efficient_attention = None
 
-
 from einops.layers.torch import Rearrange
 
 from ...utils import softmax
@@ -43,6 +42,7 @@ class CrossAttention(InPlace, nn.Module):
 
         self.scale = math.pow(dim_head, -1 / 4)
 
+        # TODO pre-multiply query, key, value weights by self.scale?
         self.to_q = Linear(query_dim, inner_dim, bias=False)
         self.to_k = Linear(context_dim, inner_dim, bias=False)
         self.to_v = Linear(context_dim, inner_dim, bias=False)
@@ -64,16 +64,13 @@ class CrossAttention(InPlace, nn.Module):
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
         device = x.device
-        B, T, C = x.shape
-
         context = context if context is not None else x
 
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x))
-        del x
         k = self.heads_to_batch_t(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
-        del context
+        del x, context
 
         # scale
         q = q.mul_(self.scale) if self.inplace else q * self.scale
@@ -82,11 +79,9 @@ class CrossAttention(InPlace, nn.Module):
         # flash-attention score
         if self.flash_attention:
             assert memory_efficient_attention is not None
-            memory_efficient_attention(
-                q, k, v, attn_bias=None, op=self.attention_op
-            )
+            memory_efficient_attention(q, k, v, attn_bias=None)
 
-        # attention score
+        # normal attention score
         if self.split_attention_chunks is None:
             attn = softmax(q @ k, dim=-1, inplace=self.inplace)
             del q, k
@@ -101,13 +96,13 @@ class CrossAttention(InPlace, nn.Module):
         shape = (*q.shape[0:2], v.shape[2])
         x = torch.zeros(shape, device=q.device, dtype=q.dtype)
         for i in range(0, k.shape[0], self.split_attention_chunks):
-            idx = slice(i, i + self.split_attention_chunks)
+            s = slice(i, i + self.split_attention_chunks)
 
-            attn = softmax(q[idx] @ k[idx], dim=-1, inplace=self.inplace)
-            x[idx] = attn @ v[idx]
+            attn = softmax(q[s] @ k[s], dim=-1, inplace=self.inplace)
+            x[s] = attn @ v[s]
             del attn
 
-            # TODO delete q[idx], k[idx], v[idx]
+            # TODO delete q[s], k[s], v[s]?
         x = self.heads_to_channel(x)
 
         return self.to_out(x)

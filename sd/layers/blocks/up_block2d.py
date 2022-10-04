@@ -50,7 +50,6 @@ class UpBlock2D(nn.Module):
                 )
             )
 
-        # TODO remove ModuleList?
         self.upsamplers = nn.ModuleList()
         if add_upsample:
             self.upsamplers.append(
