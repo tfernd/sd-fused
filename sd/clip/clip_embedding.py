@@ -21,9 +21,9 @@ class ClipEmbedding:
 
     @staticmethod
     def parse_text(text: str) -> str:
-        text = text.strip()
         text = text.replace("\n", " ")
         text = re.sub(r"[ ]+", r" ", text)
+        text = text.strip()
 
         return text
 
