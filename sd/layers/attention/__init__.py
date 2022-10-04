@@ -1,5 +1,5 @@
 from .attention_block import AttentionBlock
-from .cross_attention import CrossAttention
+from .cross_attention import CrossAttention, FLASH_ATTENTION
 
 from .feed_forward import FeedForward
 

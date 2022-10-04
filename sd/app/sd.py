@@ -33,8 +33,6 @@ class StableDiffusion:
         self.vae = AutoencoderKL.load_sd(path / "vae")
         self.unet = UNet2DConditional.load_sd(path / "unet")
 
-        self.split_attention = self.unet.split_attention
-
     def set_low_ram(self) -> Self:
         self.low_ram = True
 
@@ -59,6 +57,17 @@ class StableDiffusion:
     def set_inplace(self, inplace: bool = True) -> Self:
         self.vae.set_inplace(inplace)
         self.unet.set_inplace(inplace)
+
+        return self
+
+    def split_attention(self, *, cross_attention_chunks: Optional[int] = None
+    )  -> Self:
+        self.unet.split_attention(cross_attention_chunks=cross_attention_chunks)
+
+        return self
+
+    def flash_attention(self, flash: bool = True) -> Self:
+        self.unet.flash_attention(flash)
 
         return self
 

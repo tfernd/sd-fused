@@ -7,6 +7,14 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+try:
+    from xformers.ops import memory_efficient_attention
+    FLASH_ATTENTION = True
+except ImportError:
+    memory_efficient_attention = None
+    FLASH_ATTENTION = False
+
+
 from einops.layers.torch import Rearrange
 
 from ...utils import softmax
@@ -15,6 +23,7 @@ from ..base import Linear, InPlace
 
 class CrossAttention(InPlace, nn.Module):
     split_attention_chunks: Optional[int] = None
+    flash_attention: bool = FLASH_ATTENTION
 
     def __init__(
         self,
@@ -71,6 +80,11 @@ class CrossAttention(InPlace, nn.Module):
         # scale
         q = q.mul_(self.scale) if self.inplace else q * self.scale
         k = k.mul_(self.scale) if self.inplace else k * self.scale
+
+        # flash-attention score
+        if self. flash_attention:
+            assert memory_efficient_attention is not None
+            memory_efficient_attention(q, k, v, attn_bias=None, op=self.attention_op)
 
         # attention score
         if self.split_attention_chunks is None:

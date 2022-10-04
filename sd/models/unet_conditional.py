@@ -11,7 +11,7 @@ from torch import Tensor
 from ..layers.embedding import Timesteps, TimestepEmbedding
 from ..layers.activation import SiLU
 from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel, InPlaceModel
-from ..layers.attention import CrossAttention
+from ..layers.attention import CrossAttention, FLASH_ATTENTION
 from ..layers.blocks import (
     UNetMidBlock2DCrossAttn,
     DownBlock2D,
@@ -241,4 +241,17 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
+                if cross_attention_chunks is not None:
+                    module.flash_attention = True
+
                 module.split_attention_chunks = cross_attention_chunks
+
+    def flash_attention(self, flash: bool = True) -> None:
+        for name, module in self.named_modules():
+            if isinstance(module, CrossAttention):
+                if flash:
+                    assert FLASH_ATTENTION
+                    module.split_attention_chunks = None
+
+                module.flash_attention = flash
+
