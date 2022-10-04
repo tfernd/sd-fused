@@ -67,6 +67,8 @@ class StableDiffusion:
         self.vae = AutoencoderKL.load_sd(path / "vae")
         self.unet = UNet2DConditional.load_sd(path / "unet")
 
+        self.scheduler = DDIMScheduler()
+
     def set_low_ram(self) -> Self:
         self.low_ram = True
 
@@ -141,8 +143,7 @@ class StableDiffusion:
         assert width % 64 == 0
 
         # scheduler
-        scheduler = DDIMScheduler()
-        timesteps = scheduler.set_timesteps(steps)
+        timesteps = self.scheduler.set_timesteps(steps)
 
         batch_size = fix_batch_size(seed, batch_size)
 
@@ -157,13 +158,7 @@ class StableDiffusion:
 
         latents = noise
 
-        # generation
-        clear_cuda()
-        for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
-            noise_pred = self.pred_noise(latents, timestep, context, scale)
-            latents = scheduler.step(noise_pred, timestep, latents, eta=eta)
-            del noise_pred
-        clear_cuda()
+        latents = self._generate(timesteps, latents, context, scale, eta)
 
         # decode latent space
         out = self.vae.decode(latents.div_(MAGIC)).cpu()
@@ -173,8 +168,10 @@ class StableDiffusion:
         out = rearrange(out, "B C H W -> B H W C").numpy()
         imgs = [Image.fromarray(v) for v in out]
 
+        # TODO put into its own function
         self.save_dir.mkdir(parents=True, exist_ok=True)
         for seed, img in zip(seeds, imgs):
+            # TODO temporary file name for now
             ID = random.randint(0, 2 ** 64)
             path = self.save_dir / f"{ID:x}.png"
 
@@ -252,6 +249,25 @@ class StableDiffusion:
             context = neg_emb
 
         return prompt, negative_prompt, context
+
+    def _generate(
+        self,
+        timesteps: list[int],
+        latents: Tensor,
+        context: Tensor | tuple[Tensor, Tensor],
+        scale: float,
+        eta: float,
+    ) -> Tensor:
+        clear_cuda()
+        for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
+            noise_pred = self.pred_noise(latents, timestep, context, scale)
+            latents = self.scheduler.step(
+                noise_pred, timestep, latents, eta=eta
+            )
+            del noise_pred
+        clear_cuda()
+
+        return latents
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
