@@ -15,8 +15,27 @@ from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
 from ..utils import image2tensor, clear_cuda, generate_noise
+from ..utils.typing import Literal
 
 MAGIC = 0.18215
+
+SIZES = Literal[256,
+ 320,
+ 384,
+ 448,
+ 512,
+ 576,
+ 640,
+ 704,
+ 768,
+ 832,
+ 896,
+ 960,
+ 1024,
+ 1088,
+ 1152,
+ 1216,
+ 1280]
 
 
 class StableDiffusion:
@@ -95,8 +114,8 @@ class StableDiffusion:
         eta: float = 0,
         steps: int = 32,
         scale: float = 7.5,
-        height: int = 512,
-        width: int = 512,
+        height: SIZES = 512,
+        width: SIZES = 512,
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
     ) -> list[Image.Image]:

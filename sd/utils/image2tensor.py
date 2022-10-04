@@ -13,12 +13,14 @@ from einops import rearrange
 
 
 def image2tensor(
-    path: str | Path, *, resize: Optional[tuple[int, int]] = None,
+    path: str | Path, *, resize: Optional[int | tuple[int, int]] = None,
 ) -> Tensor:
     """Open's an image as pytorch batched-Tensor (B C H W)."""
 
     img = Image.open(path).convert("RGB")
     if resize is not None:
+        if isinstance(resize, int):
+            resize = (resize, resize)
         img = img.resize(resize)
 
     data = torch.from_numpy(np.asarray(img))
