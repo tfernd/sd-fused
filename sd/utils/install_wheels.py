@@ -17,6 +17,8 @@ def install_wheels() -> None:
     gpu_name = torch.cuda.get_device_name()
     beg, gpu = gpu_name.split(' ')
 
+    print(beg, gpu)
+
     if gpu in WHEELS:
         url = WHEELS[gpu]
         pip.main(["install", url])
