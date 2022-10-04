@@ -254,4 +254,3 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
                     module.split_attention_chunks = None
 
                 module.flash_attention = flash
-

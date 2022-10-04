@@ -60,9 +60,12 @@ class StableDiffusion:
 
         return self
 
-    def split_attention(self, *, cross_attention_chunks: Optional[int] = None
-    )  -> Self:
-        self.unet.split_attention(cross_attention_chunks=cross_attention_chunks)
+    def split_attention(
+        self, *, cross_attention_chunks: Optional[int] = None
+    ) -> Self:
+        self.unet.split_attention(
+            cross_attention_chunks=cross_attention_chunks
+        )
 
         return self
 

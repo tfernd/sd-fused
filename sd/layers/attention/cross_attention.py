@@ -8,7 +8,8 @@ import torch.nn as nn
 from torch import Tensor
 
 try:
-    from xformers.ops import memory_efficient_attention
+    from xformers.ops import memory_efficient_attention  # type: ignore
+
     FLASH_ATTENTION = True
 except ImportError:
     memory_efficient_attention = None
@@ -82,9 +83,11 @@ class CrossAttention(InPlace, nn.Module):
         k = k.mul_(self.scale) if self.inplace else k * self.scale
 
         # flash-attention score
-        if self. flash_attention:
+        if self.flash_attention:
             assert memory_efficient_attention is not None
-            memory_efficient_attention(q, k, v, attn_bias=None, op=self.attention_op)
+            memory_efficient_attention(
+                q, k, v, attn_bias=None, op=self.attention_op
+            )
 
         # attention score
         if self.split_attention_chunks is None:
