@@ -1,6 +1,5 @@
 ipywidgets>=7,<8
 transformers
-xformers
 scipy
 ftfy
 einops
