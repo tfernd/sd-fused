@@ -14,19 +14,25 @@ from torch import Tensor
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
-from ..utils import image2tensor, clear_cuda
+from ..utils import image2tensor, clear_cuda, generate_noise
 
 MAGIC = 0.18215
 
 
 class StableDiffusion:
+    version: str = "0.1"
+    repo: str = "https://github.com/tfernd/sd"
+
     low_ram: bool = False
 
     device: torch.device = torch.device("cpu")
     dtype: torch.dtype = torch.float32
 
-    def __init__(self, path: str | Path) -> None:
-        path = Path(path)
+    def __init__(
+        self, path: str | Path, save_dir: str | Path = "./gallery"
+    ) -> None:
+        self.path = path = Path(path)
+        self.save_dir = Path(save_dir)
 
         self.clip = ClipEmbedding(path / "tokenizer", path / "text_encoder")
 
@@ -54,6 +60,14 @@ class StableDiffusion:
 
         return self
 
+    def half(self) -> Self:
+        self.unet.half()
+        self.vae.half()
+
+        self.dtype = torch.float16
+
+        return self
+
     def set_inplace(self, inplace: bool = True) -> Self:
         self.vae.set_inplace(inplace)
         self.unet.set_inplace(inplace)
@@ -63,22 +77,12 @@ class StableDiffusion:
     def split_attention(
         self, *, cross_attention_chunks: Optional[int] = None
     ) -> Self:
-        self.unet.split_attention(
-            cross_attention_chunks=cross_attention_chunks
-        )
+        self.unet.split_attention(cross_attention_chunks)
 
         return self
 
     def flash_attention(self, flash: bool = True) -> Self:
         self.unet.flash_attention(flash)
-
-        return self
-
-    def half(self) -> Self:
-        self.unet.half()
-        self.vae.half()
-
-        self.dtype = torch.float16
 
         return self
 
@@ -93,7 +97,7 @@ class StableDiffusion:
         scale: float = 7.5,
         height: int = 512,
         width: int = 512,
-        seed: Optional[int] = None,
+        seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
     ) -> list[Image.Image]:
         # allowed sizes are multiple of 64
@@ -102,30 +106,23 @@ class StableDiffusion:
 
         # scheduler
         scheduler = DDIMScheduler()
-        scheduler.set_timesteps(steps)
-        timesteps: list[int] = scheduler.timesteps.tolist()
+        timesteps = scheduler.set_timesteps(steps)
 
-        # prompt
-        negative_prompt = self.clip.parse_text(negative_prompt)
-        neg_emb = self.clip(negative_prompt)
-        neg_emb = neg_emb.to(self.device).to(self.dtype)
-        neg_emb = neg_emb.expand(batch_size, -1, -1)
+        # fix batch-size if seed-list is provided
+        if isinstance(seed, list):
+            seed = list(set(seed))  # remove duplicates
+            batch_size = len(seed)
 
-        if prompt is not None:
-            prompt = self.clip.parse_text(prompt)
-            text_emb = self.clip(prompt)
-            text_emb = text_emb.to(self.device).to(self.dtype)
-            text_emb = text_emb.expand(batch_size, -1, -1)
-            context = (text_emb, neg_emb)
-        else:
-            context = neg_emb
+        # text embeddings
+        prompt, negative_prompt, context = self.get_context_embedding(
+            prompt, negative_prompt, batch_size
+        )
 
         # seed and noise
-        # TODO separated seeds!
-        seed = seed or random.randint(0, 2 ** 16)
-        torch.manual_seed(seed)
-        latents = torch.randn(batch_size, 4, height // 8, width // 8)
-        latents = latents.to(self.device).to(self.dtype)
+        shape = (batch_size, 4, height // 8, width // 8)
+        noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
+
+        latents = noise
 
         # generation
         clear_cuda()
@@ -142,6 +139,11 @@ class StableDiffusion:
         # create image
         out = rearrange(out, "B C H W -> B H W C").numpy()
         imgs = [Image.fromarray(v) for v in out]
+
+        for seed, img in zip(seeds, imgs):
+            # TODO create path-name to save
+            # TODO add info to png file about parameters used
+            pass
 
         return imgs
 
@@ -173,6 +175,27 @@ class StableDiffusion:
         diff = pred_noise_text.sub_(pred_noise_neg)
 
         return diff.mul_(scale).add_(pred_noise_neg)
+
+    @torch.no_grad()
+    def get_context_embedding(
+        self, prompt: Optional[str], negative_prompt: str, batch_size: int
+    ) -> tuple[Optional[str], str, Tensor | tuple[Tensor, Tensor]]:
+        negative_prompt = self.clip.parse_text(negative_prompt)
+        if prompt is not None:
+            prompt = self.clip.parse_text(prompt)
+
+        neg_emb = self.clip(negative_prompt, self.device, self.dtype)
+        neg_emb = neg_emb.expand(batch_size, -1, -1)
+
+        if prompt is not None:
+            text_emb = self.clip(prompt, self.device, self.dtype)
+            text_emb = text_emb.expand(batch_size, -1, -1)
+
+            context = (text_emb, neg_emb)
+        else:
+            context = neg_emb
+
+        return prompt, negative_prompt, context
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

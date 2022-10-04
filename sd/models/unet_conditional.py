@@ -235,7 +235,7 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
         return model
 
     def split_attention(
-        self, *, cross_attention_chunks: Optional[int] = None
+        self, cross_attention_chunks: Optional[int] = None
     ) -> None:
         if cross_attention_chunks is not None:
             assert cross_attention_chunks >= 1

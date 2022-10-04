@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 from functools import lru_cache
 from pathlib import Path
@@ -38,8 +39,20 @@ class ClipEmbedding:
 
         return emb.cpu()
 
-    def __call__(self, text: str | list[str] = "") -> Tensor:
+    def __call__(
+        self,
+        text: str | list[str] = "",
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> Tensor:
         if isinstance(text, str):
             return self.create_embedding(text)
 
-        return torch.cat([self.create_embedding(t) for t in text], dim=0)
+        out = torch.cat([self.create_embedding(t) for t in text], dim=0)
+
+        if device is not None:
+            out = out.to(device, non_blocking=True)
+        if dtype is not None:
+            out = out.to(dtype, non_blocking=True)
+
+        return out

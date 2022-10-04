@@ -61,13 +61,15 @@ class DDIMScheduler:
     def num_inference_steps(self) -> int:
         return len(self.timesteps)
 
-    def set_timesteps(self, num_inference_steps: int) -> None:
+    def set_timesteps(self, num_inference_steps: int) -> list[int]:
         assert num_inference_steps <= self.num_train_timesteps
 
         self.timesteps = torch.arange(0, num_inference_steps).flip(0)
 
         self.timesteps *= self.num_train_timesteps // num_inference_steps
         self.timesteps += self.steps_offset
+
+        return self.timesteps.tolist()
 
     def step(
         self,
