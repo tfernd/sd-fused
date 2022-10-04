@@ -194,9 +194,9 @@ class StableDiffusion:
                     value = str(value)
                 elif value is None:
                     value = "null"
-                metadata.add_text(key, value)
+                metadata.add_text(f"SD {key}", value)
 
-            img.save(path, pnginfo=metadata)
+            img.save(path, bitmap_format="png", pnginfo=metadata)
 
         return imgs
 
