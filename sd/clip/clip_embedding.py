@@ -46,13 +46,8 @@ class ClipEmbedding:
         dtype: Optional[torch.dtype] = None,
     ) -> Tensor:
         if isinstance(text, str):
-            return self.create_embedding(text)
+            out = self.create_embedding(text)
+        else:
+            out = torch.cat([self.create_embedding(t) for t in text], dim=0)
 
-        out = torch.cat([self.create_embedding(t) for t in text], dim=0)
-
-        if device is not None:
-            out = out.to(device, non_blocking=True)
-        if dtype is not None:
-            out = out.to(dtype, non_blocking=True)
-
-        return out
+        return out.to(device=device, dtype=dtype, non_blocking=True)

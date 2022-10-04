@@ -26,10 +26,6 @@ def generate_noise(
         generator.manual_seed(s)
         out.append(torch.randn(*shape[1:], generator=generator))
 
-    noise = torch.stack(out)
-    if device is not None:
-        noise = noise.to(device)
-    if dtype is not None:
-        noise = noise.to(dtype)
+    noise = torch.stack(out, dim=0).to(device=device, dtype=dtype)
 
     return noise, seeds
