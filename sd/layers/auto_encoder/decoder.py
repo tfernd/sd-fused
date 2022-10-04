@@ -65,7 +65,7 @@ class Decoder(nn.Module):
             prev_output_channel = output_channel
 
         # out
-        self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[0],)
+        self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[0])
         self.conv_act = SiLU()
         self.conv_out = conv(block_out_channels[0], out_channels)
 

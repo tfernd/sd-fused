@@ -9,13 +9,13 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..utils import normalize, denormalize
-from ..layers.base import Conv2d, HalfWeightsModel
+from ..layers.base import Conv2d, HalfWeightsModel, InPlaceModel
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder.encoder import Encoder
 from ..layers.auto_encoder.decoder import Decoder
 
 
-class AutoencoderKL(HalfWeightsModel, nn.Module):
+class AutoencoderKL(InPlaceModel, HalfWeightsModel, nn.Module):
     def __init__(
         self,
         *,

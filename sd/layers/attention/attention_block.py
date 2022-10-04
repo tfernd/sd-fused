@@ -9,11 +9,11 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 from einops import rearrange
 
-from ...utils import softmax_
-from ..base import GroupNorm, Linear
+from ...utils import softmax
+from ..base import GroupNorm, Linear, InPlace
 
 
-class AttentionBlock(nn.Module):
+class AttentionBlock(InPlace, nn.Module):
     def __init__(
         self,
         *,
@@ -60,12 +60,16 @@ class AttentionBlock(nn.Module):
         x = self.channel_last_and_spatial_join(x)
 
         # key, query, value projections
-        q = self.separate_heads(self.query(x).mul_(self.scale))
-        k = self.separate_heads_t(self.key(x).mul_(self.scale))
+        q = self.separate_heads(self.query(x))
+        k = self.separate_heads_t(self.key(x))
         v = self.separate_heads(self.value(x))
         del x
 
-        attn = softmax_(q @ k, dim=-1)
+        # scale
+        q = q.mul_(self.scale) if self.inplace else q * self.scale
+        k = k.mul_(self.scale) if self.inplace else k * self.scale
+
+        attn = softmax(q @ k, dim=-1, inplace=self.inplace)
         del q, k
 
         # projection
@@ -74,7 +78,7 @@ class AttentionBlock(nn.Module):
 
         # output
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
-        x += xin
+        x = x.add_(xin) if self.inplace else x + xin
         del xin
 
         return x

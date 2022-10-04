@@ -15,7 +15,7 @@ from einops import rearrange
 def image2tensor(
     path: str | Path, *, resize: Optional[tuple[int, int]] = None,
 ) -> Tensor:
-    """Open's an image as pytorch Tensor."""
+    """Open's an image as pytorch batched-Tensor (B C H W)."""
 
     img = Image.open(path).convert("RGB")
     if resize is not None:

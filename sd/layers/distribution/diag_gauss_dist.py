@@ -4,18 +4,26 @@ from typing import Optional
 import torch
 from torch import Tensor
 
+from ..base import InPlace
 
-class DiagonalGaussianDistribution:
+
+class DiagonalGaussianDistribution(InPlace):
     def __init__(
         self, mean: Tensor, logvar: Tensor, *, deterministic: bool = False,
     ) -> None:
+        super().__init__()
+
         self.deterministic = deterministic
 
         self.device = mean.device
         self.dtype = mean.dtype
 
         self.mean = mean
-        self.std = logvar.clamp_(-30, 20).div_(2).exp_()
+
+        if self.inplace:
+            self.std = logvar.clamp_(-30, 20).div_(2).exp_()
+        else:
+            self.std = logvar.clamp(-30, 20).div(2).exp()
 
     def sample(self, generator: Optional[torch.Generator] = None) -> Tensor:
         if self.deterministic:
@@ -30,7 +38,9 @@ class DiagonalGaussianDistribution:
             dtype=self.dtype,
         )
 
-        return noise.mul_(self.std).add_(self.mean)
+        if self.inplace:
+            return noise.mul_(self.std).add_(self.mean)
+        return self.mean + self.std * noise
 
     @property
     def mode(self) -> Tensor:

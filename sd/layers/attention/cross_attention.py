@@ -9,11 +9,11 @@ from torch import Tensor
 
 from einops.layers.torch import Rearrange
 
-from ...utils import softmax_
-from ..base import Linear
+from ...utils import softmax
+from ..base import Linear, InPlace
 
 
-class CrossAttention(nn.Module):
+class CrossAttention(InPlace, nn.Module):
     split_attention_chunks: Optional[int] = None
 
     def __init__(
@@ -62,15 +62,19 @@ class CrossAttention(nn.Module):
         context = context if context is not None else x
 
         # key, query, value projections
-        q = self.heads_to_batch(self.to_q(x).mul_(self.scale))
+        q = self.heads_to_batch(self.to_q(x))
         del x
-        k = self.heads_to_batch_t(self.to_k(context).mul_(self.scale))
+        k = self.heads_to_batch_t(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del context
 
+        # scale
+        q = q.mul_(self.scale) if self.inplace else q * self.scale
+        k = k.mul_(self.scale) if self.inplace else k * self.scale
+
         # attention score
         if self.split_attention_chunks is None:
-            attn = softmax_(q @ k, dim=-1)
+            attn = softmax(q @ k, dim=-1, inplace=self.inplace)
             del q, k
 
             # projection
@@ -85,7 +89,7 @@ class CrossAttention(nn.Module):
         for i in range(0, k.shape[0], self.split_attention_chunks):
             idx = slice(i, i + self.split_attention_chunks)
 
-            attn = softmax_(q[idx] @ k[idx], dim=-1)
+            attn = softmax(q[idx] @ k[idx], dim=-1, inplace=self.inplace)
             x[idx] = attn @ v[idx]
             del attn
 

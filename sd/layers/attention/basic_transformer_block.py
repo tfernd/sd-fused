@@ -4,12 +4,12 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
-from ..base import LayerNorm
+from ..base import LayerNorm, InPlace
 from .cross_attention import CrossAttention
 from .feed_forward import FeedForward
 
 
-class BasicTransformerBlock(nn.Module):
+class BasicTransformerBlock(InPlace, nn.Module):
     def __init__(
         self,
         *,
@@ -47,9 +47,15 @@ class BasicTransformerBlock(nn.Module):
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
-        x = self.attn1(self.norm1(x)).add_(x)
-        x = self.attn2(self.norm2(x), context=context).add_(x)
+        out = self.attn1(self.norm1(x))
+        x = out.add_(x) if self.inplace else out + x
+
+        out = self.attn2(self.norm2(x), context=context)
+        x = out.add_(x) if self.inplace else out + x
         del context
-        x = self.ff(self.norm3(x)).add_(x)
+
+        out = self.ff(self.norm3(x))
+        x = out.add_(x) if self.inplace else out + x
+        del out
 
         return x
