@@ -1,6 +1,6 @@
 ipywidgets>=7,<8
 transformers
+einops
 scipy
 ftfy
-einops
 typing_extensions
