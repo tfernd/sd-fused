@@ -29,7 +29,7 @@ class DiagonalGaussianDistribution(InPlace):
         if self.deterministic:
             assert generator is None
 
-            return self.mode
+            return self.mean
 
         noise = torch.randn(
             self.std.shape,
@@ -41,7 +41,3 @@ class DiagonalGaussianDistribution(InPlace):
         if self.inplace:
             return noise.mul_(self.std).add_(self.mean)
         return self.mean + self.std * noise
-
-    @property
-    def mode(self) -> Tensor:
-        return self.mean
