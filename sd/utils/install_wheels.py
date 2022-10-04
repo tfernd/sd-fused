@@ -21,7 +21,7 @@ def install_wheels() -> None:
         pip.main(["install", url])
         FLASH_ATTENTION = True
     else:
-        print("GPU not supported yet.")
+        print(f"GPU ({gpu}) not supported yet.")
 
 
 def has_flash_attention() -> bool:
