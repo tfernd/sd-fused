@@ -96,6 +96,13 @@ class StableDiffusion:
 
         return self
 
+    def float(self) -> Self:
+        self.unet.float()
+        self.vae.float()
+
+        self.dtype = torch.float32
+
+        return self
     def set_inplace(self, inplace: bool = True) -> Self:
         self.vae.set_inplace(inplace)
         self.unet.set_inplace(inplace)
