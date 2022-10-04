@@ -82,9 +82,9 @@ class StableDiffusion:
 
         return self
 
-    def half_weights(self) -> Self:
-        self.unet.half_weights()
-        self.vae.half_weights()
+    def half_weights(self, use: bool = True) -> Self:
+        self.unet.half_weights(use)
+        self.vae.half_weights(use)
 
         return self
 
