@@ -137,17 +137,14 @@ class StableDiffusion:
         batch_size: int = 1,
     ) -> list[Image.Image]:
         # allowed sizes are multiple of 64
-        height -= height % 64
-        width -= width % 64
+        assert height % 64 == 0
+        assert width % 64 == 0
 
         # scheduler
         scheduler = DDIMScheduler()
         timesteps = scheduler.set_timesteps(steps)
 
-        # fix batch-size if seed-list is provided
-        if isinstance(seed, list):
-            seed = list(set(seed))  # remove duplicates
-            batch_size = len(seed)
+        batch_size = fix_batch_size(seed, batch_size)
 
         # text embeddings
         prompt, negative_prompt, context = self.get_context_embedding(
@@ -260,3 +257,11 @@ class StableDiffusion:
         name = self.__class__.__qualname__
 
         return f"{name}()"
+
+
+def fix_batch_size(seed: Optional[int | list[int]], batch_size: int) -> int:
+    if isinstance(seed, list):
+        seed = list(set(seed))  # remove duplicates
+        batch_size = len(seed)
+
+    return batch_size
