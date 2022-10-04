@@ -6,7 +6,7 @@ from torch import Tensor
 from ..base import InPlace
 
 
-class SiLU(InPlace,nn.Module):
+class SiLU(InPlace, nn.Module):
     def __init__(self) -> None:
         super().__init__()
 

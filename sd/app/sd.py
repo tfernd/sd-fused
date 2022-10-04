@@ -56,7 +56,7 @@ class StableDiffusion:
 
         return self
 
-    def set_inplace(self, inplace: bool=True) -> Self:
+    def set_inplace(self, inplace: bool = True) -> Self:
         self.vae.set_inplace(inplace)
         self.unet.set_inplace(inplace)
 
