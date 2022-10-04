@@ -5,4 +5,4 @@ from .softmax import softmax
 
 from .clear_cuda import clear_cuda
 
-from .install_wheels import install_wheels
+from .install_wheels import install_wheels, FLASH_ATTENTION

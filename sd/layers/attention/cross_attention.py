@@ -9,11 +9,8 @@ from torch import Tensor
 
 try:
     from xformers.ops import memory_efficient_attention  # type: ignore
-
-    FLASH_ATTENTION = True
 except ImportError:
     memory_efficient_attention = None
-    FLASH_ATTENTION = False
 
 
 from einops.layers.torch import Rearrange
@@ -24,7 +21,7 @@ from ..base import Linear, InPlace
 
 class CrossAttention(InPlace, nn.Module):
     split_attention_chunks: Optional[int] = None
-    flash_attention: bool = FLASH_ATTENTION
+    flash_attention: bool = False
 
     def __init__(
         self,

@@ -10,6 +10,7 @@ WHEELS = {
     gpu: f"https://github.com/TheLastBen/fast-stable-diffusion/raw/main/precompiled/{gpu}/xformers-0.0.13.dev0-py3-none-any.whl"
     for gpu in ["T4", "P100", "V100", "A100"]
 }
+FLASH_ATTENTION = False
 
 
 def install_wheels() -> None:
@@ -23,5 +24,4 @@ def install_wheels() -> None:
             FLASH_ATTENTION = True
             break
     else:
-        FLASH_ATTENTION = False
         print("GPU not supported yet.")
