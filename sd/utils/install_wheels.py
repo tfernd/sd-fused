@@ -23,6 +23,7 @@ def install_wheels() -> None:
     else:
         print("GPU not supported yet.")
 
+
 def has_flash_attention() -> bool:
     global FLASH_ATTENTION
 

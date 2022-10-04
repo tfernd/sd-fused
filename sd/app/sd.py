@@ -69,8 +69,8 @@ class StableDiffusion:
 
         self.scheduler = DDIMScheduler()
 
-    def set_low_ram(self) -> Self:
-        self.low_ram = True
+    def set_low_ram(self, low_ram: bool = True) -> Self:
+        self.low_ram = low_ram
 
         return self
 
