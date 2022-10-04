@@ -70,6 +70,7 @@ class StableDiffusion:
 
         return self
 
+    @torch.no_grad()
     def text2img(
         self,
         *,
@@ -132,6 +133,7 @@ class StableDiffusion:
 
         return imgs
 
+    @torch.no_grad()
     def pred_noise(
         self,
         latents: Tensor,

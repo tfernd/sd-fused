@@ -164,7 +164,6 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
             block_out_channels[0], out_channels, kernel_size=3, padding=1
         )
 
-    @torch.no_grad()
     def forward(self, x: Tensor, timestep: int, *, context: Tensor) -> Tensor:
         B, C, H, W = x.shape
 
