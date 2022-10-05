@@ -9,7 +9,7 @@ def normalize(data: Tensor) -> Tensor:
 
     assert data.dtype == torch.uint8
 
-    return data.div(255 / 2).sub_(1)
+    return data.div(255 / 2).sub(1)
 
 
 def denormalize(data: Tensor) -> Tensor:
@@ -17,4 +17,4 @@ def denormalize(data: Tensor) -> Tensor:
 
     assert data.requires_grad == False
 
-    return data.add(1).mul_(255 / 2).clamp_(0, 255).byte()
+    return data.add(1).mul(255 / 2).clamp(0, 255).byte()
