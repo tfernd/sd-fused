@@ -1,5 +1,13 @@
 # Stable-Diffusion + DreamBooth + Better CODE!
 
+## Introduction
+
+So you want to learn more about stable-diffusion, how it works, to dive deep in its implementation but the original source its too complicated?
+Or you just want a nice API to use SD?
+Or you wrongly clicked this repo when you accually intented to clip on the something else?
+
+No fear, you came to the right place!
+
 ## How and why?
 
 The original codebase [diffusers](https://github.com/huggingface/diffusers) is a bit too overly-complicated.

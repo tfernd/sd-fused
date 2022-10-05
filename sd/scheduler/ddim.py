@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 import math
 
@@ -13,7 +14,8 @@ class DDIMScheduler:
         *,
         steps: int,
         offset: int = 1,
-        device: torch.device = torch.device("cuda"),
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
         # seeds: list[int], # TODO pre-generate noises based on seeds
         # ? DO NOT CHANGE!?
         trained_steps: int = 1_000,
@@ -24,6 +26,7 @@ class DDIMScheduler:
         assert steps <= trained_steps
         self.steps = steps
         self.device = device
+        self.dtype = dtype
 
         # scaled-linear scheduler
         beta_start = math.pow(beta_start, 1 / power)
@@ -48,9 +51,10 @@ class DDIMScheduler:
         σ = torch.sqrt((1 - ᾱ[1:]) / (1 - ᾱ[:-1]) * (1 - ᾱ[:-1] / ᾱ[1:]))
 
         # use device
-        self.ᾱ = ᾱ.to(device)
-        self.ϖ = ϖ.to(device)
-        self.σ = σ.to(device)
+        self.ᾱ = ᾱ.to(device=device, dtype=dtype)
+        self.ϖ = ϖ.to(device=device, dtype=dtype)
+        self.σ = σ.to(device=device, dtype=dtype)
+        self.timesteps = timesteps.to(device=device, dtype=dtype)
 
     def step(
         self, pred_noise: Tensor, latent: Tensor, i: int, eta: float = 0,
@@ -75,11 +79,16 @@ class DDIMScheduler:
 
         return prev_latent
 
-    def add_noise(self, latents: Tensor, eps: Tensor, i: int) -> Tensor:
-        assert 0 <= i < self.steps
+    def add_noise(self, latents: Tensor, eps: Tensor, k: int) -> Tensor:
+        assert 0 <= k < self.steps
 
         # eq 4
-        return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
+        return latents * self.ᾱ[k].sqrt() + eps * self.ϖ[k].sqrt()
+
+    def index4strength(self, strength: float) -> int:
+        assert 0 < strength <= 1
+
+        return round(len(self) * (1 - strength))
 
     def __len__(self) -> int:
         return self.steps

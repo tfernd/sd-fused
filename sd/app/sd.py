@@ -3,7 +3,7 @@ from typing import Any, NamedTuple, Optional
 from typing_extensions import Self
 
 from pathlib import Path
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm, trange
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -47,8 +47,6 @@ class StableDiffusion:
 
         self.vae = AutoencoderKL.load_sd(path / "vae")
         self.unet = UNet2DConditional.load_sd(path / "unet")
-
-        self.scheduler = DDIMScheduler()
 
     def set_low_ram(self, low_ram: bool = True) -> Self:
         """Split context into two passes to save memory."""
@@ -138,19 +136,19 @@ class StableDiffusion:
         assert height % 64 == 0
         assert width % 64 == 0
 
+        scheduler = DDIMScheduler(steps=steps, device=self.device)
         batch_size = fix_batch_size(seed, batch_size)
-        timesteps = self.scheduler.set_timesteps(steps)
         context = self.get_context(prompt, negative_prompt, batch_size)
 
         shape = (batch_size, 4, height // 8, width // 8)
         latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
 
-        latents = self.denoise_latents(timesteps, latents, context, scale, eta)
+        latents = self.denoise_latents(scheduler, latents, context, scale, eta)
 
         # decode latent space
         out = self.vae.decode(latents.div(MAGIC)).cpu()
-        clear_cuda()
 
+        # TODO its own function!
         # create images
         out = rearrange(out, "B C H W -> B H W C").numpy()
         images = [Image.fromarray(v) for v in out]
@@ -190,10 +188,8 @@ class StableDiffusion:
         assert height % 64 == 0
         assert width % 64 == 0
 
-        assert 0 < strength <= 1
-
+        scheduler = DDIMScheduler(steps=steps, device=self.device)
         batch_size = fix_batch_size(seed, batch_size)
-        timesteps = self.scheduler.set_timesteps(steps)
         context = self.get_context(prompt, negative_prompt, batch_size)
 
         shape = (batch_size, 4, height // 8, width // 8)
@@ -202,19 +198,17 @@ class StableDiffusion:
         # TODO make into its own function
         # latents from image
         assert mode == "resize"
-        data = image2tensor(
-            img, size=(width, height), device=self.device
-        )  # TODO FIX type error
-        img_latents = self.vae.encode(data).mean.to(
-            dtype=self.dtype
-        )  # ? dtype needed?
+        # TODO FIX type error
+        data = image2tensor(img, size=(width, height), device=self.device)
+        img_latents = self.vae.encode(data).mean
         img_latents *= MAGIC
 
-        k = round(len(timesteps) * (1 - strength))
-        timestep, timesteps = timesteps[k], timesteps[k:]
-        latents = self.scheduler.add_noise(img_latents, noise, timestep)
+        k = scheduler.index4strength(strength)
+        latents = scheduler.add_noise(img_latents, noise, k)
 
-        latents = self.denoise_latents(timesteps, latents, context, scale, eta)
+        latents = self.denoise_latents(
+            scheduler, latents, context, scale, eta, k=k
+        )
 
         # decode latent space
         out = self.vae.decode(latents.div(MAGIC)).cpu()
@@ -290,11 +284,12 @@ class StableDiffusion:
 
     def denoise_latents(
         self,
-        timesteps: list[int],
+        scheduler: DDIMScheduler,
         latents: Tensor,
         context: Tensor | tuple[Tensor, Tensor],
         scale: float,
         eta: float,
+        k: int = 0,
     ) -> Tensor:
         """Main loop where latents are denoised."""
 
@@ -302,13 +297,10 @@ class StableDiffusion:
         assert eta == 0
 
         clear_cuda()
-        for i, timestep in enumerate(
-            tqdm(timesteps, total=len(timesteps), desc="Denoising latents.")
-        ):
+        for i in trange(k + 1, len(scheduler), desc="Denoising latents."):
+            timestep = int(scheduler.timesteps[i].item())
             noise_pred = self.pred_noise(latents, timestep, context, scale)
-            latents = self.scheduler.step(
-                noise_pred, timestep, latents, eta=eta
-            )
+            latents = scheduler.step(noise_pred, latents, i, eta)
             del noise_pred
         clear_cuda()
 
