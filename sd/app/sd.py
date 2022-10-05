@@ -18,7 +18,7 @@ from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
 from ..utils import image2tensor, clear_cuda, generate_noise
 from ..utils.typing import Literal
-from .utils import fix_batch_size
+from .utils import fix_batch_size, kwargs2ignore
 
 MAGIC = 0.18215
 
@@ -204,6 +204,7 @@ class StableDiffusion:
         assert mode == "resize"
         data = image2tensor(img, size=(width, height), device=self.device)  # TODO FIX type error
         img_latents = self.vae.encode(data).mean.to(dtype=self.dtype) # ? dtype needed?
+        img_latents *= MAGIC
 
         k = round(len(timesteps) * (1 - strength))
         timestep, timesteps = timesteps[k], timesteps[k:]
@@ -212,7 +213,7 @@ class StableDiffusion:
         latents = self.denoise_latents(timesteps, latents, context, scale, eta)
 
         # decode latent space
-        out = self.vae.decode(latents.div_(MAGIC)).cpu()
+        out = self.vae.decode(latents.div(MAGIC)).cpu()
         clear_cuda()
 
         # TODO remove code duplication
@@ -338,11 +339,3 @@ class StableDiffusion:
         return metadata
 
 
-def kwargs2ignore(
-    kwargs: dict[str, Any], *, keys: list[str]
-) -> dict[str, Any]:
-    return {
-        key: value
-        for (key, value) in kwargs.items()
-        if key not in keys and key != "self"
-    }
