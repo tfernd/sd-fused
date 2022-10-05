@@ -7,6 +7,8 @@ from ..base import InPlace
 
 
 class SiLU(InPlace, nn.Module):
+    """SiLU activation function (sigmoid(x)*x)."""
+    
     def __init__(self) -> None:
         super().__init__()
 
