@@ -8,6 +8,8 @@ from ..base import Linear, InPlace
 
 
 class GEGLU(InPlace, nn.Module):
+    """GEGLU activation function (x*gelu(x))."""
+
     def __init__(self, dim_in: int, dim_out: int) -> None:
         super().__init__()
 
