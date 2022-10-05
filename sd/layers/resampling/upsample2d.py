@@ -32,6 +32,7 @@ class Upsample2D(nn.Module):
                 channels, out_channels, kernel_size=3, padding=1
             )
         elif kind == "transpose":
+            # never used for SD
             self.conv = nn.ConvTranspose2d(
                 channels, out_channels, kernel_size=4, stride=2, padding=1
             )
