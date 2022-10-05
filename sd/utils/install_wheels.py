@@ -15,7 +15,7 @@ def install_wheels() -> None:
     global FLASH_ATTENTION
 
     gpu_name = torch.cuda.get_device_name()
-    beg, gpu = gpu_name.split(' ')
+    beg, gpu = gpu_name.split(" ")
 
     if gpu in WHEELS:
         url = WHEELS[gpu]
