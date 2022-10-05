@@ -1,4 +1,4 @@
-# Stable-Diffusion with very low memory (3.3 Gb)
+# Stable-Diffusion with very low memory (3.1 Gb)
 
 Yes. You read it correctly. 512x512 image generation with about 3 Gb generation without CPU/GPU swapping!
 

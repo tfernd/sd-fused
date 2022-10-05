@@ -145,16 +145,19 @@ class DDIMScheduler:
         return prev_sample
 
     def add_noise(
-        self, original_samples: Tensor, noise: Tensor, timesteps: Tensor,
+        self, original_samples: Tensor, noise: Tensor, timestep: int,
     ) -> Tensor:
-        sqrt_alpha_prod = self.alphas_cumprod[timesteps].pow(1 / 2)
-        sqrt_alpha_prod = sqrt_alpha_prod.flatten()
+        device = original_samples.device
+        self.alphas_cumprod = self.alphas_cumprod.to(device)
+
+        sqrt_alpha_prod = self.alphas_cumprod[timestep].pow(1 / 2)
+        sqrt_alpha_prod = sqrt_alpha_prod.flatten().to(device)
 
         # TODO UGLY!!!
         while len(sqrt_alpha_prod.shape) < len(original_samples.shape):
             sqrt_alpha_prod = sqrt_alpha_prod.unsqueeze(-1)
 
-        sqrt_one_minus_alpha_prod = (1 - self.alphas_cumprod[timesteps]).pow(
+        sqrt_one_minus_alpha_prod = (1 - self.alphas_cumprod[timestep]).pow(
             1 / 2
         )
         sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.flatten()

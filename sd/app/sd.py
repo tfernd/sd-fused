@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import NamedTuple, Optional
+from typing import Any, NamedTuple, Optional
 from typing_extensions import Self
 
 from pathlib import Path
@@ -17,15 +17,15 @@ from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
 from ..utils import image2tensor, clear_cuda, generate_noise
+from ..utils.typing import Literal
 from .utils import fix_batch_size
 
 MAGIC = 0.18215
 
 
 class StableDiffusion:
-    version: str = "0.1"
+    version: str = "0.1.2"
     repo: str = "https://github.com/tfernd/sd"
-    model_name: str = "stable-diffusion"
 
     low_ram: bool = False
 
@@ -37,11 +37,11 @@ class StableDiffusion:
         path: str | Path,
         *,
         save_dir: str | Path = "./gallery",
-        model_name: str = "stable-diffusion-1.4",
+        model_name: Optional[str] = None,
     ) -> None:
         self.path = path = Path(path)
         self.save_dir = Path(save_dir)
-        self.model_name = model_name
+        self.model_name = model_name or path.name
 
         self.clip = ClipEmbedding(path / "tokenizer", path / "text_encoder")
 
@@ -132,17 +132,83 @@ class StableDiffusion:
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
     ) -> list[Image.Image]:
+        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
+
         # allowed sizes are multiple of 64
         assert height % 64 == 0
         assert width % 64 == 0
 
-        timesteps = self.scheduler.set_timesteps(steps)
         batch_size = fix_batch_size(seed, batch_size)
+        timesteps = self.scheduler.set_timesteps(steps)
         context = self.get_context(prompt, negative_prompt, batch_size)
 
-        # seed and noise
         shape = (batch_size, 4, height // 8, width // 8)
         latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
+
+        latents = self.denoise_latents(timesteps, latents, context, scale, eta)
+
+        # decode latent space
+        out = self.vae.decode(latents.div(MAGIC)).cpu()
+        clear_cuda()
+
+        # create images
+        out = rearrange(out, "B C H W -> B H W C").numpy()
+        images = [Image.fromarray(v) for v in out]
+
+        self.save_dir.mkdir(parents=True, exist_ok=True)
+        for seed, image in zip(seeds, images):
+            metadata = self.create_metadata(seed=seed, **kwargs)
+
+            # TODO temporary file name for now
+            ID = random.randint(0, 2 ** 64)
+            path = self.save_dir / f"{ID:x}.png"
+
+            image.save(path, bitmap_format="png", pnginfo=metadata)
+
+        return images
+
+    @torch.no_grad()
+    def img2img(
+        self,
+        *,
+        img: str,
+        prompt: Optional[str] = None,
+        negative_prompt: str = "",
+        eta: float = 0,
+        steps: int = 32,
+        scale: float = 7.5,
+        strength: float = 0.5,
+        height: int = 512,
+        width: int = 512,
+        seed: Optional[int | list[int]] = None,
+        batch_size: int = 1,
+        mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
+    ) -> list[Image.Image]:
+        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
+
+        # allowed sizes are multiple of 64
+        assert height % 64 == 0
+        assert width % 64 == 0
+
+        assert 0 < strength <= 1
+
+        batch_size = fix_batch_size(seed, batch_size)
+        timesteps = self.scheduler.set_timesteps(steps)
+        context = self.get_context(prompt, negative_prompt, batch_size)
+
+        shape = (batch_size, 4, height // 8, width // 8)
+        noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
+
+        # TODO make into its own function
+        # latents from image
+        assert mode == "resize"
+        data = image2tensor(img, size=(width, height))  # TODO FIX type error
+        data = data.to(device=self.device)
+        img_latents = self.vae.encode(data).mean.to(dtype=self.dtype)
+
+        k = round(len(timesteps) * (1 - strength))
+        timestep, timesteps = timesteps[k], timesteps[k:]
+        latents = self.scheduler.add_noise(img_latents, noise, timestep)
 
         latents = self.denoise_latents(timesteps, latents, context, scale, eta)
 
@@ -150,41 +216,23 @@ class StableDiffusion:
         out = self.vae.decode(latents.div_(MAGIC)).cpu()
         clear_cuda()
 
-        # create image
+        # TODO remove code duplication
+        # create images
         out = rearrange(out, "B C H W -> B H W C").numpy()
-        imgs = [Image.fromarray(v) for v in out]
+        images = [Image.fromarray(v) for v in out]
 
-        # TODO put into its own function
         self.save_dir.mkdir(parents=True, exist_ok=True)
-        for seed, img in zip(seeds, imgs):
+        for seed, image in zip(seeds, images):
+            metadata = self.create_metadata(seed=seed, **kwargs)
+
             # TODO temporary file name for now
             ID = random.randint(0, 2 ** 64)
             path = self.save_dir / f"{ID:x}.png"
 
-            _metadata = dict(
-                seed=seed,
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                eta=eta,
-                steps=steps,
-                scale=scale,
-                height=height,
-                width=width,
-                version=self.version,
-                repo=self.repo,
-                model=self.model_name,
-            )
-            metadata = PngInfo()
-            for key, value in _metadata.items():
-                if isinstance(value, (int, float)):
-                    value = str(value)
-                elif value is None:
-                    value = "null"
-                metadata.add_text(f"SD {key}", value)
+            image.save(path, bitmap_format="png", pnginfo=metadata)
+            # TODO add copy of img to image
 
-            img.save(path, bitmap_format="png", pnginfo=metadata)
-
-        return imgs
+        return images
 
     @torch.no_grad()
     def pred_noise(
@@ -246,6 +294,9 @@ class StableDiffusion:
     ) -> Tensor:
         """Main loop where latents are denoised."""
 
+        # TODO if eta != 0, pass the seeds to the scheduler, so things can be reproducible.
+        assert eta == 0
+
         clear_cuda()
         for i, timestep in enumerate(
             tqdm(timesteps, total=len(timesteps), desc="Denoising latents.")
@@ -263,3 +314,31 @@ class StableDiffusion:
         name = self.__class__.__qualname__
 
         return f"{name}()"
+
+    def create_metadata(self, **kwargs: Any) -> PngInfo:
+        kwargs = dict(
+            **kwargs,
+            version=self.version,
+            repo=self.repo,
+            model=self.model_name,
+        )
+
+        metadata = PngInfo()
+        for key, value in kwargs.items():
+            if isinstance(value, (int, float)):
+                value = str(value)
+            elif value is None:
+                value = "null"
+            metadata.add_text(f"SD {key}", value)
+
+        return metadata
+
+
+def kwargs2ignore(
+    kwargs: dict[str, Any], *, keys: list[str]
+) -> dict[str, Any]:
+    return {
+        key: value
+        for (key, value) in kwargs.items()
+        if key not in keys and key != "self"
+    }
