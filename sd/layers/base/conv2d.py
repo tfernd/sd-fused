@@ -7,6 +7,8 @@ from .half_weights import HalfWeights
 
 
 class Conv2d(HalfWeights, nn.Conv2d):
+    # bypass_half: bool = False
+
     def __init__(
         self,
         in_channels: int,
@@ -29,3 +31,17 @@ class Conv2d(HalfWeights, nn.Conv2d):
             groups=groups,
             bias=bias,
         )
+
+    # ! Hacky fix NaN when using half-precision
+    # def forward(self, x: Tensor) -> Tensor:
+    #     if self.bypass_half:
+    #         return super().forward(x.float()).half()
+
+    #     out = super().forward(x)
+
+    #     if torch.isnan(out).any():
+    #         self.bypass_half = True
+    #         self.float()
+    #         out = super().forward(x.float()).half()
+
+    #     return out
