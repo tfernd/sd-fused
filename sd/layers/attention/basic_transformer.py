@@ -8,8 +8,7 @@ from ..base import LayerNorm, InPlace
 from .cross_attention import CrossAttention
 from .feed_forward import FeedForward
 
-# TODO move to block's folder
-class BasicTransformerBlock(InPlace, nn.Module):
+class BasicTransformer(InPlace, nn.Module):
     def __init__(
         self,
         *,

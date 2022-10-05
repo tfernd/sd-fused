@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+# TODO not implement correctly yet
 try:
     from xformers.ops import memory_efficient_attention  # type: ignore
 except ImportError:
@@ -63,7 +64,6 @@ class CrossAttention(InPlace, nn.Module):
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
-        device = x.device
         context = context if context is not None else x
 
         # key, query, value projections
@@ -92,6 +92,7 @@ class CrossAttention(InPlace, nn.Module):
 
             return self.to_out(x)
 
+        # TODO deserve it's own function
         # split-attention score
         shape = (*q.shape[0:2], v.shape[2])
         x = torch.zeros(shape, device=q.device, dtype=q.dtype)

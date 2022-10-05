@@ -8,7 +8,7 @@ from einops.layers.torch import Rearrange
 from einops import rearrange
 
 from ..base import Conv2d, GroupNorm, InPlace
-from .basic_transformer_block import BasicTransformerBlock
+from .basic_transformer import BasicTransformer
 
 
 class SpatialTransformer(InPlace, nn.Module):
@@ -41,7 +41,7 @@ class SpatialTransformer(InPlace, nn.Module):
         self.transformer_blocks = nn.ModuleList()
         for _ in range(depth):
             self.transformer_blocks.append(
-                BasicTransformerBlock(
+                BasicTransformer(
                     dim=inner_dim,
                     num_heads=num_heads,
                     dim_head=dim_head,

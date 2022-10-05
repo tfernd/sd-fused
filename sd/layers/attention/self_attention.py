@@ -13,7 +13,8 @@ from ...utils import softmax
 from ..base import GroupNorm, Linear, InPlace
 
 
-class Attention(InPlace, nn.Module):
+# TODO is this just CrossAttention layer without context?
+class SelfAttention(InPlace, nn.Module):
     def __init__(
         self,
         *,
