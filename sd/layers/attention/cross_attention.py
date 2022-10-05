@@ -9,7 +9,7 @@ from torch import Tensor
 
 # TODO not implement correctly yet
 try:
-    from xformers.ops import memory_efficient_attention  # type: ignore
+    from xformers.ops import memory_efficient_attention 
 except ImportError:
     memory_efficient_attention = None
 
@@ -79,6 +79,7 @@ class CrossAttention(InPlace, nn.Module):
         # flash-attention score
         if self.flash_attention:
             assert memory_efficient_attention is not None
+            # TODO transpose k?
             memory_efficient_attention(q, k, v, attn_bias=None)
 
         # normal attention score
