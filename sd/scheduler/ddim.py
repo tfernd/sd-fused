@@ -7,6 +7,7 @@ from torch import Tensor
 
 
 class DDIMScheduler:
+    # https://arxiv.org/abs/2010.02502
     def __init__(
         self,
         *,
