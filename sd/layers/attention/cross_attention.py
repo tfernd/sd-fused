@@ -9,7 +9,7 @@ from torch import Tensor
 
 # TODO not implement correctly yet
 try:
-    from xformers.ops import memory_efficient_attention 
+    from xformers.ops import memory_efficient_attention
 except ImportError:
     memory_efficient_attention = None
 

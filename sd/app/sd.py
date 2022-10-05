@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import NamedTuple, Optional
 from typing_extensions import Self
 
 from pathlib import Path
@@ -136,22 +136,15 @@ class StableDiffusion:
         assert height % 64 == 0
         assert width % 64 == 0
 
-        # scheduler
         timesteps = self.scheduler.set_timesteps(steps)
-
         batch_size = fix_batch_size(seed, batch_size)
-
-        # text embeddings
-        prompt, negative_prompt, context = self.get_context_embedding(
-            prompt, negative_prompt, batch_size
-        )
+        context = self.get_context(prompt, negative_prompt, batch_size)
 
         # seed and noise
         shape = (batch_size, 4, height // 8, width // 8)
-        noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
-        latents = noise
+        latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
 
-        latents = self._generate(timesteps, latents, context, scale, eta)
+        latents = self.denoise_latents(timesteps, latents, context, scale, eta)
 
         # decode latent space
         out = self.vae.decode(latents.div_(MAGIC)).cpu()
@@ -201,6 +194,8 @@ class StableDiffusion:
         context: Tensor | tuple[Tensor, Tensor],
         scale: float,
     ) -> Tensor:
+        """Predict the noise from latents, context and current timestep."""
+
         # unconditional
         if isinstance(context, Tensor):
             return self.unet(latents, timestep=timestep, context=context)
@@ -218,14 +213,12 @@ class StableDiffusion:
             pred_noise_text, pred_noise_neg = pred_noise_tn.chunk(2, dim=0)
             del pred_noise_tn
 
-        diff = pred_noise_text.sub_(pred_noise_neg)
-
-        return diff.mul_(scale).add_(pred_noise_neg)
+        return pred_noise_neg + (pred_noise_text - pred_noise_neg) * scale
 
     @torch.no_grad()
-    def get_context_embedding(
+    def get_context(
         self, prompt: Optional[str], negative_prompt: str, batch_size: int
-    ) -> tuple[Optional[str], str, Tensor | tuple[Tensor, Tensor]]:
+    ) -> Tensor | tuple[Tensor, Tensor]:
         negative_prompt = self.clip.parse_text(negative_prompt)
         if prompt is not None:
             prompt = self.clip.parse_text(prompt)
@@ -241,9 +234,9 @@ class StableDiffusion:
         else:
             context = neg_emb
 
-        return prompt, negative_prompt, context
+        return context
 
-    def _generate(
+    def denoise_latents(
         self,
         timesteps: list[int],
         latents: Tensor,
@@ -251,8 +244,12 @@ class StableDiffusion:
         scale: float,
         eta: float,
     ) -> Tensor:
+        """Main loop where latents are denoised."""
+
         clear_cuda()
-        for i, timestep in enumerate(tqdm(timesteps, total=len(timesteps))):
+        for i, timestep in enumerate(
+            tqdm(timesteps, total=len(timesteps), desc="Denoising latents.")
+        ):
             noise_pred = self.pred_noise(latents, timestep, context, scale)
             latents = self.scheduler.step(
                 noise_pred, timestep, latents, eta=eta
