@@ -18,7 +18,10 @@ class ImageSize(NamedTuple):
 
 
 def image2tensor(
-    path: str | Path, *, size: Optional[int | ImageSize] = None, device: Optional[torch.device]=None
+    path: str | Path,
+    *,
+    size: Optional[int | ImageSize] = None,
+    device: Optional[torch.device] = None
 ) -> Tensor:
     """Open an image as pytorch batched-Tensor (B C H W)."""
 

@@ -202,8 +202,12 @@ class StableDiffusion:
         # TODO make into its own function
         # latents from image
         assert mode == "resize"
-        data = image2tensor(img, size=(width, height), device=self.device)  # TODO FIX type error
-        img_latents = self.vae.encode(data).mean.to(dtype=self.dtype) # ? dtype needed?
+        data = image2tensor(
+            img, size=(width, height), device=self.device
+        )  # TODO FIX type error
+        img_latents = self.vae.encode(data).mean.to(
+            dtype=self.dtype
+        )  # ? dtype needed?
         img_latents *= MAGIC
 
         k = round(len(timesteps) * (1 - strength))
@@ -332,10 +336,10 @@ class StableDiffusion:
             elif isinstance(value, str):
                 pass
             else:
-                raise TypeError(f'value ({value}) of type {type(value)} not supported.')
+                raise TypeError(
+                    f"value ({value}) of type {type(value)} not supported."
+                )
 
             metadata.add_text(f"SD {key}", value)
 
         return metadata
-
-
