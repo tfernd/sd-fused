@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, NamedTuple
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,6 +7,7 @@ from torch import Tensor
 
 from ...utils.typing import Literal
 from ..base import Conv2d
+from .utils import TensorSize
 
 
 class Upsample2D(nn.Module):
@@ -42,12 +43,15 @@ class Upsample2D(nn.Module):
             self.conv = nn.Identity()
 
     def forward(
-        self, x: Tensor, *, size: Optional[tuple[int, int]] = None
+        self, x: Tensor, *, size: Optional[int | TensorSize] = None
     ) -> Tensor:
         if self.kind == "transpose":
             return self.conv(x)
 
-        kwargs = dict(scale_factor=2) if size is None else dict(size=size)
-        x = F.interpolate(x, mode="nearest", **kwargs)
+        if size is None:
+            x = F.interpolate(x, mode="nearest", scale_factor=2)
+        else:
+            # ! never used?
+            x = F.interpolate(x, mode="nearest", size=size)
 
         return self.conv(x)

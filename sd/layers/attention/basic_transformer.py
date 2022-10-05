@@ -8,6 +8,7 @@ from ..base import LayerNorm, InPlace
 from .cross_attention import CrossAttention
 from .feed_forward import FeedForward
 
+
 class BasicTransformer(InPlace, nn.Module):
     def __init__(
         self,

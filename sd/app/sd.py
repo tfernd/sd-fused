@@ -21,6 +21,7 @@ from .utils import fix_batch_size
 
 MAGIC = 0.18215
 
+
 class StableDiffusion:
     version: str = "0.1"
     repo: str = "https://github.com/tfernd/sd"
@@ -265,4 +266,3 @@ class StableDiffusion:
         name = self.__class__.__qualname__
 
         return f"{name}()"
-

@@ -68,7 +68,7 @@ class AutoencoderKL(InPlaceModel, HalfWeightsModel, nn.Module):
 
     def decode(self, z: Tensor) -> Tensor:
         """Decode the latent's space into an image."""
-        
+
         z = self.post_quant_conv(z)
         out = self.decoder(z)
 

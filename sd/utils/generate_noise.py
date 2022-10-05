@@ -7,7 +7,7 @@ from torch import Tensor
 
 class NoiseOutput(NamedTuple):
     """Noise tensor and their respective seeds."""
-    
+
     noise: Tensor
     seed: list[int]
 

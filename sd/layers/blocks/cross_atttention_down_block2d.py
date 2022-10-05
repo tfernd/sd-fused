@@ -9,6 +9,7 @@ from ..attention import SpatialTransformer
 from .resnet_block2d import ResnetBlock2D
 from .utils import OutputStates
 
+
 class CrossAttentionDownBlock2D(nn.Module):
     def __init__(
         self,
@@ -96,4 +97,3 @@ class CrossAttentionDownBlock2D(nn.Module):
             states.append(x)
 
         return OutputStates(x, states)
-

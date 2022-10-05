@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from ..resampling import Upsample2D
+from ..resampling import Upsample2D, TensorSize
 from .resnet_block2d import ResnetBlock2D
 
 
@@ -64,7 +64,7 @@ class UpBlock2D(nn.Module):
         *,
         states: list[Tensor],
         temb: Optional[Tensor] = None,
-        size: Optional[tuple[int, int]] = None,
+        size: Optional[TensorSize] = None,
     ) -> Tensor:
         assert len(states) == self.num_layers
 

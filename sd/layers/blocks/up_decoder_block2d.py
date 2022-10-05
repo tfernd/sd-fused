@@ -4,7 +4,7 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
-from ..resampling import Upsample2D
+from ..resampling import Upsample2D, TensorSize
 from .resnet_block2d import ResnetBlock2D
 
 
@@ -50,9 +50,7 @@ class UpDecoderBlock2D(nn.Module):
                 )
             )
 
-    def forward(
-        self, x: Tensor, size: Optional[tuple[int, int]] = None
-    ) -> Tensor:
+    def forward(self, x: Tensor, size: Optional[TensorSize] = None) -> Tensor:
         for resnet in self.resnets:
             x = resnet(x)
 

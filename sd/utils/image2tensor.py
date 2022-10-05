@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, NamedTuple
 
 from pathlib import Path
 from PIL import Image
@@ -12,16 +12,21 @@ from torch import Tensor
 from einops import rearrange
 
 
+class ImageSize(NamedTuple):
+    width: int
+    height: int
+
+
 def image2tensor(
-    path: str | Path, *, resize: Optional[int | tuple[int, int]] = None,
+    path: str | Path, *, size: Optional[int | ImageSize] = None,
 ) -> Tensor:
     """Open an image as pytorch batched-Tensor (B C H W)."""
 
     img = Image.open(path).convert("RGB")
-    if resize is not None:
-        if isinstance(resize, int):
-            resize = (resize, resize)
-        img = img.resize(resize)
+    if size is not None:
+        if isinstance(size, int):
+            size = ImageSize(size, size)
+        img = img.resize(size)
 
     data = torch.from_numpy(np.asarray(img))
     data = rearrange(data, "H W C -> 1 C H W")
