@@ -6,6 +6,7 @@ from torch import Tensor
 
 from ..resampling import Downsample2D
 from .resnet_block2d import ResnetBlock2D
+from .utils import OutputStates
 
 
 class DownBlock2D(nn.Module):
@@ -59,7 +60,7 @@ class DownBlock2D(nn.Module):
 
     def forward(
         self, x: Tensor, *, temb: Optional[Tensor] = None
-    ) -> tuple[Tensor, list[Tensor]]:
+    ) -> OutputStates:
         states: list[Tensor] = []
         for resnet in self.resnets:
             x = resnet(x, temb=temb)
@@ -72,4 +73,4 @@ class DownBlock2D(nn.Module):
 
             states.append(x)
 
-        return x, states
+        return OutputStates(x, states)

@@ -13,11 +13,11 @@ from ..layers.activation import SiLU
 from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel, InPlaceModel
 from ..layers.attention import CrossAttention
 from ..layers.blocks import (
-    UNetMidBlock2DCrossAttn,
+    UNetMidBlock2DCrossAttention,
     DownBlock2D,
     UpBlock2D,
-    CrossAttnDownBlock2D,
-    CrossAttnUpBlock2D,
+    CrossAttentionDownBlock2D,
+    CrossAttentionUpBlock2D,
 )
 from ..utils import has_flash_attention
 
@@ -31,18 +31,18 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
         flip_sin_to_cos: bool = True,
         freq_shift: int = 0,
         down_blocks: tuple[
-            Type[CrossAttnDownBlock2D] | Type[DownBlock2D], ...
+            Type[CrossAttentionDownBlock2D] | Type[DownBlock2D], ...
         ] = (
-            CrossAttnDownBlock2D,
-            CrossAttnDownBlock2D,
-            CrossAttnDownBlock2D,
+            CrossAttentionDownBlock2D,
+            CrossAttentionDownBlock2D,
+            CrossAttentionDownBlock2D,
             DownBlock2D,
         ),
-        up_blocks: tuple[Type[CrossAttnUpBlock2D] | Type[UpBlock2D], ...] = (
+        up_blocks: tuple[Type[CrossAttentionUpBlock2D] | Type[UpBlock2D], ...] = (
             UpBlock2D,
-            CrossAttnUpBlock2D,
-            CrossAttnUpBlock2D,
-            CrossAttnUpBlock2D,
+            CrossAttentionUpBlock2D,
+            CrossAttentionUpBlock2D,
+            CrossAttentionUpBlock2D,
         ),
         block_out_channels: tuple[int, ...] = (320, 640, 1280, 1280),
         layers_per_block: int = 2,
@@ -80,9 +80,9 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
             output_channel = block_out_channels[i]
             is_final_block = i == len(block_out_channels) - 1
 
-            if block == CrossAttnDownBlock2D:
+            if block == CrossAttentionDownBlock2D:
                 self.down_blocks.append(
-                    CrossAttnDownBlock2D(
+                    CrossAttentionDownBlock2D(
                         in_channels=input_channel,
                         out_channels=output_channel,
                         temb_channels=time_embed_dim,
@@ -108,7 +108,7 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
                 )
 
         # mid
-        self.mid_block = UNetMidBlock2DCrossAttn(
+        self.mid_block = UNetMidBlock2DCrossAttention(
             in_channels=block_out_channels[-1],
             temb_channels=time_embed_dim,
             cross_attention_dim=cross_attention_dim,
@@ -130,9 +130,9 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
             is_final_block = i == len(block_out_channels) - 1
 
-            if block == CrossAttnUpBlock2D:
+            if block == CrossAttentionUpBlock2D:
                 self.up_blocks.append(
-                    CrossAttnUpBlock2D(
+                    CrossAttentionUpBlock2D(
                         in_channels=input_channel,
                         out_channels=output_channel,
                         prev_output_channel=prev_output_channel,
@@ -182,9 +182,9 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
         # TODO it is possible to make it a list[list[Tensor]]? or is the number of elements wrong?
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
-            assert isinstance(block, (CrossAttnDownBlock2D, DownBlock2D))
+            assert isinstance(block, (CrossAttentionDownBlock2D, DownBlock2D))
 
-            if isinstance(block, CrossAttnDownBlock2D):
+            if isinstance(block, CrossAttentionDownBlock2D):
                 x, states = block(x, temb=temb, context=context)
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
@@ -199,11 +199,11 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
         # 5. up
         for block in self.up_blocks:
-            assert isinstance(block, (CrossAttnUpBlock2D, UpBlock2D))
+            assert isinstance(block, (CrossAttentionUpBlock2D, UpBlock2D))
 
             states = tuple(all_states.pop() for _ in range(block.num_layers))
 
-            if isinstance(block, CrossAttnUpBlock2D):
+            if isinstance(block, CrossAttentionUpBlock2D):
                 x = block(x, states=states, temb=temb, context=context)
             elif isinstance(block, UpBlock2D):
                 x = block(x, states=states, temb=temb)

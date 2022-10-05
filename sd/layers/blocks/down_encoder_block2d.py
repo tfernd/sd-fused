@@ -41,7 +41,6 @@ class DownEncoderBlock2D(nn.Module):
                 )
             )
 
-        # TODO remove ModuleList?
         self.downsamplers = nn.ModuleList()
         if add_downsample:
             self.downsamplers.append(
@@ -52,8 +51,6 @@ class DownEncoderBlock2D(nn.Module):
                     padding=downsample_padding,
                 )
             )
-        else:
-            pass
 
     def forward(self, x: Tensor) -> Tensor:
         for resnet in self.resnets:

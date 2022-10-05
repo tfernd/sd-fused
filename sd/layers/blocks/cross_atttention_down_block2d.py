@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import torch.nn as nn
 from torch import Tensor
@@ -7,9 +7,9 @@ from torch import Tensor
 from ..resampling import Downsample2D
 from ..attention import SpatialTransformer
 from .resnet_block2d import ResnetBlock2D
+from .utils import OutputStates
 
-
-class CrossAttnDownBlock2D(nn.Module):
+class CrossAttentionDownBlock2D(nn.Module):
     def __init__(
         self,
         *,
@@ -80,7 +80,7 @@ class CrossAttnDownBlock2D(nn.Module):
         *,
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
-    ) -> tuple[Tensor, list[Tensor]]:
+    ) -> OutputStates:
         states: list[Tensor] = []
         for resnet, attn in zip(self.resnets, self.attentions):
             x = resnet(x, temb=temb)
@@ -95,4 +95,5 @@ class CrossAttnDownBlock2D(nn.Module):
 
             states.append(x)
 
-        return x, states
+        return OutputStates(x, states)
+

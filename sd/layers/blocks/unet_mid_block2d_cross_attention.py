@@ -8,7 +8,7 @@ from ..attention import SpatialTransformer
 from .resnet_block2d import ResnetBlock2D
 
 
-class UNetMidBlock2DCrossAttn(nn.Module):
+class UNetMidBlock2DCrossAttention(nn.Module):
     def __init__(
         self,
         *,

@@ -10,7 +10,7 @@ from ..attention import SpatialTransformer
 from .resnet_block2d import ResnetBlock2D
 
 
-class CrossAttnUpBlock2D(nn.Module):
+class CrossAttentionUpBlock2D(nn.Module):
     def __init__(
         self,
         *,
@@ -67,7 +67,6 @@ class CrossAttnUpBlock2D(nn.Module):
                 )
             )
 
-        # TODO remove ModuleList?
         self.upsamplers = nn.ModuleList()
         if add_upsample:
             self.upsamplers.append(
@@ -85,6 +84,7 @@ class CrossAttnUpBlock2D(nn.Module):
         states: list[Tensor],
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
+        # TODO namedtuple height/width?
         size: Optional[tuple[int, int]] = None,
     ) -> Tensor:
         assert len(states) == self.num_layers

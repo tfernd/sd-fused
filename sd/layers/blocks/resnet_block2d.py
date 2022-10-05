@@ -63,7 +63,7 @@ class ResnetBlock2D(InPlace, nn.Module):
 
             temb = self.nonlinearity(temb)
             temb = self.time_emb_proj(temb)
-            assert isinstance(temb, Tensor)  # needed for type checking
+            assert isinstance(temb, Tensor)  # needed for type checking below
             temb = temb[..., None, None]
 
             x = x.add_(temb) if self.inplace else x + temb
