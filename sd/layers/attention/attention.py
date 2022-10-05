@@ -13,7 +13,7 @@ from ...utils import softmax
 from ..base import GroupNorm, Linear, InPlace
 
 
-class AttentionBlock(InPlace, nn.Module):
+class Attention(InPlace, nn.Module):
     def __init__(
         self,
         *,

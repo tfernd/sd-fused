@@ -4,7 +4,7 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
-from ..attention import AttentionBlock
+from ..attention import Attention
 from .resnet_block2d import ResnetBlock2D
 
 
@@ -33,7 +33,7 @@ class UNetMidBlock2D(nn.Module):
         for i in range(num_layers + 1):
             if i > 0:
                 self.attentions.append(
-                    AttentionBlock(
+                    Attention(
                         num_channels=in_channels,
                         num_groups=resnet_groups,
                         num_head_channels=attn_num_head_channels,

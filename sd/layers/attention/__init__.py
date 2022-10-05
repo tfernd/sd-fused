@@ -1,4 +1,4 @@
-from .attention_block import AttentionBlock
+from .attention import Attention
 from .cross_attention import CrossAttention
 
 from .feed_forward import FeedForward
