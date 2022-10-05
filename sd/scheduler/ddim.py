@@ -17,6 +17,7 @@ class DDIMScheduler:
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         # seeds: list[int], # TODO pre-generate noises based on seeds
+        # batch_size: int = 1, # TODO Above!
         # ? DO NOT CHANGE!?
         trained_steps: int = 1_000,
         beta_start: float = 0.00085,

@@ -24,7 +24,7 @@ MAGIC = 0.18215
 
 
 class StableDiffusion:
-    version: str = "0.1.2"
+    version: str = "0.2.0"
     repo: str = "https://github.com/tfernd/sd"
 
     low_ram: bool = False
