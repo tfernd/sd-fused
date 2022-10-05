@@ -157,7 +157,7 @@ class StableDiffusion:
 
         self.save_dir.mkdir(parents=True, exist_ok=True)
         for seed, image in zip(seeds, images):
-            metadata = self.create_metadata(seed=seed, **kwargs)
+            metadata = self._create_metadata(seed=seed, **kwargs)
 
             # TODO temporary file name for now
             ID = random.randint(0, 2 ** 64)
@@ -202,9 +202,8 @@ class StableDiffusion:
         # TODO make into its own function
         # latents from image
         assert mode == "resize"
-        data = image2tensor(img, size=(width, height))  # TODO FIX type error
-        data = data.to(device=self.device)
-        img_latents = self.vae.encode(data).mean.to(dtype=self.dtype)
+        data = image2tensor(img, size=(width, height), device=self.device)  # TODO FIX type error
+        img_latents = self.vae.encode(data).mean.to(dtype=self.dtype) # ? dtype needed?
 
         k = round(len(timesteps) * (1 - strength))
         timestep, timesteps = timesteps[k], timesteps[k:]
@@ -223,7 +222,7 @@ class StableDiffusion:
 
         self.save_dir.mkdir(parents=True, exist_ok=True)
         for seed, image in zip(seeds, images):
-            metadata = self.create_metadata(seed=seed, **kwargs)
+            metadata = self._create_metadata(seed=seed, **kwargs)
 
             # TODO temporary file name for now
             ID = random.randint(0, 2 ** 64)
@@ -315,7 +314,7 @@ class StableDiffusion:
 
         return f"{name}()"
 
-    def create_metadata(self, **kwargs: Any) -> PngInfo:
+    def _create_metadata(self, **kwargs: Any) -> PngInfo:
         kwargs = dict(
             **kwargs,
             version=self.version,
@@ -329,6 +328,11 @@ class StableDiffusion:
                 value = str(value)
             elif value is None:
                 value = "null"
+            elif isinstance(value, str):
+                pass
+            else:
+                raise TypeError(f'value ({value}) of type {type(value)} not supported.')
+
             metadata.add_text(f"SD {key}", value)
 
         return metadata
