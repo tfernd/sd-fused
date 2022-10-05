@@ -56,6 +56,8 @@ class AutoencoderKL(InPlaceModel, HalfWeightsModel, nn.Module):
         self.post_quant_conv = Conv2d(latent_channels)
 
     def encode(self, x: Tensor) -> DiagonalGaussianDistribution:
+        """Encode an byte-Tensor into a posterior distribution."""
+
         x = normalize(x)
         x = self.encoder(x)
 
@@ -65,6 +67,8 @@ class AutoencoderKL(InPlaceModel, HalfWeightsModel, nn.Module):
         return DiagonalGaussianDistribution(mean, logvar)
 
     def decode(self, z: Tensor) -> Tensor:
+        """Decode the latent's space into an image."""
+        
         z = self.post_quant_conv(z)
         out = self.decoder(z)
 

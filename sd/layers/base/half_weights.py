@@ -6,11 +6,6 @@ from torch import Tensor
 
 
 class HalfWeights(nn.Module):
-    """Store the weights in half-precision but
-    compute forward pass in full precision.
-    Useful for GPUs that gives NaN when used in half-precision.
-    """
-
     use_half_weights: bool = False
 
     def half_weights(self, use: bool = True) -> None:
@@ -33,13 +28,12 @@ class HalfWeights(nn.Module):
 
 
 class HalfWeightsModel(nn.Module):
-    # TODO docstring duplicates
-    """Store the weights in half-precision but
+    def half_weights(self, use: bool = True) -> Self:
+        """Store the weights in half-precision but
     compute forward pass in full precision.
     Useful for GPUs that gives NaN when used in half-precision.
     """
 
-    def half_weights(self, use: bool = True) -> Self:
         for name, module in self.named_modules():
             if isinstance(module, HalfWeights):
                 module.half_weights(use)

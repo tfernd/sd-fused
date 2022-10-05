@@ -165,12 +165,16 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
             block_out_channels[0], out_channels, kernel_size=3, padding=1
         )
 
-    def forward(self, x: Tensor, timestep: int, *, context: Tensor) -> Tensor:
+    def forward(self, x: Tensor, timestep: int | Tensor, *, context: Tensor) -> Tensor:
         B, C, H, W = x.shape
 
         # 1. time embedding
-        timesteps = torch.tensor([timestep], device=x.device)
-        timesteps = timesteps.expand(B)
+        if isinstance(timestep, int):
+            timesteps = torch.tensor([timestep], device=x.device)
+            timesteps = timesteps.expand(B)
+        else:
+            assert timestep.shape == (B,)
+            timesteps = timestep
 
         temb = self.time_proj(timesteps)
         temb = self.time_embedding(temb)
@@ -238,6 +242,8 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
     def split_attention(
         self, cross_attention_chunks: Optional[int] = None
     ) -> None:
+        """Split cross-attention computation into chunks."""
+
         if cross_attention_chunks is not None:
             assert cross_attention_chunks >= 1
 
@@ -249,6 +255,8 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
                 module.split_attention_chunks = cross_attention_chunks
 
     def flash_attention(self, flash: bool = True) -> None:
+        """Use memory-efficient attention."""
+        
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
                 if flash:

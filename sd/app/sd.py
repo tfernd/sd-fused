@@ -17,30 +17,9 @@ from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
 from ..utils import image2tensor, clear_cuda, generate_noise
-from ..utils.typing import Literal
+from .utils import fix_batch_size
 
 MAGIC = 0.18215
-
-SIZES = Literal[
-    256,
-    320,
-    384,
-    448,
-    512,
-    576,
-    640,
-    704,
-    768,
-    832,
-    896,
-    960,
-    1024,
-    1088,
-    1152,
-    1216,
-    1280,
-]
-
 
 class StableDiffusion:
     version: str = "0.1"
@@ -55,6 +34,7 @@ class StableDiffusion:
     def __init__(
         self,
         path: str | Path,
+        *,
         save_dir: str | Path = "./gallery",
         model_name: str = "stable-diffusion-1.4",
     ) -> None:
@@ -70,6 +50,8 @@ class StableDiffusion:
         self.scheduler = DDIMScheduler()
 
     def set_low_ram(self, low_ram: bool = True) -> Self:
+        """Split context into two passes to save memory."""
+
         self.low_ram = low_ram
 
         return self
@@ -85,6 +67,11 @@ class StableDiffusion:
         return self
 
     def half_weights(self, use: bool = True) -> Self:
+        """Store the weights in half-precision but
+    compute forward pass in full precision.
+    Useful for GPUs that gives NaN when used in half-precision.
+    """
+
         self.unet.half_weights(use)
         self.vae.half_weights(use)
 
@@ -107,6 +94,8 @@ class StableDiffusion:
         return self
 
     def set_inplace(self, inplace: bool = True) -> Self:
+        """Use in-place operations to save memory."""
+
         self.vae.set_inplace(inplace)
         self.unet.set_inplace(inplace)
 
@@ -115,11 +104,15 @@ class StableDiffusion:
     def split_attention(
         self, *, cross_attention_chunks: Optional[int] = None
     ) -> Self:
+        """Split cross-attention computation into chunks."""
+
         self.unet.split_attention(cross_attention_chunks)
 
         return self
 
     def flash_attention(self, flash: bool = True) -> Self:
+        """Use memory-efficient attention."""
+
         self.unet.flash_attention(flash)
 
         return self
@@ -133,8 +126,8 @@ class StableDiffusion:
         eta: float = 0,
         steps: int = 32,
         scale: float = 7.5,
-        height: SIZES = 512,
-        width: SIZES = 512,
+        height: int = 512,
+        width: int = 512,
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
     ) -> list[Image.Image]:
@@ -155,7 +148,6 @@ class StableDiffusion:
         # seed and noise
         shape = (batch_size, 4, height // 8, width // 8)
         noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
-
         latents = noise
 
         latents = self._generate(timesteps, latents, context, scale, eta)
@@ -274,10 +266,3 @@ class StableDiffusion:
 
         return f"{name}()"
 
-
-def fix_batch_size(seed: Optional[int | list[int]], batch_size: int) -> int:
-    if isinstance(seed, list):
-        seed = list(set(seed))  # remove duplicates
-        batch_size = len(seed)
-
-    return batch_size
