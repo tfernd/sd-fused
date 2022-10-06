@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 class InPlace(nn.Module):
-    inplace: bool = True
+    inplace: bool = False
 
 
 class InPlaceModel(nn.Module):
