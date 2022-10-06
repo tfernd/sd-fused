@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import lru_cache
 from typing import Optional
 
 import math
@@ -76,13 +77,36 @@ class CrossAttention(InPlace, nn.Module):
         q = q.mul_(self.scale) if self.inplace else q * self.scale
         k = k.mul_(self.scale) if self.inplace else k * self.scale
 
-        # flash-attention score
-        if self.flash_attention:
-            assert memory_efficient_attention is not None
-            # TODO transpose k?
-            memory_efficient_attention(q, k, v, attn_bias=None)
+        # masked attention score
+        # TODO just checking some masking patterns
+        # if q.size(1) == k.size(2) and 1024*8 > q.size(1) > 512:
+        #     i, j = make_mask_position(q.size(1), num_diags=9*8).to(q.device)
+
+        #     shape = (*q.shape[0:2], v.shape[1])
+        #     score = torch.full(shape, -1e6, device=q.device)
+
+        #     temp = q[:, i, :] * k[:, :, j].transpose(1, 2)
+        #     score[:, i, j] = temp.sum(dim=2)
+        #     del temp
+        #     del q, k
+
+        #     attn = softmax(score, dim=-1, inplace=self.inplace)
+        #     del score
+
+        #     # projection
+        #     x = self.heads_to_channel(attn @ v)
+        #     del attn, v
+
+        #     return self.to_out(x)
+
+        # ! flash-attention score
+        # if self.flash_attention:
+        #     assert memory_efficient_attention is not None
+        #     # TODO transpose k?
+        #     memory_efficient_attention(q, k, v, attn_bias=None)
 
         # normal attention score
+        # TODO deserve it's own function
         if self.split_attention_chunks is None:
             attn = softmax(q @ k, dim=-1, inplace=self.inplace)
             del q, k
@@ -93,8 +117,8 @@ class CrossAttention(InPlace, nn.Module):
 
             return self.to_out(x)
 
-        # TODO deserve it's own function
         # split-attention score
+        # TODO deserve it's own function
         shape = (*q.shape[0:2], v.shape[2])
         x = torch.zeros(shape, device=q.device, dtype=q.dtype)
         for i in range(0, k.shape[0], self.split_attention_chunks):
@@ -108,3 +132,29 @@ class CrossAttention(InPlace, nn.Module):
         x = self.heads_to_channel(x)
 
         return self.to_out(x)
+
+
+# TODO TESTING MASKS
+@lru_cache(maxsize=None)
+def make_mask_position(
+    size: int,
+    *,
+    spacing: int = 12,
+    num_diags: Optional[int] = None,
+) -> Tensor:
+    num_diags = num_diags or size
+
+    idx = torch.arange(size).view(1, -1)
+    mask = torch.zeros(size, size, dtype=torch.bool)
+
+    # create diagonals
+    for i in range(-num_diags, num_diags + 1):
+        mask |= idx == idx.T + spacing * i
+
+    # fill main diagonal with squares
+    for i in range(0, size, spacing):
+        mask[i : i + spacing, i : i + spacing] = True
+
+    pos = mask.nonzero().T
+
+    return pos
