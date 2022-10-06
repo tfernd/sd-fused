@@ -242,28 +242,16 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
         return model
 
+    # TODO add to its own Class and add support for SelfAttention
+    # TODO copy to the vae
     def split_attention(
         self, cross_attention_chunks: Optional[int] = None
     ) -> None:
-        """Split cross-attention computation into chunks."""
+        """Split cross/self-attention computation into chunks."""
 
         if cross_attention_chunks is not None:
             assert cross_attention_chunks >= 1
 
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
-                if cross_attention_chunks is not None:
-                    module.flash_attention = False
-
-                module.split_attention_chunks = cross_attention_chunks
-
-    # TODO IMPLEMENT...
-    # def flash_attention(self, flash: bool = True) -> None:
-    #     """Use memory-efficient attention."""
-
-    #     for name, module in self.named_modules():
-    #         if isinstance(module, CrossAttention):
-    #             if flash:
-    #                 module.split_attention_chunks = None
-
-    #             module.flash_attention = flash
+                module.attention_chunks = cross_attention_chunks

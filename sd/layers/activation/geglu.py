@@ -23,4 +23,5 @@ class GEGLU(InPlace, nn.Module):
 
         if self.inplace:
             return F.gelu(gate).mul_(x)
+
         return x * F.gelu(gate)

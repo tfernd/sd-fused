@@ -11,10 +11,13 @@ from einops import rearrange
 
 from ...utils import softmax
 from ..base import GroupNorm, Linear, InPlace
+from .utils import attention
 
 
 # TODO is this just CrossAttention layer without context?
 class SelfAttention(InPlace, nn.Module):
+    attention_chunks: Optional[int] = None # ! TODO Auto?
+
     def __init__(
         self,
         *,
@@ -43,14 +46,14 @@ class SelfAttention(InPlace, nn.Module):
         self.proj_attn = Linear(num_channels)
 
         self.channel_last_and_spatial_join = Rearrange("B C H W -> B (H W) C")
-        self.separate_heads = Rearrange(
-            "B HW (heads C) -> B heads HW C", heads=num_heads,
+        self.heads_to_batch = Rearrange(
+            "B HW (heads C) -> (B heads) HW C", heads=num_heads,
         )
         # pre-transpose to avoid transposing afterwards
-        self.separate_heads_t = Rearrange(
-            "B HW (heads C) -> B heads C HW", heads=num_heads,
+        self.heads_to_batch_t = Rearrange(
+            "B HW (heads C) -> (B heads) C HW", heads=num_heads,
         )
-        self.join_heads = Rearrange("B heads HW C -> B HW (heads C)")
+        self.heads_to_channel = Rearrange("(B heads) HW C -> B HW (heads C)", heads=num_heads)
 
     def forward(self, x: Tensor) -> Tensor:
         B, C, H, W = x.shape
@@ -62,21 +65,19 @@ class SelfAttention(InPlace, nn.Module):
         x = self.channel_last_and_spatial_join(x)
 
         # key, query, value projections
-        q = self.separate_heads(self.query(x))
-        k = self.separate_heads_t(self.key(x))
-        v = self.separate_heads(self.value(x))
+        q = self.heads_to_batch(self.query(x))
+        k = self.heads_to_batch_t(self.key(x))
+        v = self.heads_to_batch(self.value(x))
         del x
 
         # scale
         q = q.mul_(self.scale) if self.inplace else q * self.scale
         k = k.mul_(self.scale) if self.inplace else k * self.scale
 
-        attn = softmax(q @ k, dim=-1, inplace=self.inplace)
-        del q, k
-
-        # projection
-        x = self.proj_attn(self.join_heads(attn @ v))
-        del attn, v
+        # attention score
+        x = attention(q, k, v, self.inplace, self.attention_chunks)
+        del q, k, v
+        x = self.proj_attn(self.heads_to_channel(x))
 
         # output
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)

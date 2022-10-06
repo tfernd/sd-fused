@@ -1,12 +1,21 @@
-# Stable-Diffusion + DreamBooth + Better CODE!
+# Stable-Diffusion + DreamBooth + Model-mixing and better CODE = Win!
 
 ## Introduction
 
-So you want to learn more about stable-diffusion, how it works, to dive deep in its implementation but the original source its too complicated?
+So you want to learn more about stable-diffusion (SD), how it works, to dive deep in its implementation but the original source its too complicated?
 Or you just want a nice API to use SD?
 Or you wrongly clicked this repo when you accually intented to clip on the something else?
 
 No fear, you came to the right place!
+
+## News
+
+Model-mixing is great art of mixing different SD models trained by DreamBooth (DB) to get a new model that can do multiple things at the same time.
+Or perhaps you overtrainned on DB and want to dial back a bit?
+
+```python
+pipeline.unet_scale('.pretrained/othermodel', scale=0.9)
+```
 
 ## How and why?
 

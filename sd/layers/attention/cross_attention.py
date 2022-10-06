@@ -3,19 +3,17 @@ from typing import Optional
 
 import math
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
 from einops.layers.torch import Rearrange
 
-from ...utils import softmax
 from ..base import Linear, InPlace
+from .utils import attention
 
 
 class CrossAttention(InPlace, nn.Module):
-    split_attention_chunks: Optional[int] = None
-    # flash_attention: bool = False # !
+    attention_chunks: Optional[int] = None # ! TODO Auto?
 
     def __init__(
         self,
@@ -51,6 +49,7 @@ class CrossAttention(InPlace, nn.Module):
         self.heads_to_batch_t = Rearrange(
             "B T (heads C) -> (B heads) C T", heads=num_heads
         )
+
         self.heads_to_channel = Rearrange(
             "(B heads) T C -> B T (heads C)", heads=num_heads
         )
@@ -70,30 +69,9 @@ class CrossAttention(InPlace, nn.Module):
         q = q.mul_(self.scale) if self.inplace else q * self.scale
         k = k.mul_(self.scale) if self.inplace else k * self.scale
 
-        # normal attention score
-        # TODO deserve it's own function
-        if self.split_attention_chunks is None:
-            attn = softmax(q @ k, dim=-1, inplace=self.inplace)
-            del q, k
-
-            # projection
-            x = self.heads_to_channel(attn @ v)
-            del attn, v
-
-            return self.to_out(x)
-
-        # split-attention score
-        # TODO deserve it's own function
-        shape = (*q.shape[0:2], v.shape[2])
-        x = torch.zeros(shape, device=q.device, dtype=q.dtype)
-        for i in range(0, k.shape[0], self.split_attention_chunks):
-            s = slice(i, i + self.split_attention_chunks)
-
-            attn = softmax(q[s] @ k[s], dim=-1, inplace=self.inplace)
-            x[s] = attn @ v[s]
-            del attn
-
-            # TODO delete q[s], k[s], v[s]?
+        # attention score
+        x = attention(q, k, v, self.inplace, self.attention_chunks)
+        del q, k, v
         x = self.heads_to_channel(x)
 
         return self.to_out(x)

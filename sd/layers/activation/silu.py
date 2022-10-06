@@ -12,4 +12,5 @@ class SiLU(InPlace, nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         if self.inplace:
             return x.sigmoid().mul_(x)
+
         return x * x.sigmoid()

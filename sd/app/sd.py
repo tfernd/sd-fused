@@ -123,13 +123,6 @@ class StableDiffusion:
 
         return self
 
-    def flash_attention(self, flash: bool = True) -> Self:
-        """Use memory-efficient attention."""
-
-        self.unet.flash_attention(flash)
-
-        return self
-
     @torch.no_grad()
     def text2img(
         self,
