@@ -19,7 +19,6 @@ from ..layers.blocks import (
     CrossAttentionDownBlock2D,
     CrossAttentionUpBlock2D,
 )
-from ..utils import has_flash_attention
 
 
 class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
@@ -264,7 +263,8 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
         for name, module in self.named_modules():
             if isinstance(module, CrossAttention):
                 if flash:
-                    assert has_flash_attention()
                     module.split_attention_chunks = None
 
                 module.flash_attention = flash
+
+                print(module.dim_head)

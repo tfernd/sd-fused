@@ -8,13 +8,13 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-# TODO not implement correctly yet
 try:
-    from xformers.ops import memory_efficient_attention
+    from flash_attn.flash_attention import FlashAttention
 except ImportError:
-    memory_efficient_attention = None
+    FlashAttention = None
 
 from einops.layers.torch import Rearrange
+from einops import rearrange
 
 from ...utils import softmax
 from ..base import Linear, InPlace
@@ -62,6 +62,11 @@ class CrossAttention(InPlace, nn.Module):
             "(B heads) T C -> B T (heads C)", heads=num_heads
         )
 
+        if FlashAttention is not None and dim_head in (32, 64, 128):
+            self.flash = FlashAttention()
+        else:
+            self.flash= None
+
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
@@ -73,15 +78,22 @@ class CrossAttention(InPlace, nn.Module):
         v = self.heads_to_batch(self.to_v(context))
         del x, context
 
+        if self.flash is not None and self.flash_attention:
+            k = k.transpose(1, 2)
+            qkv = torch.stack([q,k,v],dim=0)
+            qkv = rearrange(qkv, "k (B heads) T C -> B T k heads C", k=3, heads=self.num_heads)
+            
+            x, _ = self.flash(qkv)
+            x = rearrange(x, 'B T heads C -> B T (heads C)')
+
+            return self.to_out(x)
+        else:
+            # ! not the best place...
+            self.flash_attention = False
+
         # scale
         q = q.mul_(self.scale) if self.inplace else q * self.scale
         k = k.mul_(self.scale) if self.inplace else k * self.scale
-
-        # ! flash-attention score
-        # if self.flash_attention:
-        #     assert memory_efficient_attention is not None
-        #     # TODO transpose k?
-        #     memory_efficient_attention(q, k, v, attn_bias=None)
 
         # normal attention score
         # TODO deserve it's own function
