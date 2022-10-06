@@ -48,6 +48,20 @@ class StableDiffusion:
         self.vae = AutoencoderKL.load_sd(path / "vae")
         self.unet = UNet2DConditional.load_sd(path / "unet")
 
+    def unet_scale(self, path: str | Path, scale: float = 1) -> Self:
+        """Scales the UNet to use in-between two different stable-diffusion models."""
+
+        path = Path(path)
+        new_unet = UNet2DConditional.load_sd(path / "unet")
+
+        for param, new_param in zip(
+            self.unet.parameters(), new_unet.parameters()
+        ):
+            diff = new_param.data - param.data.cpu()
+            param.data += diff.to(self.device) * scale
+
+        return self
+
     def set_low_ram(self, low_ram: bool = True) -> Self:
         """Split context into two passes to save memory."""
 
