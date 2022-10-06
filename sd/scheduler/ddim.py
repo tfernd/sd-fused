@@ -13,12 +13,12 @@ class DDIMScheduler:
         self,
         *,
         steps: int,
-        offset: int = 1,
+        offset: int = 0,  # ? Not needed?
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         # seeds: list[int], # TODO pre-generate noises based on seeds
         # batch_size: int = 1, # TODO Above!
-        # ? DO NOT CHANGE!?
+        # ? DO NOT CHANGE!? Make it GLOBAL constant?
         trained_steps: int = 1_000,
         beta_start: float = 0.00085,
         beta_end: float = 0.012,
@@ -38,8 +38,9 @@ class DDIMScheduler:
         ᾱ = α.cumprod(dim=0)
 
         # trimmed timesteps for selection
-        chunk = trained_steps // steps
-        timesteps = torch.arange(offset, offset + chunk * steps, chunk).flip(0)
+        chunk = trained_steps / steps
+        timesteps = torch.arange(offset, offset + chunk * steps, chunk)
+        timesteps = timesteps.flip(0).long()
 
         # mask variables
         β, α, ᾱ = β[timesteps], α[timesteps], ᾱ[timesteps]
@@ -55,12 +56,15 @@ class DDIMScheduler:
         self.ᾱ = ᾱ.to(device=device, dtype=dtype)
         self.ϖ = ϖ.to(device=device, dtype=dtype)
         self.σ = σ.to(device=device, dtype=dtype)
-        self.timesteps = timesteps.to(device=device, dtype=dtype)
+        self.timesteps = timesteps.to(device=device)
 
     def step(
         self, pred_noise: Tensor, latent: Tensor, i: int, eta: float = 0,
     ) -> Tensor:
+        """Get the previous latents according to the DDIM paper."""
+
         assert 0 <= i < self.steps
+        # TODO add support for i as Tensor
 
         # eq (12) part 1
         pred_latent = latent - self.ϖ[i].sqrt() * pred_noise
@@ -80,13 +84,18 @@ class DDIMScheduler:
 
         return prev_latent
 
-    def add_noise(self, latents: Tensor, eps: Tensor, k: int) -> Tensor:
-        assert 0 <= k < self.steps
+    def add_noise(self, latents: Tensor, eps: Tensor, i: int) -> Tensor:
+        """Add noise to latents according to the index i."""
+
+        assert 0 <= i < self.steps
+        # TODO add support for i as Tensor
 
         # eq 4
-        return latents * self.ᾱ[k].sqrt() + eps * self.ϖ[k].sqrt()
+        return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 
-    def index4strength(self, strength: float) -> int:
+    def cutoff_index(self, strength: float) -> int:
+        """For a given strength [0, 1) what is the cutoff index?"""
+
         assert 0 < strength <= 1
 
         return round(len(self) * (1 - strength))

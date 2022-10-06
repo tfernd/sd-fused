@@ -198,12 +198,11 @@ class StableDiffusion:
         # TODO make into its own function
         # latents from image
         assert mode == "resize"
-        # TODO FIX type error
         data = image2tensor(img, size=(width, height), device=self.device)
         img_latents = self.vae.encode(data).mean
         img_latents *= MAGIC
 
-        k = scheduler.index4strength(strength)
+        k = scheduler.cutoff_index(strength)
         latents = scheduler.add_noise(img_latents, noise, k)
 
         latents = self.denoise_latents(
