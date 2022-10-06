@@ -1,5 +1,4 @@
 from __future__ import annotations
-from functools import lru_cache
 from typing import Optional
 
 import math
@@ -9,7 +8,6 @@ import torch.nn as nn
 from torch import Tensor
 
 from einops.layers.torch import Rearrange
-from einops import rearrange
 
 from ...utils import softmax
 from ..base import Linear, InPlace
