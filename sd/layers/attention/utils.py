@@ -8,9 +8,9 @@ from ...utils import softmax
 
 
 def attention(
-    q: Tensor,
-    k: Tensor,
-    v: Tensor,
+    q: Tensor,  # (B, T, C)
+    k: Tensor,  # (B, C, T)
+    v: Tensor,  # (B, T, C)
     inplace: bool = False,
     chunks: Optional[int] = None,
 ) -> Tensor:

@@ -16,7 +16,7 @@ from .utils import attention
 
 # TODO is this just CrossAttention layer without context?
 class SelfAttention(InPlace, nn.Module):
-    attention_chunks: Optional[int] = None # ! TODO Auto?
+    attention_chunks: Optional[int] = None  # ! TODO Auto?
 
     def __init__(
         self,
@@ -53,7 +53,9 @@ class SelfAttention(InPlace, nn.Module):
         self.heads_to_batch_t = Rearrange(
             "B HW (heads C) -> (B heads) C HW", heads=num_heads,
         )
-        self.heads_to_channel = Rearrange("(B heads) HW C -> B HW (heads C)", heads=num_heads)
+        self.heads_to_channel = Rearrange(
+            "(B heads) HW C -> B HW (heads C)", heads=num_heads
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         B, C, H, W = x.shape

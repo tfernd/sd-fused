@@ -57,8 +57,13 @@ class StableDiffusion:
         for param, new_param in zip(
             self.unet.parameters(), new_unet.parameters()
         ):
-            diff = new_param.data - param.data.cpu()
-            param.data += diff.to(self.device) * scale
+            pnew = new_param.data.to(device=self.device, dtype=self.dtype)
+
+            if scale == 1:
+                param.data = pnew
+            else:
+                param.data += pnew.sub_(param.data).mul_(scale)
+            del pnew
 
         return self
 

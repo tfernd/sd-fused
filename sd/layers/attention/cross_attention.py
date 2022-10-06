@@ -13,7 +13,7 @@ from .utils import attention
 
 
 class CrossAttention(InPlace, nn.Module):
-    attention_chunks: Optional[int] = None # ! TODO Auto?
+    attention_chunks: Optional[int] = None  # ! TODO Auto?
 
     def __init__(
         self,
