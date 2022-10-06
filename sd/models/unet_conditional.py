@@ -257,14 +257,13 @@ class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
 
                 module.split_attention_chunks = cross_attention_chunks
 
-    def flash_attention(self, flash: bool = True) -> None:
-        """Use memory-efficient attention."""
+    # TODO IMPLEMENT...
+    # def flash_attention(self, flash: bool = True) -> None:
+    #     """Use memory-efficient attention."""
 
-        for name, module in self.named_modules():
-            if isinstance(module, CrossAttention):
-                if flash:
-                    module.split_attention_chunks = None
+    #     for name, module in self.named_modules():
+    #         if isinstance(module, CrossAttention):
+    #             if flash:
+    #                 module.split_attention_chunks = None
 
-                module.flash_attention = flash
-
-                print(module.dim_head)
+    #             module.flash_attention = flash

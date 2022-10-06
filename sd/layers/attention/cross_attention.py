@@ -8,11 +8,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-try:
-    from flash_attn.flash_attention import FlashAttention
-except ImportError:
-    FlashAttention = None
-
 from einops.layers.torch import Rearrange
 from einops import rearrange
 
@@ -22,7 +17,7 @@ from ..base import Linear, InPlace
 
 class CrossAttention(InPlace, nn.Module):
     split_attention_chunks: Optional[int] = None
-    flash_attention: bool = False
+    # flash_attention: bool = False # !
 
     def __init__(
         self,
@@ -62,11 +57,6 @@ class CrossAttention(InPlace, nn.Module):
             "(B heads) T C -> B T (heads C)", heads=num_heads
         )
 
-        if FlashAttention is not None and dim_head in (32, 64, 128):
-            self.flash = FlashAttention()
-        else:
-            self.flash= None
-
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
@@ -77,19 +67,6 @@ class CrossAttention(InPlace, nn.Module):
         k = self.heads_to_batch_t(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del x, context
-
-        if self.flash is not None and self.flash_attention:
-            k = k.transpose(1, 2)
-            qkv = torch.stack([q,k,v],dim=0)
-            qkv = rearrange(qkv, "k (B heads) T C -> B T k heads C", k=3, heads=self.num_heads)
-            
-            x, _ = self.flash(qkv)
-            x = rearrange(x, 'B T heads C -> B T (heads C)')
-
-            return self.to_out(x)
-        else:
-            # ! not the best place...
-            self.flash_attention = False
 
         # scale
         q = q.mul_(self.scale) if self.inplace else q * self.scale
