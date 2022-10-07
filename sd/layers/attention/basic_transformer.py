@@ -9,7 +9,7 @@ from .cross_attention import CrossAttention
 from .feed_forward import FeedForward
 
 
-class BasicTransformer( nn.Module):
+class BasicTransformer(nn.Module):
     def __init__(
         self,
         *,

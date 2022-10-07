@@ -12,7 +12,7 @@ def attention(
     k: Tensor,  # (B, T, C')
     v: Tensor,  # (B, T', C)
     chunks: Optional[int] = None,
-) -> Tensor:
+):
     k = k.transpose(1, 2)
 
     if chunks is None:
@@ -22,9 +22,9 @@ def attention(
         return attn @ v
 
     # split-attention score
-    shape = (*q.shape[:2], k.shape[1])
+    shape = (q.size(0), q.size(1), k.size(1))
     out = torch.empty(shape, device=q.device, dtype=q.dtype)
-    for i in range(0, k.shape[0], chunks):
+    for i in range(0, len(k), chunks):
         s = slice(i, i + chunks)
 
         attn = softmax(q[s] @ k[s], dim=-1)

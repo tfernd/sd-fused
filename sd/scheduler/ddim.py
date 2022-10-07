@@ -13,7 +13,6 @@ class DDIMScheduler:
         self,
         *,
         steps: int,
-        offset: int = 0,  # ? Not needed?
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         # seeds: list[int], # TODO pre-generate noises based on seeds
@@ -25,11 +24,12 @@ class DDIMScheduler:
         power: float = 2,
     ) -> None:
         assert steps <= trained_steps
+
         self.steps = steps
         self.device = device
         self.dtype = dtype
 
-        # scaled-linear scheduler
+        # scheduler betas and alphas
         beta_start = math.pow(beta_start, 1 / power)
         beta_end = math.pow(beta_end, 1 / power)
         β = torch.linspace(beta_start, beta_end, trained_steps).pow(power)
@@ -39,7 +39,7 @@ class DDIMScheduler:
 
         # trimmed timesteps for selection
         chunk = trained_steps / steps
-        timesteps = torch.arange(offset, offset + chunk * steps, chunk)
+        timesteps = torch.arange(trained_steps, chunk)
         timesteps = timesteps.flip(0).long()
 
         # mask variables
@@ -49,17 +49,17 @@ class DDIMScheduler:
         ᾱ = torch.cat([ᾱ, torch.ones(1)])
         ϖ = 1 - ᾱ
 
-        # standard deviation eq (16)
+        # standard deviation, eq (16)
         σ = torch.sqrt((1 - ᾱ[1:]) / (1 - ᾱ[:-1]) * (1 - ᾱ[:-1] / ᾱ[1:]))
 
-        # use device
+        # use device/dtype
         self.ᾱ = ᾱ.to(device=device, dtype=dtype)
         self.ϖ = ϖ.to(device=device, dtype=dtype)
         self.σ = σ.to(device=device, dtype=dtype)
         self.timesteps = timesteps.to(device=device)
 
     def step(
-        self, pred_noise: Tensor, latent: Tensor, i: int, eta: float = 0,
+        self, pred_noise: Tensor, latents: Tensor, i: int, eta: float = 0,
     ) -> Tensor:
         """Get the previous latents according to the DDIM paper."""
 
@@ -67,22 +67,19 @@ class DDIMScheduler:
         # TODO add support for i as Tensor
 
         # eq (12) part 1
-        pred_latent = latent - self.ϖ[i].sqrt() * pred_noise
+        pred_latent = latents - self.ϖ[i].sqrt() * pred_noise
         pred_latent /= self.ᾱ[i].sqrt()
 
         # eq (12) part 2
         temp = 1 - self.ᾱ[i + 1] - self.σ[i].mul(eta).square()
-        pred_direction = torch.sqrt(temp) * pred_noise
+        pred_dir = torch.sqrt(temp) * pred_noise
 
         # eq (12) part 3
         # TODO add seeds
-        noise = torch.randn_like(latent) * self.σ[i] * eta
+        noise = torch.randn_like(latents) * self.σ[i] * eta
 
         # full eq (12)
-        prev_latent = pred_latent * self.ᾱ[i + 1].sqrt() + pred_direction
-        prev_latent += noise
-
-        return prev_latent
+        return pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
 
     def add_noise(self, latents: Tensor, eps: Tensor, i: int) -> Tensor:
         """Add noise to latents according to the index i."""
@@ -98,7 +95,7 @@ class DDIMScheduler:
 
         assert 0 < strength <= 1
 
-        return round(len(self) * (1 - strength))
+        return math.ceil(len(self) * (1 - strength))
 
     def __len__(self) -> int:
         return self.steps

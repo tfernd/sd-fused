@@ -11,7 +11,7 @@ from ..base import Conv2d, GroupNorm
 from .basic_transformer import BasicTransformer
 
 
-class SpatialTransformer( nn.Module):
+class SpatialTransformer(nn.Module):
     def __init__(
         self,
         *,

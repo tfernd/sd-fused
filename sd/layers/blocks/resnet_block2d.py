@@ -10,7 +10,7 @@ from ..activation import SiLU
 from ..base import Conv2d, Linear, GroupNorm
 
 
-class ResnetBlock2D( nn.Module):
+class ResnetBlock2D(nn.Module):
     def __init__(
         self,
         *,

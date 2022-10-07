@@ -21,7 +21,7 @@ from ..layers.blocks import (
 )
 
 
-class UNet2DConditional( HalfWeightsModel, nn.Module):
+class UNet2DConditional(HalfWeightsModel, nn.Module):
     def __init__(
         self,
         *,

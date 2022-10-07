@@ -7,7 +7,6 @@ import torch.nn as nn
 from torch import Tensor
 
 
-
 def reverse(x: Tensor, half_dim: int) -> Tensor:
     return torch.cat([x[:, half_dim:], x[:, :half_dim]], dim=1)
 

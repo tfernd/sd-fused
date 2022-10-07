@@ -71,13 +71,13 @@ class SelfAttention(nn.Module):
         k = k * self.scale
 
         # attention score
-        x = attention(q, k, v,  self.attention_chunks)
+        x = attention(q, k, v, self.attention_chunks)
         del q, k, v
         x = self.proj_attn(self.heads_to_channel(x))
 
         # output
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
-        x =  x + xin
+        x = x + xin
         del xin
 
         return x

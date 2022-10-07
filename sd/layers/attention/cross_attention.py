@@ -12,7 +12,7 @@ from ..base import Linear
 from .attention import attention
 
 
-class CrossAttention( nn.Module):
+class CrossAttention(nn.Module):
     attention_chunks: Optional[int] = None  # ! TODO Auto?
 
     def __init__(
