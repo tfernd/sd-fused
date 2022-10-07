@@ -9,7 +9,7 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 
 from ..base import Linear, InPlace
-from .utils import attention
+from .attention import attention
 
 
 class CrossAttention(InPlace, nn.Module):
@@ -45,10 +45,6 @@ class CrossAttention(InPlace, nn.Module):
         self.heads_to_batch = Rearrange(
             "B T (heads C) -> (B heads) T C", heads=num_heads
         )
-        # pre-transpose to avoid transposing afterwards
-        self.heads_to_batch_t = Rearrange(
-            "B T (heads C) -> (B heads) C T", heads=num_heads
-        )
 
         self.heads_to_channel = Rearrange(
             "(B heads) T C -> B T (heads C)", heads=num_heads
@@ -61,7 +57,7 @@ class CrossAttention(InPlace, nn.Module):
 
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x))
-        k = self.heads_to_batch_t(self.to_k(context))
+        k = self.heads_to_batch(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del x, context
 

@@ -11,7 +11,7 @@ from einops import rearrange
 
 from ...utils import softmax
 from ..base import GroupNorm, Linear, InPlace
-from .utils import attention
+from .attention import attention
 
 
 # TODO is this just CrossAttention layer without context?
@@ -49,10 +49,6 @@ class SelfAttention(InPlace, nn.Module):
         self.heads_to_batch = Rearrange(
             "B HW (heads C) -> (B heads) HW C", heads=num_heads,
         )
-        # pre-transpose to avoid transposing afterwards
-        self.heads_to_batch_t = Rearrange(
-            "B HW (heads C) -> (B heads) C HW", heads=num_heads,
-        )
         self.heads_to_channel = Rearrange(
             "(B heads) HW C -> B HW (heads C)", heads=num_heads
         )
@@ -68,7 +64,7 @@ class SelfAttention(InPlace, nn.Module):
 
         # key, query, value projections
         q = self.heads_to_batch(self.query(x))
-        k = self.heads_to_batch_t(self.key(x))
+        k = self.heads_to_batch(self.key(x))
         v = self.heads_to_batch(self.value(x))
         del x
 

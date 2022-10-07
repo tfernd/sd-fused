@@ -9,11 +9,13 @@ from ...utils import softmax
 
 def attention(
     q: Tensor,  # (B, T, C)
-    k: Tensor,  # (B, C, T)
-    v: Tensor,  # (B, T, C)
+    k: Tensor,  # (B, T, C')
+    v: Tensor,  # (B, T', C)
     inplace: bool = False,
     chunks: Optional[int] = None,
 ) -> Tensor:
+    k = k.transpose(1, 2)
+
     if chunks is None:
         attn = softmax(q @ k, dim=-1, inplace=inplace)
         del q, k
@@ -22,14 +24,12 @@ def attention(
 
     # split-attention score
     shape = (*q.shape[:2], k.shape[1])
-    x = torch.empty(shape, device=q.device, dtype=q.dtype)
+    out = torch.empty(shape, device=q.device, dtype=q.dtype)
     for i in range(0, k.shape[0], chunks):
         s = slice(i, i + chunks)
 
         attn = softmax(q[s] @ k[s], dim=-1, inplace=inplace)
-        x[s] = attn @ v[s]
+        out[s] = attn @ v[s]
         del attn
 
-        # TODO split and delete q[s], k[s], v[s] to save memory?
-
-    return x
+    return out

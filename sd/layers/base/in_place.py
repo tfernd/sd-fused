@@ -3,7 +3,7 @@ from typing_extensions import Self
 
 import torch.nn as nn
 
-
+# TODO to remove?
 class InPlace(nn.Module):
     inplace: bool = False
 
