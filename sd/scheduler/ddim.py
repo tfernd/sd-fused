@@ -1,4 +1,3 @@
-#%%
 from __future__ import annotations
 from typing import Optional
 
@@ -38,10 +37,8 @@ class DDIMScheduler:
         steps += 1
 
         # trimmed timesteps for selection
-        timesteps = torch.linspace(0, 1, steps) * (
-            trained_steps - 1
-        )  # ?why -1?
-        timesteps = timesteps.flip(0).ceil().long()
+        t = torch.linspace(0, 1, steps).flip(0)
+        timesteps = t.mul(trained_steps - 1).ceil().long()
 
         # cummulative ᾱ trimmed
         α = 1 - β

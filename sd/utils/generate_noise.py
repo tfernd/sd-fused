@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 
 # NOISE INCREASED SIZE
-SIZE = 2048
+SIZE = 2_048
 
 
 class NoiseOutput(NamedTuple):
