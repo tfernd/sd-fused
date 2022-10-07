@@ -46,7 +46,6 @@ from ..utils.typing import Literal
 #         self.vae.cuda()
 
 #         self.unet = UNet2DConditional.load_sd(path / "unet")
-#         self.unet.set_inplace(False)
 #         # self.unet.flash_attention(True)
 #         self.unet.half()
 #         self.unet.cuda()

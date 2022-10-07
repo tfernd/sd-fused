@@ -8,11 +8,11 @@ from torch import Tensor
 
 from einops.layers.torch import Rearrange
 
-from ..base import Linear, InPlace
+from ..base import Linear
 from .attention import attention
 
 
-class CrossAttention(InPlace, nn.Module):
+class CrossAttention( nn.Module):
     attention_chunks: Optional[int] = None  # ! TODO Auto?
 
     def __init__(
@@ -62,11 +62,11 @@ class CrossAttention(InPlace, nn.Module):
         del x, context
 
         # scale
-        q = q.mul_(self.scale) if self.inplace else q * self.scale
-        k = k.mul_(self.scale) if self.inplace else k * self.scale
+        q = q * self.scale
+        k = k * self.scale
 
         # attention score
-        x = attention(q, k, v, self.inplace, self.attention_chunks)
+        x = attention(q, k, v, self.attention_chunks)
         del q, k, v
         x = self.heads_to_channel(x)
 

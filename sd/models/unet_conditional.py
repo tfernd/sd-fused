@@ -10,7 +10,7 @@ from torch import Tensor
 
 from ..layers.embedding import Timesteps, TimestepEmbedding
 from ..layers.activation import SiLU
-from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel, InPlaceModel
+from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel
 from ..layers.attention import CrossAttention
 from ..layers.blocks import (
     UNetMidBlock2DCrossAttention,
@@ -21,7 +21,7 @@ from ..layers.blocks import (
 )
 
 
-class UNet2DConditional(InPlaceModel, HalfWeightsModel, nn.Module):
+class UNet2DConditional( HalfWeightsModel, nn.Module):
     def __init__(
         self,
         *,

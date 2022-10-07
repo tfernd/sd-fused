@@ -6,14 +6,13 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from ..base import InPlace
 
 
 def reverse(x: Tensor, half_dim: int) -> Tensor:
     return torch.cat([x[:, half_dim:], x[:, :half_dim]], dim=1)
 
 
-class Timesteps(InPlace, nn.Module):
+class Timesteps(nn.Module):
     freq: Tensor
     amplitude: Tensor
     phase: Tensor
@@ -64,6 +63,4 @@ class Timesteps(InPlace, nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = x[..., None]
 
-        if not self.inplace:
-            return self.amplitude * torch.sin(x * self.freq + self.phase)
-        return x.mul(self.freq).add_(self.phase).sin_().mul_(self.amplitude)
+        return self.amplitude * torch.sin(x * self.freq + self.phase)

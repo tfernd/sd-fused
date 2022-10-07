@@ -4,10 +4,8 @@ from typing import Optional
 import torch
 from torch import Tensor
 
-from ..base import InPlace
 
-
-class DiagonalGaussianDistribution(InPlace):
+class DiagonalGaussianDistribution:
     def __init__(
         self, mean: Tensor, logvar: Tensor, *, deterministic: bool = False,
     ) -> None:
@@ -20,13 +18,8 @@ class DiagonalGaussianDistribution(InPlace):
 
         self.mean = mean
 
-        limits = (-30, 20)
-        if self.inplace:
-            logvar = logvar.clamp_(*limits)
-            self.std = logvar.div_(2).exp_()
-        else:
-            logvar = logvar.clamp(*limits)
-            self.std = torch.exp(logvar / 2)
+        logvar = logvar.clamp(-30, 20)
+        self.std = torch.exp(logvar / 2)
 
     def sample(self, generator: Optional[torch.Generator] = None) -> Tensor:
         if self.deterministic:
@@ -41,6 +34,4 @@ class DiagonalGaussianDistribution(InPlace):
             dtype=self.dtype,
         )
 
-        if self.inplace:
-            return noise.mul_(self.std).add_(self.mean)
         return self.mean + self.std * noise

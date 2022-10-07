@@ -9,13 +9,11 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 from einops import rearrange
 
-from ...utils import softmax
-from ..base import GroupNorm, Linear, InPlace
+from ..base import GroupNorm, Linear
 from .attention import attention
 
 
-# TODO is this just CrossAttention layer without context?
-class SelfAttention(InPlace, nn.Module):
+class SelfAttention(nn.Module):
     attention_chunks: Optional[int] = None  # ! TODO Auto?
 
     def __init__(
@@ -69,17 +67,17 @@ class SelfAttention(InPlace, nn.Module):
         del x
 
         # scale
-        q = q.mul_(self.scale) if self.inplace else q * self.scale
-        k = k.mul_(self.scale) if self.inplace else k * self.scale
+        q = q * self.scale
+        k = k * self.scale
 
         # attention score
-        x = attention(q, k, v, self.inplace, self.attention_chunks)
+        x = attention(q, k, v,  self.attention_chunks)
         del q, k, v
         x = self.proj_attn(self.heads_to_channel(x))
 
         # output
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
-        x = x.add_(xin) if self.inplace else x + xin
+        x =  x + xin
         del xin
 
         return x

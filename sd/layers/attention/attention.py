@@ -11,13 +11,12 @@ def attention(
     q: Tensor,  # (B, T, C)
     k: Tensor,  # (B, T, C')
     v: Tensor,  # (B, T', C)
-    inplace: bool = False,
     chunks: Optional[int] = None,
 ) -> Tensor:
     k = k.transpose(1, 2)
 
     if chunks is None:
-        attn = softmax(q @ k, dim=-1, inplace=inplace)
+        attn = softmax(q @ k, dim=-1)
         del q, k
 
         return attn @ v
@@ -28,7 +27,7 @@ def attention(
     for i in range(0, k.shape[0], chunks):
         s = slice(i, i + chunks)
 
-        attn = softmax(q[s] @ k[s], dim=-1, inplace=inplace)
+        attn = softmax(q[s] @ k[s], dim=-1)
         out[s] = attn @ v[s]
         del attn
 

@@ -7,11 +7,11 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 from einops import rearrange
 
-from ..base import Conv2d, GroupNorm, InPlace
+from ..base import Conv2d, GroupNorm
 from .basic_transformer import BasicTransformer
 
 
-class SpatialTransformer(InPlace, nn.Module):
+class SpatialTransformer( nn.Module):
     def __init__(
         self,
         *,
@@ -69,7 +69,4 @@ class SpatialTransformer(InPlace, nn.Module):
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
         x = self.proj_out(x)
 
-        x = x.add_(xin) if self.inplace else x + xin
-        del xin
-
-        return x
+        return x + xin

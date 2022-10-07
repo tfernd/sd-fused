@@ -7,10 +7,10 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..activation import SiLU
-from ..base import Conv2d, Linear, GroupNorm, InPlace
+from ..base import Conv2d, Linear, GroupNorm
 
 
-class ResnetBlock2D(InPlace, nn.Module):
+class ResnetBlock2D( nn.Module):
     def __init__(
         self,
         *,
@@ -66,14 +66,14 @@ class ResnetBlock2D(InPlace, nn.Module):
             assert isinstance(temb, Tensor)  # needed for type checking below
             temb = temb[..., None, None]
 
-            x = x.add_(temb) if self.inplace else x + temb
+            x = x + temb
             del temb
 
         x = self.norm2(x)
         x = self.nonlinearity(x)
         x = self.conv2(x)
 
-        x = x.add_(xin) if self.inplace else x + xin
+        x = x + xin
         del xin
 
         return x
