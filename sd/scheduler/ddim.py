@@ -39,7 +39,7 @@ class DDIMScheduler:
 
         # trimmed timesteps for selection
         chunk = trained_steps / steps
-        timesteps = torch.arange(trained_steps, chunk)
+        timesteps = torch.arange(0, trained_steps, chunk)
         timesteps = timesteps.flip(0).long()
 
         # mask variables
