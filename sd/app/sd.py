@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Any, NamedTuple, Optional
+from typing import Any, Optional
 from typing_extensions import Self
 
 from pathlib import Path
-from tqdm.auto import tqdm, trange
+from tqdm.auto import trange
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo

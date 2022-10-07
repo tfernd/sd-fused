@@ -1,3 +1,4 @@
+#%%
 from __future__ import annotations
 from typing import Optional
 
@@ -16,7 +17,6 @@ class DDIMScheduler:
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         # seeds: list[int], # TODO pre-generate noises based on seeds
-        # batch_size: int = 1, # TODO Above!
         # ? DO NOT CHANGE!? Make it GLOBAL constant?
         trained_steps: int = 1_000,
         beta_start: float = 0.00085,
@@ -32,25 +32,27 @@ class DDIMScheduler:
         # scheduler betas and alphas
         beta_start = math.pow(beta_start, 1 / power)
         beta_end = math.pow(beta_end, 1 / power)
-        β = torch.linspace(beta_start, beta_end, trained_steps).pow(power)
+        β = torch.linspace(beta_start, beta_end, trained_steps,).pow(power)
 
-        α = 1 - β
-        ᾱ = α.cumprod(dim=0)
+        # increase steps by 1 to account last timestep
+        steps += 1
 
         # trimmed timesteps for selection
-        chunk = trained_steps / steps
-        timesteps = torch.arange(0, trained_steps, chunk)
-        timesteps = timesteps.flip(0).long()
+        timesteps = torch.linspace(0, 1, steps) * (
+            trained_steps - 1
+        )  # ?why -1?
+        timesteps = timesteps.flip(0).ceil().long()
 
-        # mask variables
-        β, α, ᾱ = β[timesteps], α[timesteps], ᾱ[timesteps]
-
-        # add final timestep
-        ᾱ = torch.cat([ᾱ, torch.ones(1)])
+        # cummulative ᾱ trimmed
+        α = 1 - β
+        ᾱ = α.cumprod(dim=0)
+        ᾱ /= ᾱ.max()  # makes last-value=1
+        ᾱ = ᾱ[timesteps]
         ϖ = 1 - ᾱ
+        del α, β  # reminder that is not used anymore
 
         # standard deviation, eq (16)
-        σ = torch.sqrt((1 - ᾱ[1:]) / (1 - ᾱ[:-1]) * (1 - ᾱ[:-1] / ᾱ[1:]))
+        σ = torch.sqrt(ϖ[1:] / ϖ[:-1] * (1 - ᾱ[:-1] / ᾱ[1:]))
 
         # use device/dtype
         self.ᾱ = ᾱ.to(device=device, dtype=dtype)
