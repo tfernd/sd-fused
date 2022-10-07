@@ -140,7 +140,9 @@ class StableDiffusion:
         assert height % 64 == 0
         assert width % 64 == 0
 
-        scheduler = DDIMScheduler(steps=steps, device=self.device, dtype=self.dtype)
+        scheduler = DDIMScheduler(
+            steps=steps, device=self.device, dtype=self.dtype
+        )
         batch_size = fix_batch_size(seed, batch_size)
         context = self.get_context(prompt, negative_prompt, batch_size)
 
@@ -192,7 +194,9 @@ class StableDiffusion:
         assert height % 64 == 0
         assert width % 64 == 0
 
-        scheduler = DDIMScheduler(steps=steps, device=self.device, dtype=self.dtype)
+        scheduler = DDIMScheduler(
+            steps=steps, device=self.device, dtype=self.dtype
+        )
         batch_size = fix_batch_size(seed, batch_size)
         context = self.get_context(prompt, negative_prompt, batch_size)
 
