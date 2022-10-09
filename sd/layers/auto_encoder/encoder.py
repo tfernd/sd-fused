@@ -82,6 +82,7 @@ class Encoder(nn.Module):
         x = self.mid_block(x)
 
         # post-process
+        # TODO Join into single layer
         x = self.conv_norm_out(x)
         x = self.conv_act(x)
         x = self.conv_out(x)
