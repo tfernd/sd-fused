@@ -41,22 +41,21 @@ class DownEncoderBlock2D(nn.Module):
                 )
             )
 
-        self.downsamplers = nn.ModuleList()
         if add_downsample:
-            self.downsamplers.append(
-                Downsample2D(
-                    channels=in_channels,
-                    use_conv=True,
-                    out_channels=out_channels,
-                    padding=downsample_padding,
-                )
+            self.downsampler = Downsample2D(
+                channels=in_channels,
+                use_conv=True,
+                out_channels=out_channels,
+                padding=downsample_padding,
             )
+        else:
+            self.downsampler = None
 
     def forward(self, x: Tensor) -> Tensor:
         for resnet in self.resnets:
             x = resnet(x)
 
-        for downsampler in self.downsamplers:
-            x = downsampler(x)
+        if self.downsampler is not None:
+            x = self.downsampler(x)
 
         return x

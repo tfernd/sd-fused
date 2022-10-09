@@ -3,6 +3,7 @@ from typing import Optional
 from typing_extensions import Self
 
 from pathlib import Path
+import re
 
 import torch
 import torch.nn as nn
@@ -100,6 +101,34 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
 
         state = torch.load(path, map_location="cpu")
         model = cls()
+
+        changes: list[tuple[str, str]] = [
+            # up/down samplers
+            (r"(up|down)samplers.0", r"\1sampler"),
+        ]
+        # modify state-dict
+        for key in list(state.keys()):
+            for (c1, c2) in changes:
+                new_key = re.sub(c1, c2, key)
+                if new_key != key:
+                    print(f"Changing {key} -> {new_key}")
+                    value = state.pop(key)
+                    state[new_key] = value
+
+        old_keys = list(state.keys())
+        new_keys = list(model.state_dict().keys())
+
+        in_old = set(old_keys) - set(new_keys)
+        in_new = set(new_keys) - set(old_keys)
+
+        with open("in-old.txt", "w") as f:
+            f.write("\n".join(sorted(list(in_old))))
+
+        with open("in-new.txt", "w") as f:
+            f.write("\n".join(sorted(list(in_new))))
+
+        # raise ValueError
+
         model.load_state_dict(state)
 
         return model

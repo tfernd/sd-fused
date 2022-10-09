@@ -40,21 +40,18 @@ class UpDecoderBlock2D(nn.Module):
                 )
             )
 
-        self.upsamplers = nn.ModuleList()
         if add_upsample:
-            self.upsamplers.append(
-                Upsample2D(
-                    channels=out_channels,
-                    kind="conv",
-                    out_channels=out_channels,
-                )
+            self.upsampler = Upsample2D(
+                channels=out_channels, kind="conv", out_channels=out_channels,
             )
+        else:
+            self.upsampler = None
 
     def forward(self, x: Tensor, size: Optional[TensorSize] = None) -> Tensor:
         for resnet in self.resnets:
             x = resnet(x)
 
-        for upsampler in self.upsamplers:
-            x = upsampler(x, size=size)
+        if self.upsampler is not None:
+            x = self.upsampler(x, size=size)
 
         return x

@@ -54,6 +54,7 @@ class ResnetBlock2D(nn.Module):
     def forward(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
         xin = self.conv_shortcut(x)
 
+        # TODO create own layer
         x = self.norm1(x)
         x = self.nonlinearity(x)
         x = self.conv1(x)
@@ -69,11 +70,9 @@ class ResnetBlock2D(nn.Module):
             x = x + temb
             del temb
 
+        # TODO create own layer
         x = self.norm2(x)
         x = self.nonlinearity(x)
         x = self.conv2(x)
 
-        x = x + xin
-        del xin
-
-        return x
+        return xin + x

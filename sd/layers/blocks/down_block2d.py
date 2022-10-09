@@ -46,17 +46,14 @@ class DownBlock2D(nn.Module):
             )
 
         if add_downsample:
-            self.downsamplers = nn.ModuleList()
-            self.downsamplers.append(
-                Downsample2D(
-                    channels=in_channels,
-                    use_conv=True,
-                    out_channels=out_channels,
-                    padding=downsample_padding,
-                )
+            self.downsampler = Downsample2D(
+                channels=in_channels,
+                use_conv=True,
+                out_channels=out_channels,
+                padding=downsample_padding,
             )
         else:
-            self.downsamplers = None
+            self.downsampler = None
 
     def forward(
         self, x: Tensor, *, temb: Optional[Tensor] = None
@@ -67,9 +64,8 @@ class DownBlock2D(nn.Module):
             states.append(x)
         del temb
 
-        if self.downsamplers is not None:
-            for downsampler in self.downsamplers:
-                x = downsampler(x)
+        if self.downsampler is not None:
+            x = self.downsampler(x)
 
             states.append(x)
 

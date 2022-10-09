@@ -67,15 +67,12 @@ class CrossAttentionUpBlock2D(nn.Module):
                 )
             )
 
-        self.upsamplers = nn.ModuleList()
         if add_upsample:
-            self.upsamplers.append(
-                Upsample2D(
-                    channels=out_channels,
-                    out_channels=out_channels,
-                    kind="conv",
-                )
+            self.upsampler = Upsample2D(
+                channels=out_channels, out_channels=out_channels, kind="conv",
             )
+        else:
+            self.upsampler = None
 
     def forward(
         self,
@@ -95,7 +92,7 @@ class CrossAttentionUpBlock2D(nn.Module):
             x = attn(x, context=context)
         del states, temb, context
 
-        for upsampler in self.upsamplers:
-            x = upsampler(x, size=size)
+        if self.upsampler is not None:
+            x = self.upsampler(x, size=size)
 
         return x

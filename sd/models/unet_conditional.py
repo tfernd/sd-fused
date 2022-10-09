@@ -239,6 +239,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         path = paths[0]
 
         state = torch.load(path, map_location="cpu")
+        model = cls()
 
         changes: list[tuple[str, str]] = [
             # Cross-attention
@@ -253,8 +254,10 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             ),
             ## FeedForward (geglu)
             (r"ff.net.0.proj.(weight|bias)", r"ff.1.proj.\1",),
-            ## Linear
+            ## FeedForward-Linear
             (r"ff.net.2.(weight|bias)", r"ff.2.\1",),
+            # up/down samplers
+            (r"(up|down)samplers.0", r"\1sampler"),
         ]
 
         # modify state-dict
@@ -265,8 +268,6 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
                     print(f"Changing {key} -> {new_key}")
                     value = state.pop(key)
                     state[new_key] = value
-
-        model = cls()
 
         old_keys = list(state.keys())
         new_keys = list(model.state_dict().keys())
@@ -281,7 +282,6 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             f.write("\n".join(sorted(list(in_new))))
 
         model.load_state_dict(state)
-        # raise ValueError
 
         return model
 

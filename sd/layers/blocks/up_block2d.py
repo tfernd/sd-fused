@@ -50,13 +50,12 @@ class UpBlock2D(nn.Module):
                 )
             )
 
-        self.upsamplers = nn.ModuleList()
         if add_upsample:
-            self.upsamplers.append(
-                Upsample2D(
-                    channels=out_channels, kind="conv", out_channels=None,
-                )
+            self.upsampler = Upsample2D(
+                channels=out_channels, kind="conv", out_channels=None,
             )
+        else:
+            self.upsampler = None
 
     def forward(
         self,
@@ -74,7 +73,7 @@ class UpBlock2D(nn.Module):
             x = resnet(x, temb=temb)
         del states, temb
 
-        for upsampler in self.upsamplers:
-            x = upsampler(x, size=size)
+        if self.upsampler is not None:
+            x = self.upsampler(x, size=size)
 
         return x
