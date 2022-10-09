@@ -40,16 +40,12 @@ class BasicTransformer(nn.Module):
 
         self.ff = FeedForward(dim, dim_out=None, mult=4)
 
-        self.norm1 = LayerNorm(dim)
-        self.norm2 = LayerNorm(dim)
-        self.norm3 = LayerNorm(dim)
-
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
-        x = x + self.attn1(self.norm1(x))
-        x = x + self.attn2(self.norm2(x), context=context)
+        x = self.attn1(x)
+        x = self.attn2(x, context=context)
         del context
-        x = x + self.ff(self.norm3(x))
+        x = self.ff(x)
 
         return x

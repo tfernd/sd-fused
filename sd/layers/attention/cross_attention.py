@@ -8,7 +8,7 @@ from torch import Tensor
 
 from einops.layers.torch import Rearrange
 
-from ..base import Linear
+from ..base import Linear, LayerNorm
 from .attention import attention
 
 
@@ -35,6 +35,8 @@ class CrossAttention(nn.Module):
 
         self.scale = math.pow(dim_head, -1 / 4)
 
+        self.norm = LayerNorm(query_dim)
+
         # TODO pre-multiply query, key, value weights by self.scale?
         self.to_q = Linear(query_dim, inner_dim, bias=False)
         self.to_k = Linear(context_dim, inner_dim, bias=False)
@@ -53,10 +55,14 @@ class CrossAttention(nn.Module):
     def forward(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
-        context = context if context is not None else x
+
+        xin = x
+
+        x = self.norm(x)
 
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x))
+        context = context if context is not None else x
         k = self.heads_to_batch(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del x, context
@@ -70,4 +76,4 @@ class CrossAttention(nn.Module):
         del q, k, v
         x = self.heads_to_channel(x)
 
-        return self.to_out(x)
+        return xin + self.to_out(x)

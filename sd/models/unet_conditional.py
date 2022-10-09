@@ -4,6 +4,8 @@ from typing_extensions import Self
 
 from pathlib import Path
 
+import re
+
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -237,8 +239,49 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         path = paths[0]
 
         state = torch.load(path, map_location="cpu")
+
+        changes: list[tuple[str, str]] = [
+            # Cross-attention
+            (
+                r"transformer_blocks.(\d).norm([12]).(weight|bias)",
+                r"transformer_blocks.\1.attn\2.norm.\3",
+            ),
+            ## FeedForward (norm)
+            (
+                r"transformer_blocks.(\d).norm3.(weight|bias)",
+                r"transformer_blocks.\1.ff.0.\2",
+            ),
+            ## FeedForward (geglu)
+            (r"ff.net.0.proj.(weight|bias)", r"ff.1.proj.\1",),
+            ## Linear
+            (r"ff.net.2.(weight|bias)", r"ff.2.\1",),
+        ]
+
+        # modify state-dict
+        for key in list(state.keys()):
+            for (c1, c2) in changes:
+                new_key = re.sub(c1, c2, key)
+                if new_key != key:
+                    print(f"Changing {key} -> {new_key}")
+                    value = state.pop(key)
+                    state[new_key] = value
+
         model = cls()
+
+        old_keys = list(state.keys())
+        new_keys = list(model.state_dict().keys())
+
+        in_old = set(old_keys) - set(new_keys)
+        in_new = set(new_keys) - set(old_keys)
+
+        with open("in-old.txt", "w") as f:
+            f.write("\n".join(sorted(list(in_old))))
+
+        with open("in-new.txt", "w") as f:
+            f.write("\n".join(sorted(list(in_new))))
+
         model.load_state_dict(state)
+        # raise ValueError
 
         return model
 

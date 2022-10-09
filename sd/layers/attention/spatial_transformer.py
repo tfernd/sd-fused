@@ -67,6 +67,5 @@ class SpatialTransformer(nn.Module):
         del context
 
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
-        x = self.proj_out(x)
 
-        return x + xin
+        return xin + self.proj_out(x)

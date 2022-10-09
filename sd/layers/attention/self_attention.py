@@ -77,7 +77,5 @@ class SelfAttention(nn.Module):
 
         # output
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
-        x = x + xin
-        del xin
 
-        return x
+        return xin + x

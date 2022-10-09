@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# import torch
 from torch import Tensor
 
 
@@ -10,6 +11,7 @@ def softmax(x: Tensor, *, dim: int) -> Tensor:
 
     x = x.float()
     x = x.softmax(dim)
+    # x = x.softmax(dim, dtype=torch.float32) # ? is this better?
     x = x.to(dtype)
 
     return x
