@@ -37,7 +37,6 @@ class CrossAttention(nn.Module):
 
         self.norm = LayerNorm(query_dim)
 
-        # TODO pre-multiply query, key, value weights by self.scale?
         self.to_q = Linear(query_dim, inner_dim, bias=False)
         self.to_k = Linear(context_dim, inner_dim, bias=False)
         self.to_v = Linear(context_dim, inner_dim, bias=False)
@@ -67,7 +66,6 @@ class CrossAttention(nn.Module):
         v = self.heads_to_batch(self.to_v(context))
         del x, context
 
-        # scale
         q = q * self.scale
         k = k * self.scale
 
