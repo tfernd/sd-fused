@@ -17,6 +17,8 @@ from ..layers.auto_encoder.decoder import Decoder
 
 
 class AutoencoderKL(HalfWeightsModel, nn.Module):
+    debug: bool = True
+
     def __init__(
         self,
         *,
@@ -116,17 +118,18 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
                     state[new_key] = value
 
         # debug
-        # old_keys = list(state.keys())
-        # new_keys = list(model.state_dict().keys())
+        if cls.debug:
+            old_keys = list(state.keys())
+            new_keys = list(model.state_dict().keys())
 
-        # in_old = set(old_keys) - set(new_keys)
-        # in_new = set(new_keys) - set(old_keys)
+            in_old = set(old_keys) - set(new_keys)
+            in_new = set(new_keys) - set(old_keys)
 
-        # with open("in-old.txt", "w") as f:
-        #     f.write("\n".join(sorted(list(in_old))))
+            with open("in-old.txt", "w") as f:
+                f.write("\n".join(sorted(list(in_old))))
 
-        # with open("in-new.txt", "w") as f:
-        #     f.write("\n".join(sorted(list(in_new))))
+            with open("in-new.txt", "w") as f:
+                f.write("\n".join(sorted(list(in_new))))
 
         model.load_state_dict(state)
 

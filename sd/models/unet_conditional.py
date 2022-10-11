@@ -24,6 +24,8 @@ from ..layers.blocks import (
 
 
 class UNet2DConditional(HalfWeightsModel, nn.Module):
+    debug: bool = True
+
     def __init__(
         self,
         *,
@@ -191,6 +193,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         # TODO it is possible to make it a list[list[Tensor]]? or is the number of elements wrong?
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
+            # TODO a bit ugly this assert and the raise error
             assert isinstance(block, (CrossAttentionDownBlock2D, DownBlock2D))
 
             if isinstance(block, CrossAttentionDownBlock2D):
@@ -208,6 +211,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
 
         # 5. up
         for block in self.up_blocks:
+            # TODO a bit ugly this assert and the raise error
             assert isinstance(block, (CrossAttentionUpBlock2D, UpBlock2D))
 
             states = tuple(all_states.pop() for _ in range(block.num_layers))
@@ -223,6 +227,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         del all_states
 
         # 6. post-process
+        # TODO join these layers
         x = self.conv_norm_out(x)
         x = self.conv_act(x)
         x = self.conv_out(x)
@@ -258,6 +263,8 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             (r"ff.net.2.(weight|bias)", r"ff.2.\1",),
             # up/down samplers
             (r"(up|down)samplers.0", r"\1sampler"),
+            # CrossAttention projection
+            (r"to_out.0.", r"to_out."),
             # TimeEmbedding
             (r"time_embedding.linear_1.(weight|bias)", r"time_embedding.0.\1"),
             (r"time_embedding.linear_2.(weight|bias)", r"time_embedding.2.\1"),
@@ -273,17 +280,18 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
                     state[new_key] = value
 
         # debug
-        # old_keys = list(state.keys())
-        # new_keys = list(model.state_dict().keys())
+        if cls.debug:
+            old_keys = list(state.keys())
+            new_keys = list(model.state_dict().keys())
 
-        # in_old = set(old_keys) - set(new_keys)
-        # in_new = set(new_keys) - set(old_keys)
+            in_old = set(old_keys) - set(new_keys)
+            in_new = set(new_keys) - set(old_keys)
 
-        # with open("in-old.txt", "w") as f:
-        #     f.write("\n".join(sorted(list(in_old))))
+            with open("in-old.txt", "w") as f:
+                f.write("\n".join(sorted(list(in_old))))
 
-        # with open("in-new.txt", "w") as f:
-        #     f.write("\n".join(sorted(list(in_new))))
+            with open("in-new.txt", "w") as f:
+                f.write("\n".join(sorted(list(in_new))))
 
         model.load_state_dict(state)
 

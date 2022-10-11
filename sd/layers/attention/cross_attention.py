@@ -41,7 +41,7 @@ class CrossAttention(nn.Module):
         self.to_k = Linear(context_dim, inner_dim, bias=False)
         self.to_v = Linear(context_dim, inner_dim, bias=False)
 
-        self.to_out = nn.Sequential(Linear(inner_dim, query_dim))
+        self.to_out = Linear(inner_dim, query_dim)
 
         self.heads_to_batch = Rearrange(
             "B T (heads C) -> (B heads) T C", heads=num_heads

@@ -4,7 +4,6 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
-from ..base import LayerNorm
 from .cross_attention import CrossAttention
 from .feed_forward import FeedForward
 

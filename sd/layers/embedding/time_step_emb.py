@@ -16,10 +16,6 @@ class TimestepEmbedding(nn.Sequential):
         self.time_embed_dim = time_embed_dim
         self.use_silu = use_silu
 
-        # self.linear_1 = Linear(channel, time_embed_dim)
-        # self.act =
-        # self.linear_2 = Linear(time_embed_dim, time_embed_dim)
-
         layers = (
             Linear(channel, time_embed_dim),
             SiLU() if use_silu else nn.Identity(),

@@ -27,6 +27,7 @@ class DiagonalGaussianDistribution:
 
             return self.mean
 
+        # TODO use seeds?
         noise = torch.randn(
             self.std.shape,
             generator=generator,

@@ -33,6 +33,7 @@ class UpBlock2D(nn.Module):
 
         self.resnets = nn.ModuleList()
         for i in range(num_layers):
+            # TODO make more redable
             res_skip_channels = (
                 in_channels if (i == num_layers - 1) else out_channels
             )
