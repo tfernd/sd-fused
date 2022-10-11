@@ -206,7 +206,7 @@ class StableDiffusion:
         # TODO make into its own function
         # latents from image
         assert mode == "resize"
-        data = image2tensor(img, size=(width, height), device=self.device)
+        data = image2tensor(img, size=(height, width), device=self.device)
         img_latents = self.vae.encode(data).mean
         img_latents *= MAGIC
 

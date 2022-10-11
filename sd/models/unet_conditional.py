@@ -268,7 +268,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             for (c1, c2) in changes:
                 new_key = re.sub(c1, c2, key)
                 if new_key != key:
-                    print(f"Changing {key} -> {new_key}")
+                    # print(f"Changing {key} -> {new_key}")
                     value = state.pop(key)
                     state[new_key] = value
 
