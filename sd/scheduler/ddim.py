@@ -9,17 +9,18 @@ from torch import Tensor
 
 class DDIMScheduler:
     # https://arxiv.org/abs/2010.02502
+
     def __init__(
         self,
         *,
         steps: int,
         device: Optional[torch.device] = None,
-        dtype: Optional[torch.dtype] = None,
+        dtype: torch.dtype = torch.float32,
         # seeds: list[int], # TODO pre-generate noises based on seeds
         # ? DO NOT CHANGE!? Make it GLOBAL constant?
         trained_steps: int = 1_000,
-        beta_start: float = 0.00085,
-        beta_end: float = 0.012,
+        β_begin: float = 0.00085,
+        β_end: float = 0.012,
         power: float = 2,
     ) -> None:
         assert steps <= trained_steps
@@ -29,9 +30,10 @@ class DDIMScheduler:
         self.dtype = dtype
 
         # scheduler betas and alphas
-        beta_start = math.pow(beta_start, 1 / power)
-        beta_end = math.pow(beta_end, 1 / power)
-        β = torch.linspace(beta_start, beta_end, trained_steps,).pow(power)
+        β_begin = math.pow(β_begin, 1 / power)
+        β_end = math.pow(β_end, 1 / power)
+        β = torch.linspace(β_begin, β_end, trained_steps).pow(power)
+        β = β.to(torch.float64)  # extra-precision
 
         # increase steps by 1 to account last timestep
         steps += 1
@@ -90,6 +92,7 @@ class DDIMScheduler:
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 
     def cutoff_index(self, strength: float) -> int:
+        # TODO better docstring
         """For a given strength [0, 1) what is the cutoff index?"""
 
         assert 0 < strength <= 1
