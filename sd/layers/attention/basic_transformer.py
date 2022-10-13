@@ -39,7 +39,7 @@ class BasicTransformer(nn.Module):
 
         self.ff = FeedForward(dim, dim_out=None, mult=4)
 
-    def forward(
+    def __call__(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
         x = self.attn1(x)

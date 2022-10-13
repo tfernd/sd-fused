@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import torch.nn as nn
+from torch import Tensor
+
+from .half_weights import HalfWeights
 
 
-class GroupNorm(nn.GroupNorm):
+class GroupNorm(HalfWeights, nn.GroupNorm):
     def __init__(
         self,
         num_groups: int,
@@ -17,3 +20,6 @@ class GroupNorm(nn.GroupNorm):
             eps=eps,
             affine=affine,
         )
+
+    def __call__(self, x: Tensor) -> Tensor:
+        return super().half_weights_forward(x)

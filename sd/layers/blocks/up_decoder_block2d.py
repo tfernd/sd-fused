@@ -47,8 +47,10 @@ class UpDecoderBlock2D(nn.Module):
         else:
             self.upsampler = None
 
-    def forward(self, x: Tensor, size: Optional[TensorSize] = None) -> Tensor:
+    def __call__(self, x: Tensor, size: Optional[TensorSize] = None) -> Tensor:
         for resnet in self.resnets:
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = resnet(x)
 
         if self.upsampler is not None:

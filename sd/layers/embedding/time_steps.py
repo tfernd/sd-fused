@@ -59,7 +59,7 @@ class Timesteps(nn.Module):
         self.register_buffer("amplitude", amplitude, persistent=False)
         self.register_buffer("phase", phase, persistent=False)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         x = x[..., None]
 
         return self.amplitude * torch.sin(x * self.freq + self.phase)

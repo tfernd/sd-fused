@@ -23,3 +23,6 @@ class TimestepEmbedding(nn.Sequential):
         )
 
         super().__init__(*layers)
+
+    def __call__(self, x: Tensor) -> Tensor:
+        return super().forward(x)

@@ -71,11 +71,13 @@ class Encoder(nn.Module):
         conv_out_channels = 2 * out_channels if double_z else out_channels
         self.conv_out = conv(block_out_channels[-1], conv_out_channels)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         x = self.conv_in(x)
 
         # down
         for down_block in self.down_blocks:
+            assert isinstance(down_block, DownEncoderBlock2D)
+
             x = down_block(x)
 
         # middle

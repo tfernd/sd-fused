@@ -55,11 +55,13 @@ class DownBlock2D(nn.Module):
         else:
             self.downsampler = None
 
-    def forward(
+    def __call__(
         self, x: Tensor, *, temb: Optional[Tensor] = None
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet in self.resnets:
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = resnet(x, temb=temb)
             states.append(x)
         del temb

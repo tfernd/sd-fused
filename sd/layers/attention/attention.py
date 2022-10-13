@@ -12,7 +12,7 @@ def attention(
     k: Tensor,  # (B, T, C')
     v: Tensor,  # (B, T', C)
     chunks: Optional[int] = None,
-):
+) -> Tensor:
     k = k.transpose(1, 2)
 
     if chunks is None:

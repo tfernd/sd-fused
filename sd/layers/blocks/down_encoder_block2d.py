@@ -51,8 +51,10 @@ class DownEncoderBlock2D(nn.Module):
         else:
             self.downsampler = None
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         for resnet in self.resnets:
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = resnet(x)
 
         if self.downsampler is not None:

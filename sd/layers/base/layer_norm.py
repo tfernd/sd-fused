@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import torch.nn as nn
+from torch import Tensor
+
+from .half_weights import HalfWeights
 
 
-class LayerNorm(nn.LayerNorm):
+class LayerNorm(HalfWeights, nn.LayerNorm):
     def __init__(
         self,
         normalized_shape: int,
@@ -16,3 +19,6 @@ class LayerNorm(nn.LayerNorm):
             eps=eps,
             elementwise_affine=elementwise_affine,
         )
+
+    def __call__(self, x: Tensor) -> Tensor:
+        return super().half_weights_forward(x)

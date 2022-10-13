@@ -55,7 +55,7 @@ class UNetMidBlock2DCrossAttention(nn.Module):
                 )
             )
 
-    def forward(
+    def __call__(
         self,
         x: Tensor,
         *,
@@ -67,6 +67,9 @@ class UNetMidBlock2DCrossAttention(nn.Module):
         x = first_resnet(x, temb=temb)
 
         for attn, resnet in zip(self.attentions, rest_resnets):
+            assert isinstance(attn, SpatialTransformer)
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = attn(x, context=context)
             x = resnet(x, temb=temb)
         del context, temb

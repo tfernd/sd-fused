@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional
 
 import torch.nn as nn
+from torch import Tensor
 
 from .half_weights import HalfWeights
 
@@ -19,3 +20,6 @@ class Linear(HalfWeights, nn.Linear):
         super().__init__(
             in_features=in_features, out_features=out_features, bias=bias,
         )
+
+    def __call__(self, x: Tensor) -> Tensor:
+        return super().half_weights_forward(x)

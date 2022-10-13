@@ -51,7 +51,7 @@ class CrossAttention(nn.Module):
             "(B heads) T C -> B T (heads C)", heads=num_heads
         )
 
-    def forward(
+    def __call__(
         self, x: Tensor, *, context: Optional[Tensor] = None,
     ) -> Tensor:
 

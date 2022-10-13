@@ -58,7 +58,7 @@ class UpBlock2D(nn.Module):
         else:
             self.upsampler = None
 
-    def forward(
+    def __call__(
         self,
         x: Tensor,
         *,
@@ -69,6 +69,8 @@ class UpBlock2D(nn.Module):
         assert len(states) == self.num_layers
 
         for resnet, state in zip(self.resnets, states):
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = torch.cat([x, state], dim=1)
             del state
             x = resnet(x, temb=temb)

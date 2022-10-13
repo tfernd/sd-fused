@@ -50,12 +50,15 @@ class UNetMidBlock2D(nn.Module):
                 )
             )
 
-    def forward(self, x: Tensor, *, temb: Optional[Tensor] = None,) -> Tensor:
+    def __call__(self, x: Tensor, *, temb: Optional[Tensor] = None,) -> Tensor:
         first_resnet, *rest_resnets = self.resnets
 
         x = first_resnet(x, temb=temb)
 
         for attn, resnet in zip(self.attentions, rest_resnets):
+            assert isinstance(attn, SelfAttention)
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = attn(x)
             x = resnet(x, temb=temb)
         del temb

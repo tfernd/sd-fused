@@ -50,7 +50,7 @@ class SelfAttention(nn.Module):
             "(B heads) HW C -> B HW (heads C)", heads=num_heads
         )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         B, C, H, W = x.shape
 
         xin = x

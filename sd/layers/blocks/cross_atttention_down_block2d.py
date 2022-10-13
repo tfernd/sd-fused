@@ -72,7 +72,7 @@ class CrossAttentionDownBlock2D(nn.Module):
         else:
             self.downsampler = None
 
-    def forward(
+    def __call__(
         self,
         x: Tensor,
         *,
@@ -81,6 +81,9 @@ class CrossAttentionDownBlock2D(nn.Module):
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet, attn in zip(self.resnets, self.attentions):
+            assert isinstance(resnet, ResnetBlock2D)
+            assert isinstance(attn, SpatialTransformer)
+
             x = resnet(x, temb=temb)
             x = attn(x, context=context)
 

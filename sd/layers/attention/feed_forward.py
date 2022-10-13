@@ -28,5 +28,5 @@ class FeedForward(nn.Sequential):
 
         super().__init__(*layers)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         return x + super().forward(x)

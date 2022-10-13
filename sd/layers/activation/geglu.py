@@ -18,7 +18,7 @@ class GEGLU(nn.Module):
 
         self.proj = Linear(dim_in, 2 * dim_out)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         x, gate = self.proj(x).chunk(2, dim=-1)
 
         return F.gelu(gate).mul_(x)

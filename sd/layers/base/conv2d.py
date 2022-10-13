@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional
 
 import torch.nn as nn
+from torch import Tensor
 
 from .half_weights import HalfWeights
 
@@ -29,3 +30,6 @@ class Conv2d(HalfWeights, nn.Conv2d):
             groups=groups,
             bias=bias,
         )
+
+    def __call__(self, x: Tensor) -> Tensor:
+        return super().half_weights_forward(x)

@@ -51,7 +51,7 @@ class ResnetBlock2D(nn.Module):
         else:
             self.conv_shortcut = nn.Identity()
 
-    def forward(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
+    def __call__(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
         xin = self.conv_shortcut(x)
 
         # TODO create own layer

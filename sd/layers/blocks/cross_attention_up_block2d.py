@@ -74,7 +74,7 @@ class CrossAttentionUpBlock2D(nn.Module):
         else:
             self.upsampler = None
 
-    def forward(
+    def __call__(
         self,
         x: Tensor,
         *,
@@ -86,6 +86,9 @@ class CrossAttentionUpBlock2D(nn.Module):
         assert len(states) == self.num_layers
 
         for resnet, attn, state in zip(self.resnets, self.attentions, states):
+            assert isinstance(resnet, ResnetBlock2D)
+            assert isinstance(attn, SpatialTransformer)
+
             x = torch.cat([x, state], dim=1)
             del state
             x = resnet(x, temb=temb)

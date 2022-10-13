@@ -24,7 +24,7 @@ from ..layers.blocks import (
 
 
 class UNet2DConditional(HalfWeightsModel, nn.Module):
-    debug: bool = True
+    debug: bool = False
 
     def __init__(
         self,
@@ -170,7 +170,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             block_out_channels[0], out_channels, kernel_size=3, padding=1
         )
 
-    def forward(
+    def __call__(
         self, x: Tensor, timestep: int | Tensor, *, context: Tensor
     ) -> Tensor:
         B, C, H, W = x.shape
@@ -214,7 +214,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             # TODO a bit ugly this assert and the raise error
             assert isinstance(block, (CrossAttentionUpBlock2D, UpBlock2D))
 
-            states = tuple(all_states.pop() for _ in range(block.num_layers))
+            states = list(all_states.pop() for _ in range(block.num_layers))
 
             if isinstance(block, CrossAttentionUpBlock2D):
                 x = block(x, states=states, temb=temb, context=context)

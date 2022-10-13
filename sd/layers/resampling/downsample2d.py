@@ -51,7 +51,7 @@ class Downsample2D(nn.Module):
 
             self.conv = nn.AvgPool2d(kernel_size=stride, stride=stride)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         x = self.pad(x)
 
         return self.conv(x)

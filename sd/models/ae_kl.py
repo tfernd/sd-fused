@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Optional
 from typing_extensions import Self
 
 from pathlib import Path
@@ -17,7 +16,7 @@ from ..layers.auto_encoder.decoder import Decoder
 
 
 class AutoencoderKL(HalfWeightsModel, nn.Module):
-    debug: bool = True
+    debug: bool = False
 
     def __init__(
         self,
@@ -78,19 +77,6 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
         out = denormalize(out)
 
         return out
-
-    def forward(
-        self,
-        x: Tensor,
-        *,
-        sample: bool = False,
-        generator: Optional[torch.Generator] = None,
-    ) -> Tensor:
-        posterior = self.encode(x)
-
-        z = posterior.sample(generator) if sample else posterior.mean
-
-        return self.decode(z)
 
     @classmethod
     def load_sd(cls, path: str | Path) -> Self:

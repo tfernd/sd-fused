@@ -69,7 +69,7 @@ class Decoder(nn.Module):
         self.conv_act = SiLU()
         self.conv_out = conv(block_out_channels[0], out_channels)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def __call__(self, x: Tensor) -> Tensor:
         x = self.conv_in(x)
 
         # middle
@@ -77,6 +77,8 @@ class Decoder(nn.Module):
 
         # up
         for up_block in self.up_blocks:
+            assert isinstance(up_block, UpDecoderBlock2D)
+
             x = up_block(x)
 
         # post-process

@@ -42,7 +42,7 @@ class Upsample2D(nn.Module):
 
             self.conv = nn.Identity()
 
-    def forward(
+    def __call__(
         self, x: Tensor, *, size: Optional[int | TensorSize] = None
     ) -> Tensor:
         if self.kind == "transpose":

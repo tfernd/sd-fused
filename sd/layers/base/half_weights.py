@@ -16,7 +16,7 @@ class HalfWeights(nn.Module):
         else:
             self.float()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def half_weights_forward(self, x: Tensor) -> Tensor:
         if not self.use_half_weights:
             return super().forward(x)
 
