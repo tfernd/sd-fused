@@ -36,10 +36,3 @@ def attention(
         del attn
 
     return out
-
-
-q = torch.randn(8, 1024, 80)
-k = torch.randn(8, 1024, 80)
-v = torch.randn(8, 1024, 80)
-out = attention(q, k, v)
-out.shape
