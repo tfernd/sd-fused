@@ -16,7 +16,7 @@ from ..layers.auto_encoder.decoder import Decoder
 
 
 class AutoencoderKL(HalfWeightsModel, nn.Module):
-    debug: bool = False
+    debug: bool = True
 
     def __init__(
         self,
@@ -93,6 +93,32 @@ class AutoencoderKL(HalfWeightsModel, nn.Module):
         changes: list[tuple[str, str]] = [
             # up/down samplers
             (r"(up|down)samplers.0", r"\1sampler"),
+            # post_process
+            (
+                r"(decoder|encoder).conv_norm_out.(bias|weight)",
+                r"\1.post_process.0.\2",
+            ),
+            (
+                r"(decoder|encoder).conv_out.(bias|weight)",
+                r"\1.post_process.2.\2",
+            ),
+            # resnet-blocks pre/post-process
+            (
+                r"resnets.(\d).norm1.(bias|weight)",
+                r"resnets.\1.pre_process.0.\2",
+            ),
+            (
+                r"resnets.(\d).conv1.(bias|weight)",
+                r"resnets.\1.pre_process.2.\2",
+            ),
+            (
+                r"resnets.(\d).norm2.(bias|weight)",
+                r"resnets.\1.post_process.0.\2",
+            ),
+            (
+                r"resnets.(\d).conv2.(bias|weight)",
+                r"resnets.\1.post_process.2.\2",
+            ),
         ]
         # modify state-dict
         for key in list(state.keys()):

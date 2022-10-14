@@ -56,7 +56,9 @@ class SelfAttention(nn.Module):
         xin = x
 
         # normalization
+        # TODO group norm and query,... into single module?
         x = self.group_norm(x)
+
         x = self.channel_last_and_spatial_join(x)
 
         # key, query, value projections

@@ -7,7 +7,8 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..activation import SiLU
-from ..base import Conv2d, Linear, GroupNorm
+from ..base import Conv2d, Linear
+from .gn_silu_conv import GroupNormSiLUConv2d
 
 
 class ResnetBlock2D(nn.Module):
@@ -33,18 +34,20 @@ class ResnetBlock2D(nn.Module):
 
         conv3 = partial(Conv2d, kernel_size=3, padding=1)
 
-        self.norm1 = GroupNorm(groups, in_channels)
-        self.norm2 = GroupNorm(groups_out, out_channels)
+        self.pre_process = GroupNormSiLUConv2d(
+            groups, in_channels, out_channels, kernel_size=3, padding=1
+        )
 
-        self.conv1 = conv3(in_channels, out_channels)
-        self.conv2 = conv3(out_channels)
+        self.post_process = GroupNormSiLUConv2d(
+            groups_out, out_channels, out_channels, kernel_size=3, padding=1
+        )
 
+        # TODO join to layer below
+        self.nonlinearity = SiLU()
         if temb_channels is not None:
             self.time_emb_proj = Linear(temb_channels, out_channels)
         else:
             self.time_emb_proj = None
-
-        self.nonlinearity = SiLU()
 
         if in_channels != out_channels:
             self.conv_shortcut = Conv2d(in_channels, out_channels)
@@ -54,25 +57,18 @@ class ResnetBlock2D(nn.Module):
     def __call__(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
         xin = self.conv_shortcut(x)
 
-        # TODO create own layer
-        x = self.norm1(x)
-        x = self.nonlinearity(x)
-        x = self.conv1(x)
+        x = self.pre_process(x)
 
         if self.time_emb_proj is not None:
             assert temb is not None
 
             temb = self.nonlinearity(temb)
             temb = self.time_emb_proj(temb)
-            assert isinstance(temb, Tensor)  # needed for type checking below
             temb = temb[..., None, None]
 
             x = x + temb
             del temb
 
-        # TODO create own layer
-        x = self.norm2(x)
-        x = self.nonlinearity(x)
-        x = self.conv2(x)
+        x = self.post_process(x)
 
         return xin + x

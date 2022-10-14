@@ -24,7 +24,7 @@ from ..layers.blocks import (
 
 
 class UNet2DConditional(HalfWeightsModel, nn.Module):
-    debug: bool = False
+    debug: bool = True
 
     def __init__(
         self,
@@ -268,6 +268,23 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             # TimeEmbedding
             (r"time_embedding.linear_1.(weight|bias)", r"time_embedding.0.\1"),
             (r"time_embedding.linear_2.(weight|bias)", r"time_embedding.2.\1"),
+            # resnet-blocks pre/post-process
+            (
+                r"resnets.(\d).norm1.(bias|weight)",
+                r"resnets.\1.pre_process.0.\2",
+            ),
+            (
+                r"resnets.(\d).conv1.(bias|weight)",
+                r"resnets.\1.pre_process.2.\2",
+            ),
+            (
+                r"resnets.(\d).norm2.(bias|weight)",
+                r"resnets.\1.post_process.0.\2",
+            ),
+            (
+                r"resnets.(\d).conv2.(bias|weight)",
+                r"resnets.\1.post_process.2.\2",
+            ),
         ]
 
         # modify state-dict

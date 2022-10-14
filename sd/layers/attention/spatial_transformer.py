@@ -58,8 +58,10 @@ class SpatialTransformer(nn.Module):
 
         xin = x
 
+        # TODO group into single module
         x = self.norm(x)
         x = self.proj_in(x)
+
         x = self.channel_last_and_spatial_join(x)
 
         for block in self.transformer_blocks:

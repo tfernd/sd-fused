@@ -17,7 +17,10 @@ def attention(
     assert q.shape[2] == k.shape[2] == v.shape[2]
     assert k.shape[1] == v.shape[1]
 
+    k = k.contiguous()
     k = k.transpose(1, 2)
+
+    v = v.transpose(1, 2).contiguous().transpose(1, 2)
 
     if chunks is None:
         attn = softmax(q @ k, dim=-1)

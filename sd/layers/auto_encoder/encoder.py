@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from functools import partial
-
 import torch.nn as nn
 from torch import Tensor
 
-from ...layers.blocks import DownEncoderBlock2D, UNetMidBlock2D
-from ..activation import SiLU
-from ..base import Conv2d, GroupNorm
+from ..base import Conv2d
+from ..blocks import DownEncoderBlock2D, UNetMidBlock2D, GroupNormSiLUConv2d
 
 
 class Encoder(nn.Module):
@@ -32,9 +29,9 @@ class Encoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
-        conv = partial(Conv2d, kernel_size=3, padding=1)
-
-        self.conv_in = conv(in_channels, block_out_channels[0])
+        self.conv_in = Conv2d(
+            in_channels, block_out_channels[0], kernel_size=3, padding=1
+        )
 
         # down
         output_channel = block_out_channels[0]
@@ -65,11 +62,18 @@ class Encoder(nn.Module):
         )
 
         # out
-        self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[-1])
-        self.conv_act = SiLU()
-
         conv_out_channels = 2 * out_channels if double_z else out_channels
-        self.conv_out = conv(block_out_channels[-1], conv_out_channels)
+        self.post_process = GroupNormSiLUConv2d(
+            norm_num_groups,
+            block_out_channels[-1],
+            conv_out_channels,
+            kernel_size=3,
+            padding=1,
+        )
+
+        # self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[-1])
+        # self.conv_act = SiLU()
+        # self.conv_out = conv(block_out_channels[-1], conv_out_channels)
 
     def __call__(self, x: Tensor) -> Tensor:
         x = self.conv_in(x)
@@ -83,10 +87,4 @@ class Encoder(nn.Module):
         # middle
         x = self.mid_block(x)
 
-        # post-process
-        # TODO Join into single layer
-        x = self.conv_norm_out(x)
-        x = self.conv_act(x)
-        x = self.conv_out(x)
-
-        return x
+        return self.post_process(x)

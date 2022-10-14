@@ -57,6 +57,7 @@ class CrossAttention(nn.Module):
 
         xin = x
 
+        # TODO group norm and to_ into single module?
         x = self.norm(x)
 
         # key, query, value projections

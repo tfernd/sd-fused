@@ -7,7 +7,7 @@ from torch import Tensor
 from ..base import Linear, LayerNorm
 from ..activation import GEGLU
 
-
+# TODO Rename as LayerNormGEGLULinear and add to blocks
 class FeedForward(nn.Sequential):
     def __init__(
         self, dim: int, dim_out: Optional[int], *, mult: float,

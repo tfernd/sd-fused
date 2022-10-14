@@ -11,6 +11,7 @@ class GroupNorm(HalfWeights, nn.GroupNorm):
         self,
         num_groups: int,
         num_channels: int,
+        *,
         eps: float = 1e-6,
         affine: bool = True,
     ) -> None:

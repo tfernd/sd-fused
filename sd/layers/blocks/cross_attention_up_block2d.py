@@ -81,6 +81,7 @@ class CrossAttentionUpBlock2D(nn.Module):
         states: list[Tensor],
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
+        # TODO this is never used, delete all mentions
         size: Optional[TensorSize] = None,
     ) -> Tensor:
         assert len(states) == self.num_layers

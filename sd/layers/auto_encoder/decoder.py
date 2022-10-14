@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from functools import partial
-
 import torch.nn as nn
 from torch import Tensor
 
-from ..activation import SiLU
-from ...layers.blocks import UpDecoderBlock2D, UNetMidBlock2D
-from ..base import Conv2d, GroupNorm
+from ..base import Conv2d
+from ..blocks import (
+    UpDecoderBlock2D,
+    UNetMidBlock2D,
+    GroupNormSiLUConv2d,
+)
 
 
 class Decoder(nn.Module):
@@ -30,9 +31,9 @@ class Decoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
-        conv = partial(Conv2d, kernel_size=3, padding=1)
-
-        self.conv_in = conv(in_channels, block_out_channels[-1])
+        self.conv_in = Conv2d(
+            in_channels, block_out_channels[-1], kernel_size=3, padding=1
+        )
 
         # mid
         self.mid_block = UNetMidBlock2D(
@@ -65,9 +66,13 @@ class Decoder(nn.Module):
             prev_output_channel = output_channel
 
         # out
-        self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[0])
-        self.conv_act = SiLU()
-        self.conv_out = conv(block_out_channels[0], out_channels)
+        self.post_process = GroupNormSiLUConv2d(
+            norm_num_groups,
+            block_out_channels[0],
+            out_channels,
+            kernel_size=3,
+            padding=1,
+        )
 
     def __call__(self, x: Tensor) -> Tensor:
         x = self.conv_in(x)
@@ -81,10 +86,4 @@ class Decoder(nn.Module):
 
             x = up_block(x)
 
-        # post-process
-        # TODO join into single layer
-        x = self.conv_norm_out(x)
-        x = self.conv_act(x)
-        x = self.conv_out(x)
-
-        return x
+        return self.post_process(x)

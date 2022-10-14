@@ -11,3 +11,6 @@ from .up_decoder_block2d import UpDecoderBlock2D
 
 from .unet_mid_block2d import UNetMidBlock2D
 from .unet_mid_block2d_cross_attention import UNetMidBlock2DCrossAttention
+
+
+from .gn_silu_conv import GroupNormSiLUConv2d
