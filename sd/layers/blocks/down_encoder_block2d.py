@@ -49,7 +49,7 @@ class DownEncoderBlock2D(nn.Module):
                 padding=downsample_padding,
             )
         else:
-            self.downsampler = None
+            self.downsampler = nn.Identity()
 
     def __call__(self, x: Tensor) -> Tensor:
         for resnet in self.resnets:
@@ -57,7 +57,6 @@ class DownEncoderBlock2D(nn.Module):
 
             x = resnet(x)
 
-        if self.downsampler is not None:
-            x = self.downsampler(x)
+        x = self.downsampler(x)
 
         return x
