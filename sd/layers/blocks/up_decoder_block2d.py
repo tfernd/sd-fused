@@ -45,7 +45,7 @@ class UpDecoderBlock2D(nn.Module):
                 channels=out_channels, kind="conv", out_channels=out_channels,
             )
         else:
-            self.upsampler = None # TODO nn.Identity
+            self.upsampler = None  # TODO nn.Identity
 
     def __call__(self, x: Tensor, size: Optional[TensorSize] = None) -> Tensor:
         for resnet in self.resnets:

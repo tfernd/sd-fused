@@ -20,6 +20,9 @@ class FeedForward(nn.Sequential):
         inner_dim = int(dim * mult)
         dim_out = dim_out or dim
 
+        # TODO remove dim_out, not used anyway because of the residual
+        assert dim == dim_out
+
         layers = (
             LayerNorm(dim),
             GEGLU(dim, inner_dim),
