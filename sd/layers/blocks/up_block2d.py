@@ -56,7 +56,7 @@ class UpBlock2D(nn.Module):
                 channels=out_channels, kind="conv", out_channels=None,
             )
         else:
-            self.upsampler = None  # TODO nn.Identity
+            self.upsampler = None  # TODO nn.Identity()
 
     def __call__(
         self,
@@ -64,6 +64,7 @@ class UpBlock2D(nn.Module):
         *,
         states: list[Tensor],
         temb: Optional[Tensor] = None,
+        # TODO remove size, not used
         size: Optional[TensorSize] = None,
     ) -> Tensor:
         assert len(states) == self.num_layers

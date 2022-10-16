@@ -18,6 +18,7 @@ class ClipEmbedding:
     def __init__(
         self, tokenizer_path: str | Path, text_encoder_path: str | Path
     ) -> None:
+        # no need for CUDA for simple embeddings...
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)
 
@@ -39,6 +40,8 @@ class ClipEmbedding:
         kwargs = dict(
             padding="max_length", truncation=True, return_tensors="pt"
         )
+
+        # TODO give error if truncated?
 
         ids = self.tokenizer(text, **kwargs)["input_ids"]
         emb = self.text_encoder(ids)[0]  # type: ignore

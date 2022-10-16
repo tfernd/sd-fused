@@ -71,20 +71,14 @@ class Encoder(nn.Module):
             padding=1,
         )
 
-        # self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[-1])
-        # self.conv_act = SiLU()
-        # self.conv_out = conv(block_out_channels[-1], conv_out_channels)
-
     def __call__(self, x: Tensor) -> Tensor:
         x = self.conv_in(x)
 
-        # down
         for down_block in self.down_blocks:
             assert isinstance(down_block, DownEncoderBlock2D)
 
             x = down_block(x)
 
-        # middle
         x = self.mid_block(x)
 
         return self.post_process(x)

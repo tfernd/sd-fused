@@ -28,12 +28,13 @@ class Upsample2D(nn.Module):
 
         out_channels = out_channels or channels
 
+        # TODO always conv? remove other options
         if kind == "conv":
             self.conv = Conv2d(
                 channels, out_channels, kernel_size=3, padding=1
             )
+        # TODO never used for SD
         elif kind == "transpose":
-            # never used for SD
             self.conv = nn.ConvTranspose2d(
                 channels, out_channels, kernel_size=4, stride=2, padding=1
             )
@@ -42,6 +43,7 @@ class Upsample2D(nn.Module):
 
             self.conv = nn.Identity()
 
+    # TODO size never used? remove it them
     def __call__(
         self, x: Tensor, *, size: Optional[int | TensorSize] = None
     ) -> Tensor:

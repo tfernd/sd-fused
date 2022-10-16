@@ -33,9 +33,10 @@ class SpatialTransformer(nn.Module):
 
         inner_dim = num_heads * dim_head
 
+        # TODO fuse these two operations
         self.norm = GroupNorm(num_groups, in_channels)
-
         self.proj_in = Conv2d(in_channels, inner_dim)
+
         self.proj_out = Conv2d(inner_dim, in_channels)
 
         self.transformer_blocks = nn.ModuleList()
@@ -58,7 +59,6 @@ class SpatialTransformer(nn.Module):
 
         xin = x
 
-        # TODO group into single module
         x = self.norm(x)
         x = self.proj_in(x)
 

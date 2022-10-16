@@ -76,11 +76,8 @@ class Decoder(nn.Module):
 
     def __call__(self, x: Tensor) -> Tensor:
         x = self.conv_in(x)
-
-        # middle
         x = self.mid_block(x)
 
-        # up
         for up_block in self.up_blocks:
             assert isinstance(up_block, UpDecoderBlock2D)
 

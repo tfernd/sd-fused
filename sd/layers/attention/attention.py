@@ -20,6 +20,7 @@ def attention(
     k = k.contiguous()
     k = k.transpose(1, 2)
 
+    # Does this helps speed up by coalescence?
     v = v.transpose(1, 2).contiguous().transpose(1, 2)
 
     if chunks is None:
@@ -27,6 +28,8 @@ def attention(
         del q, k
 
         return attn @ v
+
+    # TODO auto, see how much free memory is available?
 
     # split-attention score
     shape = (q.size(0), q.size(1), k.size(1))

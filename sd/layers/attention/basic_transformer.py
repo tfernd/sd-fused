@@ -37,7 +37,7 @@ class BasicTransformer(nn.Module):
             context_dim=context_dim,
         )
 
-        self.ff = FeedForward(dim, dim_out=None, mult=4)
+        self.ff = FeedForward(dim, mult=4)
 
     def __call__(
         self, x: Tensor, *, context: Optional[Tensor] = None,

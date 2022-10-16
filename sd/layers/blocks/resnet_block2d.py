@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import Optional
 
-from functools import partial
-
 import torch.nn as nn
 from torch import Tensor
+
+from einops.layers.torch import Rearrange
 
 from ..activation import SiLU
 from ..base import Conv2d, Linear
@@ -32,7 +32,10 @@ class ResnetBlock2D(nn.Module):
         out_channels = out_channels or in_channels
         groups_out = groups_out or groups
 
-        conv3 = partial(Conv2d, kernel_size=3, padding=1)
+        if in_channels != out_channels:
+            self.conv_shortcut = Conv2d(in_channels, out_channels)
+        else:
+            self.conv_shortcut = nn.Identity()
 
         self.pre_process = GroupNormSiLUConv2d(
             groups, in_channels, out_channels, kernel_size=3, padding=1
@@ -42,17 +45,17 @@ class ResnetBlock2D(nn.Module):
             groups_out, out_channels, out_channels, kernel_size=3, padding=1
         )
 
-        # TODO join to layer below
         self.nonlinearity = SiLU()
         if temb_channels is not None:
+            # TODO join to layer below
+            # self.time_emb_proj = nn.Sequential(
+            #     SiLU(),
+            #     Linear(temb_channels, out_channels),
+            #     Rearrange('b c -> b c 1 1'),
+            # )
             self.time_emb_proj = Linear(temb_channels, out_channels)
         else:
             self.time_emb_proj = None
-
-        if in_channels != out_channels:
-            self.conv_shortcut = Conv2d(in_channels, out_channels)
-        else:
-            self.conv_shortcut = nn.Identity()
 
     def __call__(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
         xin = self.conv_shortcut(x)

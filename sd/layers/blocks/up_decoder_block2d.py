@@ -47,6 +47,7 @@ class UpDecoderBlock2D(nn.Module):
         else:
             self.upsampler = None  # TODO nn.Identity
 
+    # TODO remove size
     def __call__(self, x: Tensor, size: Optional[TensorSize] = None) -> Tensor:
         for resnet in self.resnets:
             assert isinstance(resnet, ResnetBlock2D)

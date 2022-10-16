@@ -14,7 +14,7 @@ from .attention import attention
 
 
 class SelfAttention(nn.Module):
-    attention_chunks: Optional[int] = None  # ! TODO Auto?
+    attention_chunks: Optional[int] = None
 
     def __init__(
         self,
@@ -32,13 +32,12 @@ class SelfAttention(nn.Module):
         num_head_channels = num_head_channels or num_channels
         num_heads = num_channels // num_head_channels
 
-        self.scale = math.pow(num_head_channels, -1 / 4)
-
+        # TODO These 4+1 operations can be fused
         self.group_norm = GroupNorm(num_groups, num_channels)
-
         self.query = Linear(num_channels)
         self.key = Linear(num_channels)
         self.value = Linear(num_channels)
+        self.scale = math.pow(num_head_channels, -1 / 4)
 
         self.proj_attn = Linear(num_channels)
 
@@ -56,7 +55,6 @@ class SelfAttention(nn.Module):
         xin = x
 
         # normalization
-        # TODO group norm and query,... into single module?
         x = self.group_norm(x)
 
         x = self.channel_last_and_spatial_join(x)

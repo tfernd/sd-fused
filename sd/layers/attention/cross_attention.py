@@ -13,7 +13,7 @@ from .attention import attention
 
 
 class CrossAttention(nn.Module):
-    attention_chunks: Optional[int] = None  # ! TODO Auto?
+    attention_chunks: Optional[int] = None
 
     def __init__(
         self,
@@ -33,13 +33,12 @@ class CrossAttention(nn.Module):
         self.num_heads = num_heads
         self.dim_head = dim_head
 
-        self.scale = math.pow(dim_head, -1 / 4)
-
+        # TODO These 4+1 operations can be fused
         self.norm = LayerNorm(query_dim)
-
         self.to_q = Linear(query_dim, inner_dim, bias=False)
         self.to_k = Linear(context_dim, inner_dim, bias=False)
         self.to_v = Linear(context_dim, inner_dim, bias=False)
+        self.scale = math.pow(dim_head, -1 / 4)
 
         self.to_out = Linear(inner_dim, query_dim)
 
@@ -57,7 +56,6 @@ class CrossAttention(nn.Module):
 
         xin = x
 
-        # TODO group norm and to_ into single module?
         x = self.norm(x)
 
         # key, query, value projections

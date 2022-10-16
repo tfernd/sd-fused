@@ -72,7 +72,7 @@ class CrossAttentionUpBlock2D(nn.Module):
                 channels=out_channels, out_channels=out_channels, kind="conv",
             )
         else:
-            self.upsampler = None
+            self.upsampler = None  # TODO nn.Identity()
 
     def __call__(
         self,
