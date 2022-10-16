@@ -42,6 +42,7 @@ The idea is to combine multiple models in the attempt to still retain a bit of e
 pipeline.unet_scale('.pretrained/other-model', scale=0.9)
 ```
 
-<!-- 
 ## Installation
-TODO create setup file! -->
+```python
+!pip install -U git+https://github.com/tfernd/sd
+```
