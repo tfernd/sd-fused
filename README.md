@@ -43,6 +43,6 @@ pipeline.unet_scale('.pretrained/other-model', scale=0.9)
 ```
 
 ## Installation
-```python
-!pip install -U git+https://github.com/tfernd/sd
+```bash
+pip install -U git+https://github.com/tfernd/sd
 ```
