@@ -1,6 +1,9 @@
+typing_extensions
 ipywidgets>=7,<8
+torch#>=1.12
 transformers
 einops
-scipy
-ftfy
-typing_extensions
+tqdm
+Pillow
+scipy # needed?
+ftfy # needed?
