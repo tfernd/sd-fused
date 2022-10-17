@@ -21,7 +21,7 @@ Good luck getting any typing information on that.
 
 To fix these issues and the many bugs that come with such implementation, I decided to re-code SD from the ground up with [diffusers](https://github.com/huggingface/diffusers) in mind for HEAVY "inspiration".
 Now everything has its own file, things are pretty, well-coded (wink), and might serve as a good guide for anyone trying to implement such a system.
-Try reading the implementation of [DDIM scheduler](https://github.com/tfernd/sd/blob/master/sd/scheduler/ddim.py) and compare it with the [original](https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py) one (85 lines of code instead of 305).
+Try reading the implementation of [DDIM scheduler](https://github.com/tfernd/sd-fused/blob/master/sd_fused/scheduler/ddim.py) and compare it with the [original](https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py) one (85 lines of code instead of 305).
 
 These new rewritting comes with many good features, such as renaming parameters and layers to be more uniform.
 Better handling of internal states passed by up/down-blocks.
@@ -44,5 +44,27 @@ pipeline.unet_scale('.pretrained/other-model', scale=0.9)
 
 ## Installation
 ```bash
-pip install -U git+https://github.com/tfernd/sd
+pip install -U git+https://github.com/tfernd/sd-fused
+```
+## Text2Image generation
+
+```python
+from IPython.display import display
+from sd_fused.app import StableDiffusion
+
+pipeline = StableDiffusion('.pretrained/stable-diffusion-v1.4')
+
+imgs = pipeline.text2img(
+    prompt=f'''
+    portrait of zombie, digital art, detailed, artistic
+    ''',
+    negative_prompt='old man',
+    steps=35,
+    scale=11,
+    height=512,
+    width=512,
+    seed=42,
+)
+for img in imgs:
+    display(img)
 ```

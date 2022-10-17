@@ -39,7 +39,7 @@ class DDIMScheduler:
         steps += 1
 
         # trimmed timesteps for selection
-        t = torch.linspace(0, 1, steps).flip(0)
+        t = torch.linspace(1, 0, steps)
         timesteps = t.mul(trained_steps - 1).ceil().long()
 
         # cummulative ᾱ trimmed
@@ -54,10 +54,10 @@ class DDIMScheduler:
         σ = torch.sqrt(ϖ[1:] / ϖ[:-1] * (1 - ᾱ[:-1] / ᾱ[1:]))
 
         # use device/dtype
+        self.timesteps = timesteps.to(device=device)
         self.ᾱ = ᾱ.to(device=device, dtype=dtype)
         self.ϖ = ϖ.to(device=device, dtype=dtype)
         self.σ = σ.to(device=device, dtype=dtype)
-        self.timesteps = timesteps.to(device=device)
 
     def step(
         self, pred_noise: Tensor, latents: Tensor, i: int, eta: float = 0,
