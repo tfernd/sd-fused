@@ -51,7 +51,12 @@ class CrossAttention(nn.Module):
         )
 
     def __call__(
-        self, x: Tensor, *, context: Optional[Tensor] = None,
+        self,
+        x: Tensor,
+        *,
+        context: Optional[Tensor] = None,
+        # TODO add support for context-weighting to force SD to pay more or less attention to some words
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
 
         xin = x
