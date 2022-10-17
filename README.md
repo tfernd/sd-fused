@@ -52,14 +52,20 @@ pip install -U git+https://github.com/tfernd/sd-fused
 from IPython.display import display
 from sd_fused.app import StableDiffusion
 
+# Assuming you downloaded SD and put in the folder below
 pipeline = StableDiffusion('.pretrained/stable-diffusion-v1.4')
+
+# If you have a GPU with 3-4 Gb use the line below
+# pipeline.set_low_ram().half_weights().cuda()
+pipeline.half().cuda()
+pipeline.split_attention(cross_attention_chunks=1)
 
 imgs = pipeline.text2img(
     prompt=f'''
     portrait of zombie, digital art, detailed, artistic
     ''',
     negative_prompt='old man',
-    steps=35,
+    steps=28,
     scale=11,
     height=512,
     width=512,
@@ -68,3 +74,5 @@ imgs = pipeline.text2img(
 for img in imgs:
     display(img)
 ```
+
+![portrait of zombie, digital art, detailed, artistic](asserts/text2img.png)
