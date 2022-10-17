@@ -75,4 +75,4 @@ for img in imgs:
     display(img)
 ```
 
-![portrait of zombie, digital art, detailed, artistic](asserts/text2img.png)
+![portrait of zombie, digital art, detailed, artistic](assets/text2img.png)
