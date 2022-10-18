@@ -304,11 +304,13 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             in_old = set(old_keys) - set(new_keys)
             in_new = set(new_keys) - set(old_keys)
 
-            with open("in-old.txt", "w") as f:
-                f.write("\n".join(sorted(list(in_old))))
+            if len(in_old) > 0:
+                with open("in-old.txt", "w") as f:
+                    f.write("\n".join(sorted(list(in_old))))
 
-            with open("in-new.txt", "w") as f:
-                f.write("\n".join(sorted(list(in_new))))
+            if len(in_new) > 0:
+                with open("in-new.txt", "w") as f:
+                    f.write("\n".join(sorted(list(in_new))))
 
         model.load_state_dict(state)
 
