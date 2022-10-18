@@ -11,7 +11,9 @@ def attention(
     q: Tensor,  # (B, T, C)
     k: Tensor,  # (B, T', C)
     v: Tensor,  # (B, T', C)
+    *,
     chunks: Optional[int] = None,
+    weights: Optional[Tensor] = None
 ) -> Tensor:
     assert q.shape[0] == k.shape[0] == v.shape[0]
     assert q.shape[2] == k.shape[2] == v.shape[2]

@@ -55,8 +55,7 @@ class CrossAttention(nn.Module):
         x: Tensor,
         *,
         context: Optional[Tensor] = None,
-        # TODO add support for context-weighting to force SD to pay more or less attention to some words
-        weights: Optional[Tensor] = None,
+        context_weights: Optional[Tensor] = None,
     ) -> Tensor:
 
         xin = x
@@ -73,9 +72,20 @@ class CrossAttention(nn.Module):
         q = q * self.scale
         k = k * self.scale
 
-        # attention score
-        x = attention(q, k, v, self.attention_chunks)
+        x = attention(
+            q, k, v, chunks=self.attention_chunks, weights=context_weights,
+        )
         del q, k, v
         x = self.heads_to_channel(x)
 
         return xin + self.to_out(x)
+
+
+BasicTransformer
+SpatialTransformer
+
+CrossAttentionUpBlock2D
+CrossAttentionDownBlock2D
+UNetMidBlock2DCrossAttention
+
+UNet2DConditional

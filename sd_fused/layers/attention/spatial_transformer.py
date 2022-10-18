@@ -53,7 +53,11 @@ class SpatialTransformer(nn.Module):
         self.channel_last_and_spatial_join = Rearrange("B C H W -> B (H W) C")
 
     def __call__(
-        self, x: Tensor, *, context: Optional[Tensor] = None
+        self,
+        x: Tensor,
+        *,
+        context: Optional[Tensor] = None,
+        context_weights: Optional[Tensor] = None,
     ) -> Tensor:
         B, C, H, W = x.shape
 
@@ -67,7 +71,7 @@ class SpatialTransformer(nn.Module):
         for block in self.transformer_blocks:
             assert isinstance(block, BasicTransformer)
 
-            x = block(x, context=context)
+            x = block(x, context=context, context_weights=context_weights)
         del context
 
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)

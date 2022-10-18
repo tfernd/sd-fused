@@ -40,10 +40,14 @@ class BasicTransformer(nn.Module):
         self.ff = FeedForward(dim, mult=4)
 
     def __call__(
-        self, x: Tensor, *, context: Optional[Tensor] = None,
+        self,
+        x: Tensor,
+        *,
+        context: Optional[Tensor] = None,
+        context_weights: Optional[Tensor] = None,
     ) -> Tensor:
         x = self.attn1(x)
-        x = self.attn2(x, context=context)
+        x = self.attn2(x, context=context, context_weights=context_weights)
         del context
         x = self.ff(x)
 

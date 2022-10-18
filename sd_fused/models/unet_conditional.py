@@ -171,7 +171,12 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         )
 
     def __call__(
-        self, x: Tensor, timestep: int | Tensor, *, context: Tensor
+        self,
+        x: Tensor,
+        timestep: int | Tensor,
+        *,
+        context: Tensor,
+        context_weights: Optional[Tensor] = None,
     ) -> Tensor:
         B, C, H, W = x.shape
 
@@ -197,7 +202,12 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             assert isinstance(block, (CrossAttentionDownBlock2D, DownBlock2D))
 
             if isinstance(block, CrossAttentionDownBlock2D):
-                x, states = block(x, temb=temb, context=context)
+                x, states = block(
+                    x,
+                    temb=temb,
+                    context=context,
+                    context_weights=context_weights,
+                )
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
             else:
@@ -207,7 +217,9 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             del states
 
         # 4. mid
-        x = self.mid_block(x, temb=temb, context=context)
+        x = self.mid_block(
+            x, temb=temb, context=context, context_weights=context_weights
+        )
 
         # 5. up
         for block in self.up_blocks:
@@ -217,7 +229,13 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             states = list(all_states.pop() for _ in range(block.num_layers))
 
             if isinstance(block, CrossAttentionUpBlock2D):
-                x = block(x, states=states, temb=temb, context=context)
+                x = block(
+                    x,
+                    states=states,
+                    temb=temb,
+                    context=context,
+                    context_weights=context_weights,
+                )
             elif isinstance(block, UpBlock2D):
                 x = block(x, states=states, temb=temb)
             else:

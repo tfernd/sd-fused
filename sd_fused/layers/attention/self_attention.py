@@ -70,7 +70,7 @@ class SelfAttention(nn.Module):
         k = k * self.scale
 
         # attention score
-        x = attention(q, k, v, self.attention_chunks)
+        x = attention(q, k, v, chunks=self.attention_chunks)
         del q, k, v
         x = self.proj_attn(self.heads_to_channel(x))
 

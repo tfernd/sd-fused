@@ -78,6 +78,7 @@ class CrossAttentionDownBlock2D(nn.Module):
         *,
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
+        context_weights: Optional[Tensor] = None,
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet, attn in zip(self.resnets, self.attentions):
@@ -85,7 +86,7 @@ class CrossAttentionDownBlock2D(nn.Module):
             assert isinstance(attn, SpatialTransformer)
 
             x = resnet(x, temb=temb)
-            x = attn(x, context=context)
+            x = attn(x, context=context, context_weights=context_weights)
 
             states.append(x)
         del temb, context

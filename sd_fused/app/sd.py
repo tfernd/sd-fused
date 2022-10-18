@@ -152,6 +152,7 @@ class StableDiffusion:
         latents = self.denoise_latents(scheduler, latents, context, scale, eta)
 
         # decode latent space
+        # TODO make it on its own function `from_latents`
         out = self.vae.decode(latents.div(MAGIC)).cpu()
 
         # TODO its own function!

@@ -61,6 +61,7 @@ class UNetMidBlock2DCrossAttention(nn.Module):
         *,
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
+        context_weights: Optional[Tensor] = None,
     ) -> Tensor:
         first_resnet, *rest_resnets = self.resnets
 
@@ -70,7 +71,7 @@ class UNetMidBlock2DCrossAttention(nn.Module):
             assert isinstance(attn, SpatialTransformer)
             assert isinstance(resnet, ResnetBlock2D)
 
-            x = attn(x, context=context)
+            x = attn(x, context=context, context_weights=context_weights)
             x = resnet(x, temb=temb)
         del context, temb
 

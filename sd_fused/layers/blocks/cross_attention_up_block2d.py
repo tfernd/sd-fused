@@ -81,6 +81,7 @@ class CrossAttentionUpBlock2D(nn.Module):
         states: list[Tensor],
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
+        context_weights: Optional[Tensor] = None,
         # TODO this is never used, delete all mentions
         size: Optional[TensorSize] = None,
     ) -> Tensor:
@@ -93,7 +94,7 @@ class CrossAttentionUpBlock2D(nn.Module):
             x = torch.cat([x, state], dim=1)
             del state
             x = resnet(x, temb=temb)
-            x = attn(x, context=context)
+            x = attn(x, context=context, context_weights=context_weights)
         del states, temb, context
 
         if self.upsampler is not None:
