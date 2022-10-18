@@ -79,13 +79,3 @@ class CrossAttention(nn.Module):
         x = self.heads_to_channel(x)
 
         return xin + self.to_out(x)
-
-
-BasicTransformer
-SpatialTransformer
-
-CrossAttentionUpBlock2D
-CrossAttentionDownBlock2D
-UNetMidBlock2DCrossAttention
-
-UNet2DConditional

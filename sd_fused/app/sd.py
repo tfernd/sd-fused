@@ -24,7 +24,7 @@ MAGIC = 0.18215
 
 
 class StableDiffusion:
-    version: str = "0.2.0"
+    version: str = "0.3.0"
     repo: str = "https://github.com/tfernd/sd"
 
     low_ram: bool = False
@@ -59,6 +59,7 @@ class StableDiffusion:
         ):
             pnew = new_param.data.to(device=self.device, dtype=self.dtype)
 
+            # TODO add support for other types of scaling
             if scale == 1:
                 param.data = pnew
             else:
@@ -116,6 +117,7 @@ class StableDiffusion:
     ) -> Self:
         """Split cross-attention computation into chunks."""
 
+        # TODO split vae too
         self.unet.split_attention(cross_attention_chunks)
 
         return self
@@ -133,7 +135,7 @@ class StableDiffusion:
         width: int = 512,
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
-    ) -> list[Image.Image]:
+    ) -> list[tuple[Image.Image, Path]]:
         kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
 
         # allowed sizes are multiple of 64
@@ -144,12 +146,16 @@ class StableDiffusion:
             steps=steps, device=self.device, dtype=self.dtype
         )
         batch_size = fix_batch_size(seed, batch_size)
-        context = self.get_context(prompt, negative_prompt, batch_size)
+        context, context_weight = self.get_context(
+            prompt, negative_prompt, batch_size
+        )
 
         shape = (batch_size, 4, height // 8, width // 8)
         latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
 
-        latents = self.denoise_latents(scheduler, latents, context, scale, eta)
+        latents = self.denoise_latents(
+            scheduler, latents, context, context_weight, scale, eta
+        )
 
         # decode latent space
         # TODO make it on its own function `from_latents`
@@ -161,109 +167,128 @@ class StableDiffusion:
         images = [Image.fromarray(v) for v in out]
 
         self.save_dir.mkdir(parents=True, exist_ok=True)
+        paths: list[Path] = []
         for seed, image in zip(seeds, images):
             metadata = self._create_metadata(seed=seed, **kwargs)
 
             # TODO temporary file name for now
             ID = random.randint(0, 2 ** 64)
             path = self.save_dir / f"{ID:x}.png"
+            paths.append(path)
 
             image.save(path, bitmap_format="png", pnginfo=metadata)
 
-        return images
+        return list(zip(images, paths))
 
-    @torch.no_grad()
-    def img2img(
-        self,
-        *,
-        img: str,
-        prompt: Optional[str] = None,
-        negative_prompt: str = "",
-        eta: float = 0,
-        steps: int = 32,
-        scale: float = 7.5,
-        strength: float = 0.5,
-        height: int = 512,
-        width: int = 512,
-        seed: Optional[int | list[int]] = None,
-        batch_size: int = 1,
-        mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
-    ) -> list[Image.Image]:
-        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
+    # TODO re-implement
+    #     @torch.no_grad()
+    #     def img2img(
+    #         self,
+    #         *,
+    #         img: str,
+    #         prompt: Optional[str] = None,
+    #         negative_prompt: str = "",
+    #         eta: float = 0,
+    #         steps: int = 32,
+    #         scale: float = 7.5,
+    #         strength: float = 0.5,
+    #         height: int = 512,
+    #         width: int = 512,
+    #         seed: Optional[int | list[int]] = None,
+    #         batch_size: int = 1,
+    #         mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
+    #     ) -> list[Image.Image]:
+    #         kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
 
-        # allowed sizes are multiple of 64
-        assert height % 64 == 0
-        assert width % 64 == 0
+    #         # allowed sizes are multiple of 64
+    #         assert height % 64 == 0
+    #         assert width % 64 == 0
 
-        scheduler = DDIMScheduler(
-            steps=steps, device=self.device, dtype=self.dtype
-        )
-        batch_size = fix_batch_size(seed, batch_size)
-        context = self.get_context(prompt, negative_prompt, batch_size)
+    #         scheduler = DDIMScheduler(
+    #             steps=steps, device=self.device, dtype=self.dtype
+    #         )
+    #         batch_size = fix_batch_size(seed, batch_size)
+    #         context = self.get_context(prompt, negative_prompt, batch_size)
 
-        shape = (batch_size, 4, height // 8, width // 8)
-        noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
+    #         shape = (batch_size, 4, height // 8, width // 8)
+    #         noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
 
-        # TODO make into its own function
-        # latents from image
-        assert mode == "resize"
-        data = image2tensor(img, size=(height, width), device=self.device)
-        img_latents = self.vae.encode(data).mean
-        img_latents *= MAGIC
+    #         # TODO make into its own function
+    #         # latents from image
+    #         assert mode == "resize"
+    #         data = image2tensor(img, size=(height, width), device=self.device)
+    #         img_latents = self.vae.encode(data).mean
+    #         img_latents *= MAGIC
 
-        k = scheduler.cutoff_index(strength)
-        latents = scheduler.add_noise(img_latents, noise, k)
+    #         k = scheduler.cutoff_index(strength)
+    #         latents = scheduler.add_noise(img_latents, noise, k)
 
-        latents = self.denoise_latents(
-            scheduler, latents, context, scale, eta, k=k
-        )
+    #         latents = self.denoise_latents(
+    #             scheduler, latents, context, scale, eta, k=k
+    #         )
 
-        # decode latent space
-        out = self.vae.decode(latents.div(MAGIC)).cpu()
-        clear_cuda()
+    #         # decode latent space
+    #         out = self.vae.decode(latents.div(MAGIC)).cpu()
+    #         clear_cuda()
 
-        # TODO remove code duplication
-        # create images
-        out = rearrange(out, "B C H W -> B H W C").numpy()
-        images = [Image.fromarray(v) for v in out]
+    #         # TODO remove code duplication
+    #         # create images
+    #         out = rearrange(out, "B C H W -> B H W C").numpy()
+    #         images = [Image.fromarray(v) for v in out]
 
-        self.save_dir.mkdir(parents=True, exist_ok=True)
-        for seed, image in zip(seeds, images):
-            metadata = self._create_metadata(seed=seed, **kwargs)
+    #         self.save_dir.mkdir(parents=True, exist_ok=True)
+    #         for seed, image in zip(seeds, images):
+    #             metadata = self._create_metadata(seed=seed, **kwargs)
 
-            # TODO temporary file name for now
-            ID = random.randint(0, 2 ** 64)
-            path = self.save_dir / f"{ID:x}.png"
+    #             # TODO temporary file name for now
+    #             ID = random.randint(0, 2 ** 64)
+    #             path = self.save_dir / f"{ID:x}.png"
 
-            image.save(path, bitmap_format="png", pnginfo=metadata)
-            # TODO add copy of img to image
+    #             image.save(path, bitmap_format="png", pnginfo=metadata)
+    #             # TODO add copy of img to image
 
-        return images
+    #         return images
 
     @torch.no_grad()
     def pred_noise(
         self,
         latents: Tensor,
         timestep: int,
-        context: Tensor | tuple[Tensor, Tensor],
+        context: tuple[Optional[Tensor], Tensor],
+        context_weights: Optional[Tensor],
         scale: float,
     ) -> Tensor:
         """Predict the noise from latents, context and current timestep."""
 
+        text_emb, neg_emb = context
+
         # unconditional
-        if isinstance(context, Tensor):
-            return self.unet(latents, timestep=timestep, context=context)
+        if text_emb is None:
+            return self.unet(latents, timestep=timestep, context=neg_emb)
 
         if self.low_ram:
-            text_emb, neg_emb = context
-
-            pred_noise_text = self.unet(latents, timestep, context=text_emb)
-            pred_noise_neg = self.unet(latents, timestep, context=neg_emb)
+            pred_noise_text = self.unet(
+                latents,
+                timestep,
+                context=text_emb,
+                context_weights=context_weights,
+            )
+            pred_noise_neg = self.unet(
+                latents,
+                timestep,
+                context=neg_emb,
+                context_weights=context_weights,
+            )
         else:
-            context = torch.cat(context, dim=0)
+            emb = torch.cat([text_emb, neg_emb], dim=0)
             latents = torch.cat([latents] * 2, dim=0)
 
-            pred_noise_tn = self.unet(latents, timestep, context=context)
+            if context_weights is not None:
+                context_weights = torch.cat([context_weights] * 2, dim=0)
+
+            pred_noise_tn = self.unet(
+                latents, timestep, context=emb, context_weights=context_weights
+            )
             pred_noise_text, pred_noise_neg = pred_noise_tn.chunk(2, dim=0)
             del pred_noise_tn
 
@@ -272,29 +297,28 @@ class StableDiffusion:
     @torch.no_grad()
     def get_context(
         self, prompt: Optional[str], negative_prompt: str, batch_size: int
-    ) -> Tensor | tuple[Tensor, Tensor]:
-        negative_prompt = self.clip.parse_text(negative_prompt)
-        if prompt is not None:
-            prompt = self.clip.parse_text(prompt)
-
-        neg_emb = self.clip(negative_prompt, self.device, self.dtype)
+    ) -> tuple[tuple[Optional[Tensor], Tensor], Optional[Tensor]]:
+        # ignore weights from negative prompt
+        neg_emb, _ = self.clip(negative_prompt, self.device, self.dtype)
         neg_emb = neg_emb.expand(batch_size, -1, -1)
 
         if prompt is not None:
-            text_emb = self.clip(prompt, self.device, self.dtype)
+            text_emb, weight = self.clip(prompt, self.device, self.dtype)
             text_emb = text_emb.expand(batch_size, -1, -1)
+            if weight is not None:
+                weight = weight.expand(batch_size, -1, -1)
 
-            context = (text_emb, neg_emb)
         else:
-            context = neg_emb
+            text_emb = weight = None
 
-        return context
+        return (text_emb, neg_emb), weight
 
     def denoise_latents(
         self,
         scheduler: DDIMScheduler,
         latents: Tensor,
-        context: Tensor | tuple[Tensor, Tensor],
+        context: tuple[Optional[Tensor], Tensor],
+        context_weight: Optional[Tensor],
         scale: float,
         eta: float,
         k: int = 0,
@@ -305,9 +329,14 @@ class StableDiffusion:
         assert eta == 0
 
         clear_cuda()
+        # TODO k or k +1?
         for i in trange(k + 1, len(scheduler), desc="Denoising latents."):
+            # TODO for now unet accept only ints and not Tensor
             timestep = int(scheduler.timesteps[i].item())
-            noise_pred = self.pred_noise(latents, timestep, context, scale)
+
+            noise_pred = self.pred_noise(
+                latents, timestep, context, context_weight, scale
+            )
             latents = scheduler.step(noise_pred, latents, i, eta)
             del noise_pred
         clear_cuda()

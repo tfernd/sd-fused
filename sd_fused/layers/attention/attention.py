@@ -29,6 +29,9 @@ def attention(
         attn = softmax(q @ k, dim=-1)
         del q, k
 
+        if weights is not None:
+            attn *= weights
+
         return attn @ v
 
     # TODO auto, see how much free memory is available?
@@ -40,6 +43,9 @@ def attention(
         s = slice(i, i + chunks)
 
         attn = softmax(q[s] @ k[s], dim=-1)
+        if weights is not None:
+            attn *= weights
+
         out[s] = attn @ v[s]
         del attn
 

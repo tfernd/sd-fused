@@ -6,7 +6,7 @@ with open("./requirements.txt") as handle:
 
 setup(
     name="sd-fused",
-    version="0.0.1",
+    version="0.3.0",
     description="Stable-Diffusion + Fused CUDA kernels",
     author="Thales Fernandes",
     author_email="thalesfdfernandes@gmail.com",
