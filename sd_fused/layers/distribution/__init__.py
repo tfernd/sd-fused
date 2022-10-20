@@ -1,1 +1,1 @@
-from .diag_gauss_dist import DiagonalGaussianDistribution
+from .diag_gaussian import DiagonalGaussianDistribution

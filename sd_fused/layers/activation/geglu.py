@@ -22,4 +22,3 @@ class GEGLU(nn.Module):
         x, gate = self.proj(x).chunk(2, dim=-1)
 
         return F.gelu(gate).mul_(x)
-        # return x * F.gelu(gate)

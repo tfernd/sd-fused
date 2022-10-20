@@ -12,12 +12,12 @@ class DDIMScheduler:
 
     def __init__(
         self,
-        *,
         steps: int,
         device: Optional[torch.device] = None,
         dtype: torch.dtype = torch.float32,
         # seeds: list[int], # TODO pre-generate noises based on seeds
         # ? DO NOT CHANGE!? Make it GLOBAL constant?
+        *,
         trained_steps: int = 1_000,
         β_begin: float = 0.00085,
         β_end: float = 0.012,

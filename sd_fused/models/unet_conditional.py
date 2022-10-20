@@ -13,8 +13,8 @@ from torch import Tensor
 from ..layers.embedding import Timesteps, TimestepEmbedding
 from ..layers.activation import SiLU
 from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel
-from ..layers.attention import CrossAttention
-from ..layers.blocks import (
+from ..layers.blocks.attention import CrossAttention
+from ..layers.blocks.spatial import (
     UNetMidBlock2DCrossAttention,
     DownBlock2D,
     UpBlock2D,
@@ -106,7 +106,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
                         out_channels=output_channel,
                         temb_channels=time_embed_dim,
                         num_layers=layers_per_block,
-                        resnet_groups=norm_num_groups,
+                        num_groups=norm_num_groups,
                         add_downsample=not is_final_block,
                         downsample_padding=downsample_padding,
                     )
@@ -174,7 +174,6 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         self,
         x: Tensor,
         timestep: int | Tensor,
-        *,
         context: Tensor,
         context_weights: Optional[Tensor] = None,
     ) -> Tensor:

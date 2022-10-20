@@ -4,11 +4,8 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..base import Conv2d
-from ..blocks import (
-    UpDecoderBlock2D,
-    UNetMidBlock2D,
-    GroupNormSiLUConv2d,
-)
+from ..blocks.simple import GroupNormSiLUConv2d
+from ..blocks.spatial import UpDecoderBlock2D, UNetMidBlock2D
 
 
 class Decoder(nn.Module):

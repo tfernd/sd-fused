@@ -151,14 +151,16 @@ def expand_delimiters(text: str) -> str:
     """
 
     delimiters = [
-        (l * k, r * k, k * sign)
-        for k in range(MAX_EMPHASIS, 0, -1)
-        for (l, r), sign in zip(((r"\(", r"\)"), (r"\[", r"\]")), (1, -1))
+        (left * repeat, right * repeat, repeat * sign)
+        for repeat in range(MAX_EMPHASIS, 0, -1)
+        for (left, right), sign in zip(
+            ((r"\(", r"\)"), (r"\[", r"\]")), (1, -1)
+        )
     ]
     avoid = r"\(\)\[\]\\"
-    for l, r, n in delimiters:
-        pattern = f"{l}([^{avoid}]+?){r}([^:])"
-        repl = f"(\\1):{FACTOR**n:.4f}\\2"
+    for left, right, signed_repeat in delimiters:
+        pattern = f"{left}([^{avoid}]+?){right}([^:])"
+        repl = f"(\\1):{FACTOR**signed_repeat:.4f}\\2"
         text = re.sub(pattern, repl, text)
 
     # recover back parantheses and brackets
@@ -169,6 +171,7 @@ def expand_delimiters(text: str) -> str:
 
 
 def add_split_maker4emphasis(text: str) -> str:
+    # add ⏎ to the begginign and end of: (..):value
     pattern = r"(\(.+?\):[+-]?\d+(?:.\d+)?)"
     text = re.sub(pattern, r"⏎\1⏎", text)
 

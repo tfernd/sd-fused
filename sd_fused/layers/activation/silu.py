@@ -9,4 +9,3 @@ class SiLU(nn.Module):
 
     def __call__(self, x: Tensor) -> Tensor:
         return x.sigmoid().mul_(x)
-        # return x * x.sigmoid()
