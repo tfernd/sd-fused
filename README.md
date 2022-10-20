@@ -8,7 +8,7 @@ Or you wrongly clicked this repo when you actually intended to click on somethin
 
 No fear, you came to the right place!
 
-Are you impatient? [Click here](##-Installation) for the demo code.
+Are you impatient? [Click here](#installation) for the demo code.
 
 ## How and why?
 
