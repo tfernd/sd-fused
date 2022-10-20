@@ -4,6 +4,8 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
+from einops.layers.torch import Rearrange
+
 from ...activation import SiLU
 from ...base import Conv2d, Linear
 from ..simple import GroupNormSiLUConv2d
@@ -47,15 +49,14 @@ class ResnetBlock2D(nn.Module):
             padding=1,
         )
 
-        self.nonlinearity = SiLU()
+        # self.nonlinearity = SiLU()
         if temb_channels is not None:
-            # TODO join to layer below
-            # self.time_emb_proj = nn.Sequential(
-            #     SiLU(),
-            #     Linear(temb_channels, out_channels),
-            #     Rearrange('b c -> b c 1 1'),
-            # )
-            self.time_emb_proj = Linear(temb_channels, out_channels)
+            self.time_emb_proj = nn.Sequential(
+                SiLU(),
+                Linear(temb_channels, out_channels),
+                Rearrange("b c -> b c 1 1"),
+            )
+            # self.time_emb_proj = Linear(temb_channels, out_channels)
         else:
             self.time_emb_proj = None
 
@@ -67,9 +68,9 @@ class ResnetBlock2D(nn.Module):
         if self.time_emb_proj is not None:
             assert temb is not None
 
-            temb = self.nonlinearity(temb)
+            # temb = self.nonlinearity(temb)
             temb = self.time_emb_proj(temb)
-            temb = temb[..., None, None]
+            # temb = temb[..., None, None]
 
             x = x + temb
             del temb

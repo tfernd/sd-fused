@@ -7,7 +7,8 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 from einops import rearrange
 
-from ...base import Conv2d, GroupNorm
+from ...base import Conv2d
+from ..simple import GroupNormConv2d
 from .basic_transformer import BasicTransformer
 
 
@@ -33,10 +34,7 @@ class SpatialTransformer(nn.Module):
 
         inner_dim = num_heads * head_features
 
-        # TODO fuse these two operations
-        self.norm = GroupNorm(num_groups, in_channels)
-        self.proj_in = Conv2d(in_channels, inner_dim)
-
+        self.proj_in = GroupNormConv2d(num_groups, in_channels, inner_dim)
         self.proj_out = Conv2d(inner_dim, in_channels)
 
         self.transformer_blocks = nn.ModuleList()
@@ -63,9 +61,7 @@ class SpatialTransformer(nn.Module):
 
         xin = x
 
-        x = self.norm(x)
         x = self.proj_in(x)
-
         x = self.channel_last_and_spatial_join(x)
 
         for block in self.transformer_blocks:

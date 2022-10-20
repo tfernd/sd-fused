@@ -13,6 +13,7 @@ from torch import Tensor
 from ..layers.embedding import Timesteps, TimestepEmbedding
 from ..layers.activation import SiLU
 from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel
+from ..layers.blocks.simple import GroupNormSiLUConv2d
 from ..layers.blocks.attention import CrossAttention
 from ..layers.blocks.spatial import (
     UNetMidBlock2DCrossAttention,
@@ -164,10 +165,12 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
             prev_output_channel = output_channel
 
         # out
-        self.conv_norm_out = GroupNorm(norm_num_groups, block_out_channels[0])
-        self.conv_act = SiLU()
-        self.conv_out = Conv2d(
-            block_out_channels[0], out_channels, kernel_size=3, padding=1
+        self.post_process = GroupNormSiLUConv2d(
+            norm_num_groups,
+            block_out_channels[0],
+            out_channels,
+            kernel_size=3,
+            padding=1,
         )
 
     def __call__(
@@ -197,9 +200,9 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         # TODO it is possible to make it a list[list[Tensor]]? or is the number of elements wrong?
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
-            # TODO a bit ugly this assert and the raise error
             assert isinstance(block, (CrossAttentionDownBlock2D, DownBlock2D))
 
+            states = None
             if isinstance(block, CrossAttentionDownBlock2D):
                 x, states = block(
                     x,
@@ -209,8 +212,7 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
                 )
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
-            else:
-                raise ValueError
+            assert states is not None
 
             all_states.extend(states)
             del states
@@ -222,7 +224,6 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
 
         # 5. up
         for block in self.up_blocks:
-            # TODO a bit ugly this assert and the raise error
             assert isinstance(block, (CrossAttentionUpBlock2D, UpBlock2D))
 
             states = list(all_states.pop() for _ in range(block.num_layers))
@@ -237,17 +238,12 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
                 )
             elif isinstance(block, UpBlock2D):
                 x = block(x, states=states, temb=temb)
-            else:
-                raise ValueError
 
             del states
         del all_states
 
         # 6. post-process
-        # TODO join these layers
-        x = self.conv_norm_out(x)
-        x = self.conv_act(x)
-        x = self.conv_out(x)
+        x = self.post_process(x)
 
         return x
 
@@ -302,6 +298,20 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
                 r"resnets.(\d).conv2.(bias|weight)",
                 r"resnets.\1.post_process.2.\2",
             ),
+            # resnet-time-embedding
+            (r"time_emb_proj.(bias|weight)", r"time_emb_proj.1.\1"),
+            # spatial transformer fused
+            (
+                r"attentions.(\d).norm.(bias|weight)",
+                r"attentions.\1.proj_in.0.\2",
+            ),
+            (
+                r"attentions.(\d).proj_in.(bias|weight)",
+                r"attentions.\1.proj_in.1.\2",
+            ),
+            # post-processing
+            (r"conv_norm_out.(bias|weight)", r"post_process.0.\1"),
+            (r"conv_out.(bias|weight)", r"post_process.2.\1"),
         ]
 
         # modify state-dict
