@@ -265,7 +265,7 @@ class StableDiffusion:
             pred_noise_tn = self.unet(
                 latents, timestep, context, context_weights
             )
-            pred_noise_text, pred_noise_neg = pred_noise_tn.chunk(2, dim=0)
+            pred_noise_neg, pred_noise_text = pred_noise_tn.chunk(2, dim=0)
             del pred_noise_tn
 
         return pred_noise_neg + (pred_noise_text - pred_noise_neg) * scale
