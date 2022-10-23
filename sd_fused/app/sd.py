@@ -3,7 +3,7 @@ from typing import Any, Optional
 from typing_extensions import Self
 
 from pathlib import Path
-from tqdm.auto import trange
+from tqdm.autonotebook import trange
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -121,8 +121,8 @@ class StableDiffusion:
     ) -> Self:
         """Split cross-attention computation into chunks."""
 
-        # TODO split vae too
         self.unet.split_attention(cross_attention_chunks)
+        self.vae.split_attention(cross_attention_chunks)
 
         return self
 
@@ -168,6 +168,69 @@ class StableDiffusion:
         paths: list[Path] = []
         for seed, image in zip(seeds, images):
             metadata = self._create_metadata(seed=seed, **kwargs)
+            path = self.save_image(image, metadata)
+            paths.append(path)
+
+        return list(zip(images, paths))
+
+    # TODO Merge this with text2image since they share lots of code
+    @torch.no_grad()
+    def img2img(
+        self,
+        *,
+        img: str,
+        prompt: Optional[str] = None,
+        negative_prompt: str = "",
+        eta: float = 0,
+        steps: int = 32,
+        scale: float = 7.5,
+        strength: float = 0.5,
+        height: int = 512,
+        width: int = 512,
+        seed: Optional[int | list[int]] = None,
+        batch_size: int = 1,
+        mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
+    ) -> list[tuple[Image.Image, Path]]:
+        """Creates an image from a prompt and (optionally) a negative prompt
+        with an image as a basis.
+        """
+
+        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
+
+        # allowed sizes are multiple of 64
+        assert height % 64 == 0
+        assert width % 64 == 0
+
+        unconditional = prompt is None
+
+        scheduler = DDIMScheduler(steps, self.device, self.dtype)
+
+        batch_size = fix_batch_size(seed, batch_size)
+        context, weight = self.get_context(prompt, negative_prompt, batch_size)
+
+        shape = (batch_size, 4, height // 8, width // 8)
+        noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
+
+        # TODO make into its own function
+        # latents from image
+        assert mode == "resize"
+        data = image2tensor(img, size=(height, width), device=self.device)
+        img_latents = self.encode(data)
+
+        k = scheduler.cutoff_index(strength)
+        latents = scheduler.add_noise(img_latents, noise, k)
+
+        latents = self.denoise_latents(
+            scheduler, latents, context, weight, scale, eta, unconditional, k=k
+        )
+
+        data = self.decode(latents)
+        images = self.create_images(data)
+
+        paths: list[Path] = []
+        for seed, image in zip(seeds, images):
+            metadata = self._create_metadata(seed=seed, **kwargs)
+            # TODO add as metadata the original image as base64-encoded string?
             path = self.save_image(image, metadata)
             paths.append(path)
 
@@ -289,7 +352,7 @@ class StableDiffusion:
     def encode(self, data: Tensor) -> Tensor:
         """Encodes (stochastically) a RGB image into a latent vector."""
 
-        return self.vae.encode(data).sample()
+        return self.vae.encode(data).sample().mul(MAGIC)
 
     def create_images(self, data: Tensor) -> list[Image.Image]:
         """Creates a list of images according to the batch size."""
@@ -326,74 +389,6 @@ class StableDiffusion:
         return f"{name}({self.model_name})"
 
 
-#     # TODO re-implement
-#     #     @torch.no_grad()
-#     #     def img2img(
-#     #         self,
-#     #         *,
-#     #         img: str,
-#     #         prompt: Optional[str] = None,
-#     #         negative_prompt: str = "",
-#     #         eta: float = 0,
-#     #         steps: int = 32,
-#     #         scale: float = 7.5,
-#     #         strength: float = 0.5,
-#     #         height: int = 512,
-#     #         width: int = 512,
-#     #         seed: Optional[int | list[int]] = None,
-#     #         batch_size: int = 1,
-#     #         mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
-#     #     ) -> list[Image.Image]:
-#     #         kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
-
-#     #         # allowed sizes are multiple of 64
-#     #         assert height % 64 == 0
-#     #         assert width % 64 == 0
-
-#     #         scheduler = DDIMScheduler(
-#     #             steps=steps, device=self.device, dtype=self.dtype
-#     #         )
-#     #         batch_size = fix_batch_size(seed, batch_size)
-#     #         context = self.get_context(prompt, negative_prompt, batch_size)
-
-#     #         shape = (batch_size, 4, height // 8, width // 8)
-#     #         noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
-
-#     #         # TODO make into its own function
-#     #         # latents from image
-#     #         assert mode == "resize"
-#     #         data = image2tensor(img, size=(height, width), device=self.device)
-#     #         img_latents = self.vae.encode(data).mean
-#     #         img_latents *= MAGIC
-
-#     #         k = scheduler.cutoff_index(strength)
-#     #         latents = scheduler.add_noise(img_latents, noise, k)
-
-#     #         latents = self.denoise_latents(
-#     #             scheduler, latents, context, scale, eta, k=k
-#     #         )
-
-#     #         # decode latent space
-#     #         out = self.vae.decode(latents.div(MAGIC)).cpu()
-#     #         clear_cuda()
-
-#     #         # TODO remove code duplication
-#     #         # create images
-#     #         out = rearrange(out, "B C H W -> B H W C").numpy()
-#     #         images = [Image.fromarray(v) for v in out]
-
-#     #         self.save_dir.mkdir(parents=True, exist_ok=True)
-#     #         for seed, image in zip(seeds, images):
-#     #             metadata = self._create_metadata(seed=seed, **kwargs)
-
-#     #             # TODO temporary file name for now
-#     #             ID = random.randint(0, 2 ** 64)
-#     #             path = self.save_dir / f"{ID:x}.png"
-
-#     #             image.save(path, bitmap_format="png", pnginfo=metadata)
-#     #             # TODO add copy of img to image
-
-#     #         return images
 # TODO re-implement this better
 #     def unet_scale(self, path: str | Path, scale: float = 1) -> Self:
 #         """Scales the UNet to use in-between two different stable-diffusion models."""

@@ -9,12 +9,12 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..utils import normalize, denormalize
-from ..layers.base import Conv2d, HalfWeightsModel
+from ..layers.base import Conv2d, HalfWeightsModel, SplitAttentionModel
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder import Encoder, Decoder
 
 
-class AutoencoderKL(HalfWeightsModel, nn.Module):
+class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
     debug: bool = True
 
     def __init__(

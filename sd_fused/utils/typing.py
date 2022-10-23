@@ -1,3 +1,5 @@
+# type: ignore
+
 try:
     from typing import Literal, Final
 except ImportError:

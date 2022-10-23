@@ -11,9 +11,8 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..layers.embedding import Timesteps, TimestepEmbedding
-from ..layers.base import Conv2d, HalfWeightsModel
+from ..layers.base import Conv2d, HalfWeightsModel, SplitAttentionModel
 from ..layers.blocks.simple import GroupNormSiLUConv2d
-from ..layers.blocks.attention import CrossAttention
 from ..layers.blocks.spatial import (
     UNetMidBlock2DCrossAttention,
     DownBlock2D,
@@ -23,7 +22,7 @@ from ..layers.blocks.spatial import (
 )
 
 
-class UNet2DConditional(HalfWeightsModel, nn.Module):
+class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
     debug: bool = True
 
     def __init__(
@@ -341,17 +340,3 @@ class UNet2DConditional(HalfWeightsModel, nn.Module):
         model.load_state_dict(state)
 
         return model
-
-    # TODO add to its own Class and add support for SelfAttention
-    # TODO copy to the vae
-    def split_attention(
-        self, cross_attention_chunks: Optional[int] = None
-    ) -> None:
-        """Split cross/self-attention computation into chunks."""
-
-        if cross_attention_chunks is not None:
-            assert cross_attention_chunks >= 1
-
-        for name, module in self.named_modules():
-            if isinstance(module, CrossAttention):
-                module.attention_chunks = cross_attention_chunks
