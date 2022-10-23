@@ -8,6 +8,8 @@ from torch import Tensor
 
 
 class DDIMScheduler:
+    """Denoising Diffusion Implicit Models scheduler."""
+
     # https://arxiv.org/abs/2010.02502
 
     def __init__(

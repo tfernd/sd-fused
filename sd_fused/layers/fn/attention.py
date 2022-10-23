@@ -1,13 +1,12 @@
-#%%
 from __future__ import annotations
 from typing import Optional
 
 import torch
 from torch import Tensor
 
-# from ...utils import softmax
+from einops import repeat
 
-softmax = torch.nn.functional.softmax
+from ...utils import softmax
 
 
 def attention(
@@ -25,10 +24,11 @@ def attention(
 
     if weights is not None:
         assert weights.ndim == 2
-        assert weights.shape[0] in (1, q.shape[0])
         assert weights.shape[1] == k.shape[1]
 
-        weights = weights.unsqueeze(1)
+        # qkv has heads combined into the batch
+        num_heads = q.shape[0] // weights.shape[0]
+        weights = repeat(weights, "b t -> (b h) 1 t", h=num_heads)
 
     k = k.transpose(1, 2)
 

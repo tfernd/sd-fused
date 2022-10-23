@@ -11,8 +11,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..layers.embedding import Timesteps, TimestepEmbedding
-from ..layers.activation import SiLU
-from ..layers.base import Conv2d, GroupNorm, HalfWeightsModel
+from ..layers.base import Conv2d, HalfWeightsModel
 from ..layers.blocks.simple import GroupNormSiLUConv2d
 from ..layers.blocks.attention import CrossAttention
 from ..layers.blocks.spatial import (

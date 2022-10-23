@@ -29,6 +29,10 @@ class StableDiffusion:
     device: torch.device
     dtype: torch.dtype
 
+    clip: ClipEmbedding
+    vae: AutoencoderKL
+    unet: UNet2DConditional
+
     def __init__(
         self,
         path: str | Path,
@@ -60,6 +64,8 @@ class StableDiffusion:
         return self
 
     def to(self, device: Literal["cpu", "cuda"] | torch.device) -> Self:
+        """Send unet and auto-encoder to device."""
+
         self.device = device = torch.device(device)
 
         self.unet.to(device=self.device, non_blocking=True)
@@ -68,14 +74,20 @@ class StableDiffusion:
         return self
 
     def cuda(self) -> Self:
+        """Send unet and auto-encoder to cuda."""
+
         clear_cuda()
 
         return self.to("cuda")
 
     def cpu(self) -> Self:
+        """Send unet and auto-encoder to cpu."""
+
         return self.to("cpu")
 
     def half(self) -> Self:
+        """Use half-precision for unet and auto-encoder."""
+
         self.unet.half()
         self.vae.half()
 
@@ -84,6 +96,8 @@ class StableDiffusion:
         return self
 
     def float(self) -> Self:
+        """Use full-precision for unet and auto-encoder."""
+
         self.unet.float()
         self.vae.float()
 
@@ -112,27 +126,6 @@ class StableDiffusion:
 
         return self
 
-    # TODO re-implement this better
-    #     def unet_scale(self, path: str | Path, scale: float = 1) -> Self:
-    #         """Scales the UNet to use in-between two different stable-diffusion models."""
-
-    #         path = Path(path)
-    #         new_unet = UNet2DConditional.load_sd(path / "unet")
-
-    #         for param, new_param in zip(
-    #             self.unet.parameters(), new_unet.parameters()
-    #         ):
-    #             pnew = new_param.data.to(device=self.device, dtype=self.dtype)
-
-    #             # TODO add support for other types of scaling
-    #             if scale == 1:
-    #                 param.data = pnew
-    #             else:
-    #                 param.data += pnew.sub_(param.data).mul_(scale)
-    #             del pnew
-
-    #         return self
-
     @torch.no_grad()
     def text2img(
         self,
@@ -147,6 +140,8 @@ class StableDiffusion:
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
     ) -> list[tuple[Image.Image, Path]]:
+        """Creates an image from a prompt and (optionally) a negative prompt."""
+
         kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
 
         # allowed sizes are multiple of 64
@@ -168,26 +163,37 @@ class StableDiffusion:
         )
 
         data = self.decode(latents)
-        images = self.make_images(data)
+        images = self.create_images(data)
 
         paths: list[Path] = []
-        self.save_dir.mkdir(parents=True, exist_ok=True)
         for seed, image in zip(seeds, images):
             metadata = self._create_metadata(seed=seed, **kwargs)
-
-            #             # TODO temporary file name for now
-            ID = random.randint(0, 2 ** 64)
-            path = self.save_dir / f"{ID:x}.SD.png"
+            path = self.save_image(image, metadata)
             paths.append(path)
 
-            image.save(path, bitmap_format="png", pnginfo=metadata)
-
         return list(zip(images, paths))
+
+    def save_image(
+        self, image: Image.Image, metadata: PngInfo, ID: Optional[int] = None
+    ) -> Path:
+        """Save the image using the provided metadata information."""
+
+        if ID is None:
+            ID = random.randint(0, 2 ** 64)
+
+        self.save_dir.mkdir(parents=True, exist_ok=True)
+
+        path = self.save_dir / f"{ID:x}.SD.png"
+        image.save(path, bitmap_format="png", pnginfo=metadata)
+
+        return path
 
     @torch.no_grad()
     def get_context(
         self, prompt: Optional[str], negative_prompt: str, batch_size: int
     ) -> tuple[Tensor, Optional[Tensor]]:
+        """Creates a context Tensor (negative + positive prompt) and a emphasis weights."""
+
         texts = [negative_prompt] * batch_size
         if prompt is not None:
             texts.extend([prompt] * batch_size)
@@ -210,12 +216,11 @@ class StableDiffusion:
         """Main loop where latents are denoised."""
 
         clear_cuda()
-        # TODO k or k +1?
-        for i in trange(k + 1, len(scheduler), desc="Denoising latents."):
+        for i in trange(k, len(scheduler), desc="Denoising latents."):
             # TODO for now unet accept only ints and not Tensor
             timestep = int(scheduler.timesteps[i].item())
 
-            noise_pred = self.pred_noise(
+            pred_noise = self.pred_noise(
                 latents,
                 timestep,
                 context,
@@ -223,8 +228,8 @@ class StableDiffusion:
                 unconditional,
                 scale,
             )
-            latents = scheduler.step(noise_pred, latents, i, eta)
-            del noise_pred
+            latents = scheduler.step(pred_noise, latents, i, eta)
+            del pred_noise
         clear_cuda()
 
         return latents
@@ -253,35 +258,49 @@ class StableDiffusion:
             else:
                 negative_weight = prompt_weight = None
 
-            pred_noise_text = self.unet(
+            pred_noise_prompt = self.unet(
                 latents, timestep, prompt_context, prompt_weight,
             )
-            pred_noise_neg = self.unet(
+            pred_noise_negative = self.unet(
                 latents, timestep, negative_context, negative_weight,
             )
         else:
             latents = torch.cat([latents] * 2, dim=0)
 
-            pred_noise_tn = self.unet(
+            pred_noise_all = self.unet(
                 latents, timestep, context, context_weights
             )
-            pred_noise_neg, pred_noise_text = pred_noise_tn.chunk(2, dim=0)
-            del pred_noise_tn
+            pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(
+                2, dim=0
+            )
+            del pred_noise_all
 
-        return pred_noise_neg + (pred_noise_text - pred_noise_neg) * scale
+        return (
+            pred_noise_negative
+            + (pred_noise_prompt - pred_noise_negative) * scale
+        )
 
+    @torch.no_grad()
     def decode(self, latents: Tensor) -> Tensor:
+        """Decode latent vector into an RGB image."""
+
         return self.vae.decode(latents.div(MAGIC))
 
     def encode(self, data: Tensor) -> Tensor:
+        """Encodes (stochastically) a RGB image into a latent vector."""
+
         return self.vae.encode(data).sample()
 
-    def make_images(self, data: Tensor) -> list[Image.Image]:
+    def create_images(self, data: Tensor) -> list[Image.Image]:
+        """Creates a list of images according to the batch size."""
+
         data = rearrange(data, "B C H W -> B H W C").cpu().numpy()
 
         return [Image.fromarray(v) for v in data]
 
     def _create_metadata(self, **kwargs: Any) -> PngInfo:
+        """Creates metadata to be used for the PNG."""
+
         kwargs = dict(**kwargs, version=self.version, model=self.model_name,)
 
         metadata = PngInfo()
@@ -375,3 +394,23 @@ class StableDiffusion:
 #     #             # TODO add copy of img to image
 
 #     #         return images
+# TODO re-implement this better
+#     def unet_scale(self, path: str | Path, scale: float = 1) -> Self:
+#         """Scales the UNet to use in-between two different stable-diffusion models."""
+
+#         path = Path(path)
+#         new_unet = UNet2DConditional.load_sd(path / "unet")
+
+#         for param, new_param in zip(
+#             self.unet.parameters(), new_unet.parameters()
+#         ):
+#             pnew = new_param.data.to(device=self.device, dtype=self.dtype)
+
+#             # TODO add support for other types of scaling
+#             if scale == 1:
+#                 param.data = pnew
+#             else:
+#                 param.data += pnew.sub_(param.data).mul_(scale)
+#             del pnew
+
+#         return self
