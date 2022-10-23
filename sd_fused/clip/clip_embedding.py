@@ -67,13 +67,16 @@ class ClipEmbedding:
     def parse_emphasis(text: str) -> str:
         """Parse emphasis notation."""
 
+        text = add_delimiter4words(text)
         text = expand_delimiters(text)
         text = add_split_maker4emphasis(text)
 
         return text
 
     @lru_cache(maxsize=None)
-    def get_ids(self, text: str) -> TensorAndWeight:
+    def get_ids_and_weights(self, text: str) -> TensorAndWeight:
+        """Get the token id and weight for a given text."""
+
         text = self.clean_spaces(text)
         text = self.parse_emphasis(text)
 
@@ -92,6 +95,7 @@ class ClipEmbedding:
             weights.extend([w] * (len(seg_ids)))
 
         # add padding and initial/final ids
+        # TODO create constant
         n = 77 - len(ids) - 2
         assert n >= 0, "Text too big, it will result in truncation"
         assert self.tokenizer.bos_token_id is not None
@@ -112,9 +116,9 @@ class ClipEmbedding:
     @lru_cache(maxsize=None)
     @torch.no_grad()
     def get_embedding(self, text: str) -> TensorAndWeight:
-        """Creates an embedding for a text and cache it."""
+        """Creates an embedding/weights for a text and cache it."""
 
-        ids, weight = self.get_ids(text)
+        ids, weight = self.get_ids_and_weights(text)
         emb = self.text_encoder(ids)[0]
 
         return TensorAndWeight(emb, weight)
@@ -125,7 +129,7 @@ class ClipEmbedding:
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
     ) -> tuple[Tensor, Optional[Tensor]]:
-        """Creates embeddings for a text and send to the correct device/dtype."""
+        """Creates embeddings/weights for a text and send to the correct device/dtype."""
 
         if isinstance(text, str):
             emb, weight = self.get_embedding(text)
@@ -136,12 +140,21 @@ class ClipEmbedding:
 
         emb = emb.to(device=device, dtype=dtype, non_blocking=True)
 
+        # special case where the weights are all one
         if weight.diff(1).any():
             weight = weight.to(device=device, dtype=dtype, non_blocking=True)
 
             return emb, weight
 
         return emb, None
+
+
+def add_delimiter4words(text: str) -> str:
+    """Replaces word:factor -> (word):factor."""
+
+    text = re.sub(r"(\w+):([+-]?\d+(?:.\d+)?)", r"(\1):\2", text)
+
+    return text
 
 
 def expand_delimiters(text: str) -> str:
@@ -153,9 +166,7 @@ def expand_delimiters(text: str) -> str:
     delimiters = [
         (left * repeat, right * repeat, repeat * sign)
         for repeat in range(MAX_EMPHASIS, 0, -1)
-        for (left, right), sign in zip(
-            ((r"\(", r"\)"), (r"\[", r"\]")), (1, -1)
-        )
+        for left, right, sign in ((r"\(", r"\)", 1), (r"\[", r"\]", 1))
     ]
     avoid = r"\(\)\[\]\\"
     for left, right, signed_repeat in delimiters:
@@ -171,8 +182,12 @@ def expand_delimiters(text: str) -> str:
 
 
 def add_split_maker4emphasis(text: str) -> str:
-    # add ⏎ to the begginign and end of: (..):value
+    """add ⏎ to the begginign and end of: (..):value"""
+
     pattern = r"(\(.+?\):[+-]?\d+(?:.\d+)?)"
     text = re.sub(pattern, r"⏎\1⏎", text)
 
     return text
+
+
+add_delimiter4words("a car:32.12")

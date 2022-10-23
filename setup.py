@@ -1,9 +1,9 @@
+# type: ignore
 from distutils.core import setup
-from setuptools import find_packages
 
 from pathlib import Path
 
-packages = list(set(str(p.parent) for p in Path('sd_fused').rglob('*.py')))
+packages = list(set(str(p.parent) for p in Path("sd_fused").rglob("*.py")))
 
 with open("./requirements.txt") as handle:
     requirements = handle.read().split()
@@ -20,4 +20,3 @@ setup(
     packages=packages,
     install_requires=requirements,
 )
-
