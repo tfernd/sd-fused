@@ -10,7 +10,7 @@ from einops.layers.torch import Rearrange
 from einops import rearrange
 
 from ...base import GroupNorm, Linear
-from ...utils import attention
+from ...fn import attention
 
 
 class SelfAttention(nn.Module):

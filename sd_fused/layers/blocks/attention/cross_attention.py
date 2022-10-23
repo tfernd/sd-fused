@@ -9,7 +9,7 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 
 from ...base import Linear, LayerNorm
-from ...utils import attention
+from ...fn import attention
 
 
 class CrossAttention(nn.Module):
@@ -61,10 +61,10 @@ class CrossAttention(nn.Module):
         xin = x
 
         x = self.norm(x)
+        context = context if context is not None else x
 
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x))
-        context = context if context is not None else x
         k = self.heads_to_batch(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del x, context

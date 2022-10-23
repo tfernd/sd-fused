@@ -1,10 +1,13 @@
+#%%
 from __future__ import annotations
 from typing import Optional
 
 import torch
 from torch import Tensor
 
-from ...utils import softmax
+# from ...utils import softmax
+
+softmax = torch.nn.functional.softmax
 
 
 def attention(
@@ -15,9 +18,17 @@ def attention(
     chunks: Optional[int] = None,
     weights: Optional[Tensor] = None
 ) -> Tensor:
+    assert q.ndim == k.ndim == v.ndim == 3
     assert q.shape[0] == k.shape[0] == v.shape[0]
     assert q.shape[2] == k.shape[2] == v.shape[2]
     assert k.shape[1] == v.shape[1]
+
+    if weights is not None:
+        assert weights.ndim == 2
+        assert weights.shape[0] in (1, q.shape[0])
+        assert weights.shape[1] == k.shape[1]
+
+        weights = weights.unsqueeze(1)
 
     k = k.transpose(1, 2)
 
@@ -26,7 +37,7 @@ def attention(
         del q, k
 
         if weights is not None:
-            attn *= weights.unsqueeze(1)
+            attn *= weights
 
         return attn @ v
 
@@ -40,7 +51,7 @@ def attention(
 
         attn = softmax(q[s] @ k[s], dim=-1)
         if weights is not None:
-            attn *= weights.unsqueeze(1)
+            attn *= weights[s]
 
         out[s] = attn @ v[s]
         del attn
