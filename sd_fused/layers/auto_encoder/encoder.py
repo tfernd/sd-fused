@@ -5,7 +5,7 @@ from torch import Tensor
 
 from ..base import Conv2d
 from ..blocks.simple import GroupNormSiLUConv2d
-from ..blocks.spatial import DownEncoderBlock2D, UNetMidBlock2D
+from ..blocks.spatial import DownEncoderBlock2D, UNetMidBlock2DSelfAttention
 
 
 class Encoder(nn.Module):
@@ -30,6 +30,7 @@ class Encoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
+        # TODO rename to pre_process
         self.conv_in = Conv2d(
             in_channels, block_out_channels[0], kernel_size=3, padding=1
         )
@@ -54,7 +55,7 @@ class Encoder(nn.Module):
             self.down_blocks.append(block)
 
         # mid
-        self.mid_block = UNetMidBlock2D(
+        self.mid_block = UNetMidBlock2DSelfAttention(
             in_channels=block_out_channels[-1],
             temb_channels=None,
             num_layers=1,

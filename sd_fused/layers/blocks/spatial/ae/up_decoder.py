@@ -40,9 +40,7 @@ class UpDecoderBlock2D(nn.Module):
             )
 
         if add_upsample:
-            self.upsampler = Upsample2D(
-                channels=out_channels, kind="conv", out_channels=out_channels,
-            )
+            self.upsampler = Upsample2D(out_channels, out_channels,)
         else:
             self.upsampler = nn.Identity()
 

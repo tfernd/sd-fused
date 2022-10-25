@@ -1,43 +1,24 @@
 from __future__ import annotations
-from typing import NamedTuple, Optional
+from typing import Optional
 
 from functools import lru_cache
 from pathlib import Path
 import re
 
 import torch
-from torch import Tensor
 
 from transformers.models.clip.modeling_clip import CLIPTextModel
 from transformers.models.clip.tokenization_clip import CLIPTokenizer
 
-FACTOR = 1.1
-MAX_EMPHASIS = 8
+from .text_segment import TextSegment
+from .container import TensorAndWeight, TensorAndMaybeWeight
+from .parser import (
+    add_delimiter4words,
+    expand_delimiters,
+    add_split_maker4emphasis,
+)
 
-
-class TextSegment:
-    text: str
-    weight: Optional[float] = None
-
-    def __init__(self, text: str) -> None:
-        self.text = text
-        self.weight = None
-
-        pattern = r"\((.+?)\):([+-]?\d+(?:.\d+)?)"
-        match = re.match(pattern, text)
-        if not match:
-            self.text = text
-        else:
-            self.text = match.group(1)
-            self.weight = float(match.group(2))
-
-    def __repr__(self) -> str:
-        return f'{self.__class__.__qualname__}(text="{self.text}"; weight={self.weight})'
-
-
-class TensorAndWeight(NamedTuple):
-    tensor: Tensor
-    weight: Tensor
+MAX_TOKENS = 77
 
 
 class ClipEmbedding:
@@ -49,6 +30,7 @@ class ClipEmbedding:
     def __init__(
         self, tokenizer_path: str | Path, text_encoder_path: str | Path,
     ) -> None:
+        # TODO check if valid paths?
         # no need for CUDA for simple embeddings...
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)  # type: ignore
@@ -95,8 +77,7 @@ class ClipEmbedding:
             weights.extend([w] * (len(seg_ids)))
 
         # add padding and initial/final ids
-        # TODO create constant
-        n = 77 - len(ids) - 2
+        n = MAX_TOKENS - len(ids) - 2
         assert n >= 0, "Text too big, it will result in truncation"
         assert self.tokenizer.bos_token_id is not None
         assert self.tokenizer.eos_token_id is not None
@@ -128,7 +109,7 @@ class ClipEmbedding:
         text: str | list[str] = "",
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
-    ) -> tuple[Tensor, Optional[Tensor]]:
+    ) -> TensorAndMaybeWeight:
         """Creates embeddings/weights for a text and send to the correct device/dtype."""
 
         if isinstance(text, str):
@@ -144,50 +125,6 @@ class ClipEmbedding:
         if weight.diff(1).any():
             weight = weight.to(device=device, dtype=dtype, non_blocking=True)
 
-            return emb, weight
+            return TensorAndMaybeWeight(emb, weight)
 
-        return emb, None
-
-
-def add_delimiter4words(text: str) -> str:
-    """Replaces word:factor -> (word):factor."""
-
-    text = re.sub(r"(\w+):([+-]?\d+(?:.\d+)?)", r"(\1):\2", text)
-
-    return text
-
-
-def expand_delimiters(text: str) -> str:
-    """
-    replace (^n ... )^n with ( ... ):factor^n
-    replace [^n ... ]^n with ( ... ):factor^-n
-    """
-
-    delimiters = [
-        (left * repeat, right * repeat, repeat * sign)
-        for repeat in range(MAX_EMPHASIS, 0, -1)
-        for left, right, sign in ((r"\(", r"\)", 1), (r"\[", r"\]", 1))
-    ]
-    avoid = r"\(\)\[\]\\"
-    for left, right, signed_repeat in delimiters:
-        pattern = f"{left}([^{avoid}]+?){right}([^:])"
-        repl = f"(\\1):{FACTOR**signed_repeat:.4f}\\2"
-        text = re.sub(pattern, repl, text)
-
-    # recover back parantheses and brackets
-    text = text.replace(r"\(", "(").replace(r"\)", ")")
-    text = text.replace(r"\[", "[").replace(r"\]", "]")
-
-    return text
-
-
-def add_split_maker4emphasis(text: str) -> str:
-    """add ⏎ to the begginign and end of: (..):value"""
-
-    pattern = r"(\(.+?\):[+-]?\d+(?:.\d+)?)"
-    text = re.sub(pattern, r"⏎\1⏎", text)
-
-    return text
-
-
-add_delimiter4words("a car:32.12")
+        return TensorAndMaybeWeight(emb)

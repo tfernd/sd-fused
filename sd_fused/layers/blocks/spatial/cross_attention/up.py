@@ -39,12 +39,15 @@ class CrossAttentionUpBlock2D(nn.Module):
         self.resnets = nn.ModuleList()
         self.attentions = nn.ModuleList()
         for i in range(num_layers):
-            res_skip_channels = (
-                in_channels if (i == num_layers - 1) else out_channels
-            )
-            resnet_in_channels = (
-                prev_output_channel if i == 0 else out_channels
-            )
+            if i == num_layers - 1:
+                res_skip_channels = in_channels
+            else:
+                res_skip_channels = out_channels
+
+            if i == 0:
+                resnet_in_channels = prev_output_channel
+            else:
+                resnet_in_channels = out_channels
 
             self.resnets.append(
                 ResnetBlock2D(
@@ -68,9 +71,7 @@ class CrossAttentionUpBlock2D(nn.Module):
             )
 
         if add_upsample:
-            self.upsampler = Upsample2D(
-                channels=out_channels, out_channels=out_channels, kind="conv",
-            )
+            self.upsampler = Upsample2D(out_channels)
         else:
             self.upsampler = nn.Identity()
 

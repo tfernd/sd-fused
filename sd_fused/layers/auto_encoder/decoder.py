@@ -5,7 +5,7 @@ from torch import Tensor
 
 from ..base import Conv2d
 from ..blocks.simple import GroupNormSiLUConv2d
-from ..blocks.spatial import UpDecoderBlock2D, UNetMidBlock2D
+from ..blocks.spatial import UpDecoderBlock2D, UNetMidBlock2DSelfAttention
 
 
 class Decoder(nn.Module):
@@ -28,12 +28,13 @@ class Decoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
+        # TODO rename to pre_process
         self.conv_in = Conv2d(
             in_channels, block_out_channels[-1], kernel_size=3, padding=1
         )
 
         # mid
-        self.mid_block = UNetMidBlock2D(
+        self.mid_block = UNetMidBlock2DSelfAttention(
             in_channels=block_out_channels[-1],
             temb_channels=None,
             num_layers=1,

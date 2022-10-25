@@ -8,7 +8,7 @@ from ...attention import SelfAttention
 from ..resnet import ResnetBlock2D
 
 
-class UNetMidBlock2D(nn.Module):
+class UNetMidBlock2DSelfAttention(nn.Module):
     def __init__(
         self,
         *,

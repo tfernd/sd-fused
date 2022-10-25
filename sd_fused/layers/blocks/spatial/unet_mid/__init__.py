@@ -1,2 +1,2 @@
 from .cross_attention import UNetMidBlock2DCrossAttention
-from .self_attention import UNetMidBlock2D
+from .self_attention import UNetMidBlock2DSelfAttention

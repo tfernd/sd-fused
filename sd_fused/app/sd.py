@@ -236,6 +236,33 @@ class StableDiffusion:
 
         return list(zip(images, paths))
 
+    @torch.no_grad()
+    def img2img_alt(
+        self,
+        *,
+        img: str,
+        prompt: str,
+        eta: float = 0,
+        steps: int = 32,
+        scale: float = 7.5,
+        height: int = 512,
+        width: int = 512,
+        seed: Optional[int | list[int]] = None,
+        batch_size: int = 1,
+        mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
+    ) -> list[tuple[Image.Image, Path]]:
+
+        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
+
+        # allowed sizes are multiple of 64
+        assert height % 64 == 0
+        assert width % 64 == 0
+
+        scheduler = DDIMScheduler(steps, self.device, self.dtype)
+
+        batch_size = fix_batch_size(seed, batch_size)
+        context, weight = self.get_context(prompt, negative_prompt, batch_size)
+
     def save_image(
         self, image: Image.Image, metadata: PngInfo, ID: Optional[int] = None
     ) -> Path:
