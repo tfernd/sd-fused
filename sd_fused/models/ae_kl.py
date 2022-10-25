@@ -3,6 +3,7 @@ from typing_extensions import Self
 
 from pathlib import Path
 import re
+import json
 
 import torch
 import torch.nn as nn
@@ -12,10 +13,31 @@ from ..utils import normalize, denormalize
 from ..layers.base import Conv2d, HalfWeightsModel, SplitAttentionModel
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder import Encoder, Decoder
+from .config import VaeConfig
 
 
 class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
-    debug: bool = True
+    debug: bool = False
+
+    @classmethod
+    def from_config(cls, path: str | Path) -> Self:
+        """'Creates a model from a config file."""
+
+        path = Path(path)
+        if path.is_dir():
+            path /= "config.json"
+        assert path.suffix == ".json"
+
+        db = json.load(open(path, "r"))
+        config = VaeConfig(**db)
+
+        return cls(
+            in_channels=config.in_channels,
+            out_channels=config.out_channels,
+            block_out_channels=tuple(config.block_out_channels),
+            layers_per_block=config.layers_per_block,
+            latent_channels=config.latent_channels,
+        )
 
     def __init__(
         self,
@@ -79,52 +101,19 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
 
     @classmethod
     def load_sd(cls, path: str | Path) -> Self:
-        """Load Stable-Diffusion."""
+        """Load Stable-Diffusion from diffusers checkpoint."""
 
         path = Path(path)
-        paths = list(path.glob("*.bin"))
-        assert len(paths) == 1
-        path = paths[0]
+        model = cls.from_config(path)
 
-        state = torch.load(path, map_location="cpu")
-        model = cls()
+        state_path = next(path.glob("*.bin"))
+        state = torch.load(state_path, map_location="cpu")
 
-        changes: list[tuple[str, str]] = [
-            # up/down samplers
-            (r"(up|down)samplers.0", r"\1sampler"),
-            # post_process
-            (
-                r"(decoder|encoder).conv_norm_out.(bias|weight)",
-                r"\1.post_process.0.\2",
-            ),
-            (
-                r"(decoder|encoder).conv_out.(bias|weight)",
-                r"\1.post_process.2.\2",
-            ),
-            # resnet-blocks pre/post-process
-            (
-                r"resnets.(\d).norm1.(bias|weight)",
-                r"resnets.\1.pre_process.0.\2",
-            ),
-            (
-                r"resnets.(\d).conv1.(bias|weight)",
-                r"resnets.\1.pre_process.2.\2",
-            ),
-            (
-                r"resnets.(\d).norm2.(bias|weight)",
-                r"resnets.\1.post_process.0.\2",
-            ),
-            (
-                r"resnets.(\d).conv2.(bias|weight)",
-                r"resnets.\1.post_process.2.\2",
-            ),
-        ]
         # modify state-dict
         for key in list(state.keys()):
-            for (c1, c2) in changes:
+            for (c1, c2) in REPLACEMENTS:
                 new_key = re.sub(c1, c2, key)
                 if new_key != key:
-                    # print(f"Changing {key} -> {new_key}")
                     value = state.pop(key)
                     state[new_key] = value
 
@@ -147,3 +136,20 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
         model.load_state_dict(state)
 
         return model
+
+
+REPLACEMENTS: list[tuple[str, str]] = [
+    # up/down samplers
+    (r"(up|down)samplers.0", r"\1sampler"),
+    # post_process
+    (
+        r"(decoder|encoder).conv_norm_out.(bias|weight)",
+        r"\1.post_process.0.\2",
+    ),
+    (r"(decoder|encoder).conv_out.(bias|weight)", r"\1.post_process.2.\2",),
+    # resnet-blocks pre/post-process
+    (r"resnets.(\d).norm1.(bias|weight)", r"resnets.\1.pre_process.0.\2",),
+    (r"resnets.(\d).conv1.(bias|weight)", r"resnets.\1.pre_process.2.\2",),
+    (r"resnets.(\d).norm2.(bias|weight)", r"resnets.\1.post_process.0.\2",),
+    (r"resnets.(\d).conv2.(bias|weight)", r"resnets.\1.post_process.2.\2",),
+]

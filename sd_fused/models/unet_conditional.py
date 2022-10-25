@@ -3,7 +3,7 @@ from typing import Optional, Type
 from typing_extensions import Self
 
 from pathlib import Path
-
+import json
 import re
 
 import torch
@@ -20,10 +20,38 @@ from ..layers.blocks.spatial import (
     CrossAttentionDownBlock2D,
     CrossAttentionUpBlock2D,
 )
+from .config import UnetConfig
 
 
 class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
-    debug: bool = True
+    debug: bool = False
+
+    @classmethod
+    def from_config(cls, path: str | Path) -> Self:
+        """'Creates a model from a config file."""
+
+        path = Path(path)
+        if path.is_dir():
+            path /= "config.json"
+        assert path.suffix == ".json"
+
+        db = json.load(open(path, "r"))
+        config = UnetConfig(**db)
+
+        return cls(
+            in_channels=config.in_channels,
+            out_channels=config.out_channels,
+            flip_sin_to_cos=config.flip_sin_to_cos,
+            freq_shift=config.freq_shift,
+            down_blocks=config.down_blocks,
+            up_blocks=config.up_blocks,
+            block_out_channels=tuple(config.block_out_channels),
+            layers_per_block=config.layers_per_block,
+            downsample_padding=config.downsample_padding,
+            norm_num_groups=config.norm_num_groups,
+            cross_attention_dim=config.cross_attention_dim,
+            attention_head_dim=config.attention_head_dim,
+        )
 
     def __init__(
         self,
@@ -56,6 +84,17 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
         attention_head_dim: int = 8,
     ) -> None:
         super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.flip_sin_to_cos = flip_sin_to_cos
+        self.freq_shift = freq_shift
+        self.block_out_channels = block_out_channels
+        self.layers_per_block = layers_per_block
+        self.downsample_padding = downsample_padding
+        self.norm_num_groups = norm_num_groups
+        self.cross_attention_dim = cross_attention_dim
+        self.attention_head_dim = attention_head_dim
 
         time_embed_dim = block_out_channels[0] * 4
 
@@ -191,7 +230,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
         temb = self.time_proj(timesteps)
         temb = self.time_embedding(temb)
 
-        # 2. pre-process
+        # 2. pre-process # TODO RENAME
         x = self.conv_in(x)
 
         # 3. down
@@ -247,77 +286,19 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
 
     @classmethod
     def load_sd(cls, path: str | Path) -> Self:
-        """Load Stable-Diffusion."""
+        """Load Stable-Diffusion from diffusers checkpoint."""
 
         path = Path(path)
-        paths = list(path.glob("*.bin"))
-        assert len(paths) == 1
-        path = paths[0]
+        model = cls.from_config(path)
 
-        state = torch.load(path, map_location="cpu")
-        model = cls()
-
-        changes: list[tuple[str, str]] = [
-            # Cross-attention
-            (
-                r"transformer_blocks.(\d).norm([12]).(weight|bias)",
-                r"transformer_blocks.\1.attn\2.norm.\3",
-            ),
-            ## FeedForward (norm)
-            (
-                r"transformer_blocks.(\d).norm3.(weight|bias)",
-                r"transformer_blocks.\1.ff.0.\2",
-            ),
-            ## FeedForward (geglu)
-            (r"ff.net.0.proj.(weight|bias)", r"ff.1.proj.\1",),
-            ## FeedForward-Linear
-            (r"ff.net.2.(weight|bias)", r"ff.2.\1",),
-            # up/down samplers
-            (r"(up|down)samplers.0", r"\1sampler"),
-            # CrossAttention projection
-            (r"to_out.0.", r"to_out."),
-            # TimeEmbedding
-            (r"time_embedding.linear_1.(weight|bias)", r"time_embedding.0.\1"),
-            (r"time_embedding.linear_2.(weight|bias)", r"time_embedding.2.\1"),
-            # resnet-blocks pre/post-process
-            (
-                r"resnets.(\d).norm1.(bias|weight)",
-                r"resnets.\1.pre_process.0.\2",
-            ),
-            (
-                r"resnets.(\d).conv1.(bias|weight)",
-                r"resnets.\1.pre_process.2.\2",
-            ),
-            (
-                r"resnets.(\d).norm2.(bias|weight)",
-                r"resnets.\1.post_process.0.\2",
-            ),
-            (
-                r"resnets.(\d).conv2.(bias|weight)",
-                r"resnets.\1.post_process.2.\2",
-            ),
-            # resnet-time-embedding
-            (r"time_emb_proj.(bias|weight)", r"time_emb_proj.1.\1"),
-            # spatial transformer fused
-            (
-                r"attentions.(\d).norm.(bias|weight)",
-                r"attentions.\1.proj_in.0.\2",
-            ),
-            (
-                r"attentions.(\d).proj_in.(bias|weight)",
-                r"attentions.\1.proj_in.1.\2",
-            ),
-            # post-processing
-            (r"conv_norm_out.(bias|weight)", r"post_process.0.\1"),
-            (r"conv_out.(bias|weight)", r"post_process.2.\1"),
-        ]
+        state_path = next(path.glob("*.bin"))
+        state = torch.load(state_path, map_location="cpu")
 
         # modify state-dict
         for key in list(state.keys()):
-            for (c1, c2) in changes:
+            for (c1, c2) in REPLACEMENTS:
                 new_key = re.sub(c1, c2, key)
                 if new_key != key:
-                    # print(f"Changing {key} -> {new_key}")
                     value = state.pop(key)
                     state[new_key] = value
 
@@ -340,3 +321,41 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
         model.load_state_dict(state)
 
         return model
+
+
+REPLACEMENTS: list[tuple[str, str]] = [
+    # Cross-attention
+    (
+        r"transformer_blocks.(\d).norm([12]).(weight|bias)",
+        r"transformer_blocks.\1.attn\2.norm.\3",
+    ),
+    ## FeedForward (norm)
+    (
+        r"transformer_blocks.(\d).norm3.(weight|bias)",
+        r"transformer_blocks.\1.ff.0.\2",
+    ),
+    ## FeedForward (geglu)
+    (r"ff.net.0.proj.(weight|bias)", r"ff.1.proj.\1",),
+    ## FeedForward-Linear
+    (r"ff.net.2.(weight|bias)", r"ff.2.\1",),
+    # up/down samplers
+    (r"(up|down)samplers.0", r"\1sampler"),
+    # CrossAttention projection
+    (r"to_out.0.", r"to_out."),
+    # TimeEmbedding
+    (r"time_embedding.linear_1.(weight|bias)", r"time_embedding.0.\1"),
+    (r"time_embedding.linear_2.(weight|bias)", r"time_embedding.2.\1"),
+    # resnet-blocks pre/post-process
+    (r"resnets.(\d).norm1.(bias|weight)", r"resnets.\1.pre_process.0.\2",),
+    (r"resnets.(\d).conv1.(bias|weight)", r"resnets.\1.pre_process.2.\2",),
+    (r"resnets.(\d).norm2.(bias|weight)", r"resnets.\1.post_process.0.\2",),
+    (r"resnets.(\d).conv2.(bias|weight)", r"resnets.\1.post_process.2.\2",),
+    # resnet-time-embedding
+    (r"time_emb_proj.(bias|weight)", r"time_emb_proj.1.\1"),
+    # spatial transformer fused
+    (r"attentions.(\d).norm.(bias|weight)", r"attentions.\1.proj_in.0.\2",),
+    (r"attentions.(\d).proj_in.(bias|weight)", r"attentions.\1.proj_in.1.\2",),
+    # post-processing
+    (r"conv_norm_out.(bias|weight)", r"post_process.0.\1"),
+    (r"conv_out.(bias|weight)", r"post_process.2.\1"),
+]

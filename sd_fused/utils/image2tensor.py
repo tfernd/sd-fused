@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, NamedTuple
+from typing import Optional
 
 from pathlib import Path
 from PIL import Image
@@ -11,11 +11,6 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from einops import rearrange
-
-
-class ImageSize(NamedTuple):
-    width: int
-    height: int
 
 
 def image2tensor(

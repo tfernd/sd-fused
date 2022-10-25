@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Any, Optional
-from typing_extensions import Self
 
 from pathlib import Path
 from tqdm.autonotebook import trange
@@ -20,18 +19,17 @@ from ..utils import image2tensor, clear_cuda, generate_noise
 from ..utils.typing import Literal
 from .utils import fix_batch_size, kwargs2ignore
 
+from .modifiers import Modifiers
+
 MAGIC = 0.18215
 
+ResizeModes = Literal["resize", "resize-crop", "resize-pad"]
 
-class StableDiffusion:
-    version: str = "0.4.0"
 
-    device: torch.device
-    dtype: torch.dtype
+class StableDiffusion(Modifiers):
+    version: str = "0.4.1"
 
     clip: ClipEmbedding
-    vae: AutoencoderKL
-    unet: UNet2DConditional
 
     def __init__(
         self,
@@ -56,91 +54,28 @@ class StableDiffusion:
         self.cpu()
         self.float()
 
-    def set_low_ram(self, low_ram: bool = True) -> Self:
-        """Split context into two passes to save memory."""
-
-        self.low_ram = low_ram
-
-        return self
-
-    def to(self, device: Literal["cpu", "cuda"] | torch.device) -> Self:
-        """Send unet and auto-encoder to device."""
-
-        self.device = device = torch.device(device)
-
-        self.unet.to(device=self.device, non_blocking=True)
-        self.vae.to(device=self.device, non_blocking=True)
-
-        return self
-
-    def cuda(self) -> Self:
-        """Send unet and auto-encoder to cuda."""
-
-        clear_cuda()
-
-        return self.to("cuda")
-
-    def cpu(self) -> Self:
-        """Send unet and auto-encoder to cpu."""
-
-        return self.to("cpu")
-
-    def half(self) -> Self:
-        """Use half-precision for unet and auto-encoder."""
-
-        self.unet.half()
-        self.vae.half()
-
-        self.dtype = torch.float16
-
-        return self
-
-    def float(self) -> Self:
-        """Use full-precision for unet and auto-encoder."""
-
-        self.unet.float()
-        self.vae.float()
-
-        self.dtype = torch.float32
-
-        return self
-
-    def half_weights(self, use_half_weights: bool = True) -> Self:
-        """Store the weights in half-precision but
-    compute forward pass in full precision.
-    Useful for GPUs that gives NaN when used in half-precision.
-    """
-
-        self.unet.half_weights(use_half_weights)
-        self.vae.half_weights(use_half_weights)
-
-        return self
-
-    def split_attention(
-        self, *, cross_attention_chunks: Optional[int] = None
-    ) -> Self:
-        """Split cross-attention computation into chunks."""
-
-        self.unet.split_attention(cross_attention_chunks)
-        self.vae.split_attention(cross_attention_chunks)
-
-        return self
+    @property
+    def latent_channels(self) -> int:
+        return self.unet.in_channels
 
     @torch.no_grad()
-    def text2img(
+    def _generate(
         self,
         *,
+        eta: float,
+        steps: int,
+        scale: float,
+        height: int,
+        width: int,
+        negative_prompt: str,
+        batch_size: int,
         prompt: Optional[str] = None,
-        negative_prompt: str = "",
-        eta: float = 0,
-        steps: int = 32,
-        scale: float = 7.5,
-        height: int = 512,
-        width: int = 512,
+        img: Optional[str] = None,
+        strength: Optional[float] = None,
         seed: Optional[int | list[int]] = None,
-        batch_size: int = 1,
+        mode: Optional[ResizeModes] = None,
     ) -> list[tuple[Image.Image, Path]]:
-        """Creates an image from a prompt and (optionally) a negative prompt."""
+        """General purpose image generation."""
 
         kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
 
@@ -149,17 +84,30 @@ class StableDiffusion:
         assert width % 64 == 0
 
         unconditional = prompt is None
-
         scheduler = DDIMScheduler(steps, self.device, self.dtype)
-
-        batch_size = fix_batch_size(seed, batch_size)
+        seed, batch_size = fix_batch_size(seed, batch_size)
         context, weight = self.get_context(prompt, negative_prompt, batch_size)
 
-        shape = (batch_size, 4, height // 8, width // 8)
+        shape = (batch_size, self.latent_channels, height // 8, width // 8)
         latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
 
+        if img is not None:
+            assert strength is not None
+            assert mode is not None
+            assert mode == "resize"  # TODO implement other modes
+
+            img_data = image2tensor(
+                img, size=(height, width), device=self.device
+            )
+            img_latents = self.encode(img_data)
+
+            k = scheduler.cutoff_index(strength)
+            latents = scheduler.add_noise(img_latents, latents, k)
+        else:
+            k = 0
+
         latents = self.denoise_latents(
-            scheduler, latents, context, weight, scale, eta, unconditional
+            scheduler, latents, context, weight, scale, eta, unconditional, k
         )
 
         data = self.decode(latents)
@@ -168,23 +116,49 @@ class StableDiffusion:
         paths: list[Path] = []
         for seed, image in zip(seeds, images):
             metadata = self._create_metadata(seed=seed, **kwargs)
+            # TODO add img as base64-encoded string
             path = self.save_image(image, metadata)
             paths.append(path)
 
         return list(zip(images, paths))
 
-    # TODO Merge this with text2image since they share lots of code
-    @torch.no_grad()
-    def img2img(
+    def text2img(
         self,
+        prompt: str,
         *,
-        img: str,
-        prompt: Optional[str] = None,
         negative_prompt: str = "",
-        eta: float = 0,
         steps: int = 32,
         scale: float = 7.5,
-        strength: float = 0.5,
+        eta: float = 0,
+        height: int = 512,
+        width: int = 512,
+        seed: Optional[int | list[int]] = None,
+        batch_size: int = 1,
+    ):
+        """Creates an image from a prompt and (optionally) a negative prompt."""
+
+        return self._generate(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            steps=steps,
+            scale=scale,
+            eta=eta,
+            height=height,
+            width=width,
+            seed=seed,
+            batch_size=batch_size,
+        )
+
+    def img2img(
+        self,
+        prompt: str,
+        *,
+        img: str,
+        strength: float,
+        negative_prompt: str = "",
+        steps: int = 32,
+        scale: float = 7.5,
+        eta: float = 0,
         height: int = 512,
         width: int = 512,
         seed: Optional[int | list[int]] = None,
@@ -195,78 +169,55 @@ class StableDiffusion:
         with an image as a basis.
         """
 
-        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
-
-        # allowed sizes are multiple of 64
-        assert height % 64 == 0
-        assert width % 64 == 0
-
-        unconditional = prompt is None
-
-        scheduler = DDIMScheduler(steps, self.device, self.dtype)
-
-        batch_size = fix_batch_size(seed, batch_size)
-        context, weight = self.get_context(prompt, negative_prompt, batch_size)
-
-        shape = (batch_size, 4, height // 8, width // 8)
-        noise, seeds = generate_noise(shape, seed, self.device, self.dtype)
-
-        # TODO make into its own function
-        # latents from image
-        assert mode == "resize"
-        data = image2tensor(img, size=(height, width), device=self.device)
-        img_latents = self.encode(data)
-
-        k = scheduler.cutoff_index(strength)
-        latents = scheduler.add_noise(img_latents, noise, k)
-
-        latents = self.denoise_latents(
-            scheduler, latents, context, weight, scale, eta, unconditional, k=k
+        return self._generate(
+            prompt=prompt,
+            img=img,
+            strength=strength,
+            negative_prompt=negative_prompt,
+            steps=steps,
+            scale=scale,
+            eta=eta,
+            height=height,
+            width=width,
+            seed=seed,
+            batch_size=batch_size,
+            mode=mode,
         )
 
-        data = self.decode(latents)
-        images = self.create_images(data)
+    # @torch.no_grad()
+    # def img2img_alt(
+    #     self,
+    #     *,
+    #     img: str,
+    #     prompt: str,
+    #     eta: float = 0,
+    #     steps: int = 32,
+    #     scale: float = 7.5,
+    #     height: int = 512,
+    #     width: int = 512,
+    #     seed: Optional[int | list[int]] = None,
+    #     batch_size: int = 1,
+    #     mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
+    # ) -> list[tuple[Image.Image, Path]]:
+    #     ...
 
-        paths: list[Path] = []
-        for seed, image in zip(seeds, images):
-            metadata = self._create_metadata(seed=seed, **kwargs)
-            # TODO add as metadata the original image as base64-encoded string?
-            path = self.save_image(image, metadata)
-            paths.append(path)
+    # kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
 
-        return list(zip(images, paths))
+    # # allowed sizes are multiple of 64
+    # assert height % 64 == 0
+    # assert width % 64 == 0
 
-    @torch.no_grad()
-    def img2img_alt(
-        self,
-        *,
-        img: str,
-        prompt: str,
-        eta: float = 0,
-        steps: int = 32,
-        scale: float = 7.5,
-        height: int = 512,
-        width: int = 512,
-        seed: Optional[int | list[int]] = None,
-        batch_size: int = 1,
-        mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
-    ) -> list[tuple[Image.Image, Path]]:
+    # scheduler = DDIMScheduler(steps, self.device, self.dtype)
 
-        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
-
-        # allowed sizes are multiple of 64
-        assert height % 64 == 0
-        assert width % 64 == 0
-
-        scheduler = DDIMScheduler(steps, self.device, self.dtype)
-
-        batch_size = fix_batch_size(seed, batch_size)
-        context, weight = self.get_context(prompt, negative_prompt, batch_size)
+    # batch_size = fix_batch_size(seed, batch_size)
+    # context, weight = self.get_context(prompt, negative_prompt, batch_size)
 
     def save_image(
         self, image: Image.Image, metadata: PngInfo, ID: Optional[int] = None
     ) -> Path:
         """Save the image using the provided metadata information."""
+
+        # TODO use date?
 
         if ID is None:
             ID = random.randint(0, 2 ** 64)
