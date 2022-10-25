@@ -5,13 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from .....utils.typing import Literal
 from ....base import Conv2d
 
 
 class Upsample2D(nn.Module):
-    kind: Literal["conv", "transpose", "none"]
-
     def __init__(
         self, channels: int, out_channels: Optional[int] = None,
     ) -> None:
@@ -25,9 +22,6 @@ class Upsample2D(nn.Module):
         self.conv = Conv2d(channels, out_channels, kernel_size=3, padding=1)
 
     def __call__(self, x: Tensor) -> Tensor:
-        if self.kind == "transpose":
-            return self.conv(x)
-
         x = F.interpolate(x, mode="nearest", scale_factor=2)
 
         return self.conv(x)

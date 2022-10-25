@@ -15,7 +15,7 @@ def attention(
     v: Tensor,  # (B, T', C)
     *,
     chunks: Optional[int] = None,
-    weights: Optional[Tensor] = None
+    weights: Optional[Tensor] = None,
 ) -> Tensor:
     assert q.ndim == k.ndim == v.ndim == 3
     assert q.shape[0] == k.shape[0] == v.shape[0]
@@ -46,6 +46,7 @@ def attention(
     # split-attention score
     shape = (q.size(0), q.size(1), k.size(1))
     out = torch.empty(shape, device=q.device, dtype=q.dtype)
+
     for i in range(0, len(k), chunks):
         s = slice(i, i + chunks)
 
