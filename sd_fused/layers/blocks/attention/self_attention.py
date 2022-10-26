@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import Optional
 
-import math
-
 import torch.nn as nn
 from torch import Tensor
 
@@ -37,7 +35,6 @@ class SelfAttention(nn.Module):
         self.query = Linear(in_features)
         self.key = Linear(in_features)
         self.value = Linear(in_features)
-        self.scale = math.pow(head_features, -1 / 4)
 
         self.proj_attn = Linear(in_features)
 
@@ -64,10 +61,6 @@ class SelfAttention(nn.Module):
         k = self.heads_to_batch(self.key(x))
         v = self.heads_to_batch(self.value(x))
         del x
-
-        # scale
-        q = q * self.scale
-        k = k * self.scale
 
         x = attention(q, k, v, chunks=self.attention_chunks)
         del q, k, v

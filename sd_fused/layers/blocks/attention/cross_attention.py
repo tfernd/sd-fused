@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import Optional
 
-import math
-
 import torch.nn as nn
 from torch import Tensor
 
@@ -38,7 +36,6 @@ class CrossAttention(nn.Module):
         self.to_q = Linear(query_features, inner_dim, bias=False)
         self.to_k = Linear(context_features, inner_dim, bias=False)
         self.to_v = Linear(context_features, inner_dim, bias=False)
-        self.scale = math.pow(head_features, -1 / 4)
 
         self.to_out = Linear(inner_dim, query_features)
 
@@ -68,9 +65,6 @@ class CrossAttention(nn.Module):
         k = self.heads_to_batch(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
         del x, context
-
-        q = q * self.scale
-        k = k * self.scale
 
         x = attention(
             q, k, v, chunks=self.attention_chunks, weights=context_weights,
