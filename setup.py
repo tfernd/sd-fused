@@ -3,14 +3,17 @@ from distutils.core import setup
 
 from pathlib import Path
 
+from sd_fused import StableDiffusion
+
 packages = list(set(str(p.parent) for p in Path("sd_fused").rglob("*.py")))
 
 with open("./requirements.txt") as handle:
     requirements = handle.read().split()
 
+
 setup(
     name="sd-fused",
-    version="0.3.2",
+    version=StableDiffusion.version,
     description="Stable-Diffusion + Fused CUDA kernels",
     author="Thales Fernandes",
     author_email="thalesfdfernandes@gmail.com",

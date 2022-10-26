@@ -20,7 +20,7 @@ def generate_noise(
 ) -> NoiseOutput:
     """Generate random noise with individual seeds per batch."""
 
-    batch_size, channels, height, width = shape
+    batch_size = shape[0]
 
     if seed is None:
         seeds = torch.randint(0, 2 ** 32, (batch_size,)).tolist()

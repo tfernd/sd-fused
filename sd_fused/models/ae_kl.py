@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing_extensions import Self
 
 from pathlib import Path
-import re
 import json
 
 import torch
@@ -14,6 +13,7 @@ from ..layers.base import Conv2d, HalfWeightsModel, SplitAttentionModel
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder import Encoder, Decoder
 from .config import VaeConfig
+from .convert import diffusers2fused_vae
 
 
 class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
@@ -21,7 +21,7 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
 
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
-        """'Creates a model from a config file."""
+        """Creates a model from a config file."""
 
         path = Path(path)
         if path.is_dir():
@@ -30,6 +30,7 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
 
         db = json.load(open(path, "r"))
         config = VaeConfig(**db)
+        # TODO raise an exception?
 
         return cls(
             in_channels=config.in_channels,
@@ -100,7 +101,7 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
         return out
 
     @classmethod
-    def load_sd(cls, path: str | Path) -> Self:
+    def from_diffusers(cls, path: str | Path) -> Self:
         """Load Stable-Diffusion from diffusers checkpoint."""
 
         path = Path(path)
@@ -109,47 +110,7 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
         state_path = next(path.glob("*.bin"))
         state = torch.load(state_path, map_location="cpu")
 
-        # modify state-dict
-        for key in list(state.keys()):
-            for (c1, c2) in REPLACEMENTS:
-                new_key = re.sub(c1, c2, key)
-                if new_key != key:
-                    value = state.pop(key)
-                    state[new_key] = value
-
-        # debug
-        if cls.debug:
-            old_keys = list(state.keys())
-            new_keys = list(model.state_dict().keys())
-
-            in_old = set(old_keys) - set(new_keys)
-            in_new = set(new_keys) - set(old_keys)
-
-            if len(in_old) > 0:
-                with open("in-old.txt", "w") as f:
-                    f.write("\n".join(sorted(list(in_old))))
-
-            if len(in_new) > 0:
-                with open("in-new.txt", "w") as f:
-                    f.write("\n".join(sorted(list(in_new))))
-
+        state = diffusers2fused_vae(state)
         model.load_state_dict(state)
 
         return model
-
-
-REPLACEMENTS: list[tuple[str, str]] = [
-    # up/down samplers
-    (r"(up|down)samplers.0", r"\1sampler"),
-    # post_process
-    (
-        r"(decoder|encoder).conv_norm_out.(bias|weight)",
-        r"\1.post_process.0.\2",
-    ),
-    (r"(decoder|encoder).conv_out.(bias|weight)", r"\1.post_process.2.\2",),
-    # resnet-blocks pre/post-process
-    (r"resnets.(\d).norm1.(bias|weight)", r"resnets.\1.pre_process.0.\2",),
-    (r"resnets.(\d).conv1.(bias|weight)", r"resnets.\1.pre_process.2.\2",),
-    (r"resnets.(\d).norm2.(bias|weight)", r"resnets.\1.post_process.0.\2",),
-    (r"resnets.(\d).conv2.(bias|weight)", r"resnets.\1.post_process.2.\2",),
-]

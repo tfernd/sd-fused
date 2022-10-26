@@ -21,6 +21,7 @@ from ..layers.blocks.spatial import (
     CrossAttentionUpBlock2D,
 )
 from .config import UnetConfig
+from .convert import diffusers2fused_unet
 
 
 class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
@@ -37,6 +38,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
 
         db = json.load(open(path, "r"))
         config = UnetConfig(**db)
+        # TODO raise an exception?
 
         return cls(
             in_channels=config.in_channels,
@@ -221,13 +223,14 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
 
         # 1. time embedding
         if isinstance(timestep, int):
-            timesteps = torch.tensor([timestep], device=x.device)
-            timesteps = timesteps.expand(B)
+            timestep = torch.tensor([timestep] * B, device=x.device)
         else:
-            assert timestep.shape == (B,)
-            timesteps = timestep
+            assert timestep.ndim == 1
+        if timestep.shape[0] == 1:
+            timestep = timestep.expand(B)
+        assert timestep.shape == (B,)
 
-        temb = self.time_proj(timesteps)
+        temb = self.time_proj(timestep)
         temb = self.time_embedding(temb)
 
         # 2. pre-process # TODO RENAME
@@ -285,7 +288,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
         return x
 
     @classmethod
-    def load_sd(cls, path: str | Path) -> Self:
+    def from_diffusers(cls, path: str | Path) -> Self:
         """Load Stable-Diffusion from diffusers checkpoint."""
 
         path = Path(path)
@@ -294,68 +297,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
         state_path = next(path.glob("*.bin"))
         state = torch.load(state_path, map_location="cpu")
 
-        # modify state-dict
-        for key in list(state.keys()):
-            for (c1, c2) in REPLACEMENTS:
-                new_key = re.sub(c1, c2, key)
-                if new_key != key:
-                    value = state.pop(key)
-                    state[new_key] = value
-
-        # debug
-        if cls.debug:
-            old_keys = list(state.keys())
-            new_keys = list(model.state_dict().keys())
-
-            in_old = set(old_keys) - set(new_keys)
-            in_new = set(new_keys) - set(old_keys)
-
-            if len(in_old) > 0:
-                with open("in-old.txt", "w") as f:
-                    f.write("\n".join(sorted(list(in_old))))
-
-            if len(in_new) > 0:
-                with open("in-new.txt", "w") as f:
-                    f.write("\n".join(sorted(list(in_new))))
-
+        state = diffusers2fused_unet(state)
         model.load_state_dict(state)
 
         return model
-
-
-REPLACEMENTS: list[tuple[str, str]] = [
-    # Cross-attention
-    (
-        r"transformer_blocks.(\d).norm([12]).(weight|bias)",
-        r"transformer_blocks.\1.attn\2.norm.\3",
-    ),
-    ## FeedForward (norm)
-    (
-        r"transformer_blocks.(\d).norm3.(weight|bias)",
-        r"transformer_blocks.\1.ff.0.\2",
-    ),
-    ## FeedForward (geglu)
-    (r"ff.net.0.proj.(weight|bias)", r"ff.1.proj.\1",),
-    ## FeedForward-Linear
-    (r"ff.net.2.(weight|bias)", r"ff.2.\1",),
-    # up/down samplers
-    (r"(up|down)samplers.0", r"\1sampler"),
-    # CrossAttention projection
-    (r"to_out.0.", r"to_out."),
-    # TimeEmbedding
-    (r"time_embedding.linear_1.(weight|bias)", r"time_embedding.0.\1"),
-    (r"time_embedding.linear_2.(weight|bias)", r"time_embedding.2.\1"),
-    # resnet-blocks pre/post-process
-    (r"resnets.(\d).norm1.(bias|weight)", r"resnets.\1.pre_process.0.\2",),
-    (r"resnets.(\d).conv1.(bias|weight)", r"resnets.\1.pre_process.2.\2",),
-    (r"resnets.(\d).norm2.(bias|weight)", r"resnets.\1.post_process.0.\2",),
-    (r"resnets.(\d).conv2.(bias|weight)", r"resnets.\1.post_process.2.\2",),
-    # resnet-time-embedding
-    (r"time_emb_proj.(bias|weight)", r"time_emb_proj.1.\1"),
-    # spatial transformer fused
-    (r"attentions.(\d).norm.(bias|weight)", r"attentions.\1.proj_in.0.\2",),
-    (r"attentions.(\d).proj_in.(bias|weight)", r"attentions.\1.proj_in.1.\2",),
-    # post-processing
-    (r"conv_norm_out.(bias|weight)", r"post_process.0.\1"),
-    (r"conv_out.(bias|weight)", r"post_process.2.\1"),
-]

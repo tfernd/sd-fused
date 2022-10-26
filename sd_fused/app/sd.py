@@ -2,7 +2,8 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from pathlib import Path
-from tqdm.autonotebook import trange
+from tqdm.auto import trange
+from datetime import datetime
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -15,19 +16,21 @@ from torch import Tensor
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
-from ..utils import image2tensor, clear_cuda, generate_noise
-from ..utils.typing import Literal
+from ..utils import (
+    image2tensor,
+    ResizeModes,
+    image_base64,
+    clear_cuda,
+    generate_noise,
+)
 from .utils import fix_batch_size, kwargs2ignore
-
 from .modifiers import Modifiers
 
 MAGIC = 0.18215
 
-ResizeModes = Literal["resize", "resize-crop", "resize-pad"]
-
 
 class StableDiffusion(Modifiers):
-    version: str = "0.4.1"
+    version: str = "0.4.3"
 
     clip: ClipEmbedding
 
@@ -46,8 +49,8 @@ class StableDiffusion(Modifiers):
 
         self.clip = ClipEmbedding(path / "tokenizer", path / "text_encoder")
 
-        self.vae = AutoencoderKL.load_sd(path / "vae")
-        self.unet = UNet2DConditional.load_sd(path / "unet")
+        self.vae = AutoencoderKL.from_diffusers(path / "vae")
+        self.unet = UNet2DConditional.from_diffusers(path / "unet")
 
         # init
         self.set_low_ram(False)
@@ -56,6 +59,8 @@ class StableDiffusion(Modifiers):
 
     @property
     def latent_channels(self) -> int:
+        """Latent-space channel size."""
+
         return self.unet.in_channels
 
     @torch.no_grad()
@@ -77,37 +82,45 @@ class StableDiffusion(Modifiers):
     ) -> list[tuple[Image.Image, Path]]:
         """General purpose image generation."""
 
-        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed"])
+        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed", "img"])
 
         # allowed sizes are multiple of 64
         assert height % 64 == 0
         assert width % 64 == 0
 
         unconditional = prompt is None
-        scheduler = DDIMScheduler(steps, self.device, self.dtype)
         seed, batch_size = fix_batch_size(seed, batch_size)
+
         context, weight = self.get_context(prompt, negative_prompt, batch_size)
 
         shape = (batch_size, self.latent_channels, height // 8, width // 8)
         latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
 
+        scheduler = DDIMScheduler(steps, self.device, self.dtype, seeds)
+
         if img is not None:
             assert strength is not None
             assert mode is not None
-            assert mode == "resize"  # TODO implement other modes
 
-            img_data = image2tensor(
-                img, size=(height, width), device=self.device
-            )
+            img_data = image2tensor(img, height, width, mode, self.device)
             img_latents = self.encode(img_data)
 
-            k = scheduler.cutoff_index(strength)
-            latents = scheduler.add_noise(img_latents, latents, k)
+            skip_step = scheduler.cutoff_index(strength)
+            latents = scheduler.add_noise(img_latents, latents, skip_step)
+
+            kwargs["img_base64"] = image_base64(img)
         else:
-            k = 0
+            skip_step = 0
 
         latents = self.denoise_latents(
-            scheduler, latents, context, weight, scale, eta, unconditional, k
+            scheduler,
+            latents,
+            context,
+            weight,
+            scale,
+            eta,
+            unconditional,
+            skip_step,
         )
 
         data = self.decode(latents)
@@ -116,7 +129,6 @@ class StableDiffusion(Modifiers):
         paths: list[Path] = []
         for seed, image in zip(seeds, images):
             metadata = self._create_metadata(seed=seed, **kwargs)
-            # TODO add img as base64-encoded string
             path = self.save_image(image, metadata)
             paths.append(path)
 
@@ -163,7 +175,7 @@ class StableDiffusion(Modifiers):
         width: int = 512,
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
-        mode: Literal["resize", "resize-crop", "resize-pad"] = "resize",
+        mode: ResizeModes = "resize",
     ) -> list[tuple[Image.Image, Path]]:
         """Creates an image from a prompt and (optionally) a negative prompt
         with an image as a basis.
@@ -217,14 +229,15 @@ class StableDiffusion(Modifiers):
     ) -> Path:
         """Save the image using the provided metadata information."""
 
-        # TODO use date?
+        now = datetime.now()
+        timestamp = now.strftime(r"%Y-%m-%d %H-%M-%S.%f")
 
         if ID is None:
             ID = random.randint(0, 2 ** 64)
 
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
-        path = self.save_dir / f"{ID:x}.SD.png"
+        path = self.save_dir / f"{timestamp} - {ID:x}.SD.png"
         image.save(path, bitmap_format="png", pnginfo=metadata)
 
         return path
@@ -252,14 +265,13 @@ class StableDiffusion(Modifiers):
         scale: float,
         eta: float,
         unconditional: bool,
-        k: int = 0,
+        skip_step: int = 0,
     ) -> Tensor:
         """Main loop where latents are denoised."""
 
         clear_cuda()
-        for i in trange(k, len(scheduler), desc="Denoising latents."):
-            # TODO for now unet accept only ints and not Tensor
-            timestep = int(scheduler.timesteps[i].item())
+        for i in trange(skip_step, len(scheduler), desc="Denoising latents."):
+            timestep = scheduler.timesteps[[i]]  # ndim=1
 
             pred_noise = self.pred_noise(
                 latents,
@@ -279,7 +291,7 @@ class StableDiffusion(Modifiers):
     def pred_noise(
         self,
         latents: Tensor,
-        timestep: int,
+        timestep: int | Tensor,
         context: Tensor,
         context_weights: Optional[Tensor],
         unconditional: bool,
@@ -364,7 +376,7 @@ class StableDiffusion(Modifiers):
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
 
-        return f"{name}({self.model_name})"
+        return f'{name}(model="{self.model_name}", version={self.version})'
 
 
 # TODO re-implement this better
