@@ -115,7 +115,7 @@ class DDIMScheduler:
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 
-    def cutoff_index(self, strength: float) -> int:
+    def skip_step(self, strength: float) -> int:
         """The index generation needs to start."""
 
         assert 0 < strength <= 1

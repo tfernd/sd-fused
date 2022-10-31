@@ -27,9 +27,9 @@ class HalfWeights(nn.Module):
 class HalfWeightsModel(nn.Module):
     def half_weights(self, use_half_weights: bool = True) -> Self:
         """Store the weights in half-precision but
-    compute forward pass in full precision.
-    Useful for GPUs that gives NaN when used in half-precision.
-    """
+        compute forward pass in full precision.
+        Useful for GPUs that gives NaN when used in half-precision.
+        """
 
         for name, module in self.named_modules():
             if isinstance(module, HalfWeights):

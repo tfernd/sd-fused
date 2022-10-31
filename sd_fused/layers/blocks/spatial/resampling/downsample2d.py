@@ -14,7 +14,11 @@ class Downsample2D(nn.Module):
     pad: Callable[[Tensor], Tensor]
 
     def __init__(
-        self, in_channels: int, out_channels: Optional[int], *, padding: int,
+        self,
+        in_channels: int,
+        out_channels: Optional[int],
+        *,
+        padding: int,
     ) -> None:
         super().__init__()
 
@@ -37,7 +41,10 @@ class Downsample2D(nn.Module):
         if padding == 0:
             # ? Why?
             self.pad = partial(
-                F.pad, pad=(0, 1, 0, 1), mode="constant", value=0,
+                F.pad,
+                pad=(0, 1, 0, 1),
+                mode="constant",
+                value=0,
             )
 
     def __call__(self, x: Tensor) -> Tensor:

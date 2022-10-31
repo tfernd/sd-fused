@@ -18,7 +18,9 @@ class Linear(HalfWeights, nn.Linear):
         out_features = out_features or in_features
 
         super().__init__(
-            in_features=in_features, out_features=out_features, bias=bias,
+            in_features=in_features,
+            out_features=out_features,
+            bias=bias,
         )
 
     def __call__(self, x: Tensor) -> Tensor:

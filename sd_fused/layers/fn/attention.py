@@ -11,7 +11,7 @@ from einops import repeat
 from ...utils import softmax
 
 try:
-    from xformers.ops import memory_efficient_attention
+    from xformers.ops import memory_efficient_attention  # type: ignore
 except ImportError:
     memory_efficient_attention = None
 

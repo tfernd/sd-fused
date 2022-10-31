@@ -28,7 +28,9 @@ class ClipEmbedding:
     text_encoder: CLIPTextModel
 
     def __init__(
-        self, tokenizer_path: str | Path, text_encoder_path: str | Path,
+        self,
+        tokenizer_path: str | Path,
+        text_encoder_path: str | Path,
     ) -> None:
         # TODO check if valid paths?
         # no need for CUDA for simple embeddings...
@@ -91,7 +93,8 @@ class ClipEmbedding:
         weights = [1, *weights, *[1] * n, 1]
 
         return TensorAndWeight(
-            torch.tensor([ids]), torch.tensor([weights]).float(),
+            torch.tensor([ids]),
+            torch.tensor([weights]).float(),
         )
 
     @lru_cache(maxsize=None)

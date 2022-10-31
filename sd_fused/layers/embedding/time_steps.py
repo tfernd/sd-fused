@@ -44,7 +44,13 @@ class Timesteps(nn.Module):
         freq = exponent.exp()
         freq = torch.cat([freq, freq]).unsqueeze(0)
 
-        amplitude = torch.full((1, num_channels,), scale)
+        amplitude = torch.full(
+            (
+                1,
+                num_channels,
+            ),
+            scale,
+        )
 
         zeros = torch.zeros((1, half_dim))
         ones = torch.ones((1, half_dim))

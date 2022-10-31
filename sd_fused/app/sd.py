@@ -23,12 +23,13 @@ from ..utils import (
     clear_cuda,
     generate_noise,
 )
-from .utils import fix_batch_size, kwargs2ignore
+from .utils import fix_batch_size, kwargs2ignore, Metadata
 from .modifiers import Modifiers
 
 MAGIC = 0.18215
 
 
+#%%
 class StableDiffusion(Modifiers):
     version: str = "0.4.3"
 
@@ -74,12 +75,12 @@ class StableDiffusion(Modifiers):
         width: int,
         negative_prompt: str,
         batch_size: int,
-        prompt: Optional[str] = None,
-        img: Optional[str] = None,
-        strength: Optional[float] = None,
-        seed: Optional[int | list[int]] = None,
-        mode: Optional[ResizeModes] = None,
-    ) -> list[tuple[Image.Image, Path]]:
+        prompt: Optional[str],
+        img: Optional[str],
+        strength: Optional[float],
+        seed: Optional[int | list[int]],
+        mode: Optional[ResizeModes],
+    ) -> list[tuple[Image.Image, Path, Metadata]]:
         """General purpose image generation."""
 
         kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed", "img"])
@@ -91,7 +92,7 @@ class StableDiffusion(Modifiers):
         unconditional = prompt is None
         seed, batch_size = fix_batch_size(seed, batch_size)
 
-        context, weight = self.get_context(prompt, negative_prompt, batch_size)
+        context, weight = self.get_context(negative_prompt, prompt, batch_size)
 
         shape = (batch_size, self.latent_channels, height // 8, width // 8)
         latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
@@ -105,34 +106,30 @@ class StableDiffusion(Modifiers):
             img_data = image2tensor(img, height, width, mode, self.device)
             img_latents = self.encode(img_data)
 
-            skip_step = scheduler.cutoff_index(strength)
+            skip_step = scheduler.skip_step(strength)
             latents = scheduler.add_noise(img_latents, latents, skip_step)
 
             kwargs["img_base64"] = image_base64(img)
         else:
             skip_step = 0
 
-        latents = self.denoise_latents(
-            scheduler,
-            latents,
-            context,
-            weight,
-            scale,
-            eta,
-            unconditional,
-            skip_step,
-        )
+        # fmt: off
+        latents = self.denoise_latents(scheduler, latents, context, weight, scale, eta, unconditional, skip_step)
+        # fmt: on
 
         data = self.decode(latents)
         images = self.create_images(data)
 
         paths: list[Path] = []
+        metadatas: list[Metadata] = []
         for seed, image in zip(seeds, images):
             metadata = self._create_metadata(seed=seed, **kwargs)
-            path = self.save_image(image, metadata)
-            paths.append(path)
+            path = self.save_image(image, metadata.png_info)
 
-        return list(zip(images, paths))
+            paths.append(path)
+            metadatas.append(metadata)
+
+        return list(zip(images, paths, metadatas))
 
     def text2img(
         self,
@@ -159,6 +156,10 @@ class StableDiffusion(Modifiers):
             width=width,
             seed=seed,
             batch_size=batch_size,
+            # not used for text2img
+            img=None,
+            strength=None,
+            mode=None,
         )
 
     def img2img(
@@ -205,7 +206,7 @@ class StableDiffusion(Modifiers):
         timestamp = now.strftime(r"%Y-%m-%d %H-%M-%S.%f")
 
         if ID is None:
-            ID = random.randint(0, 2 ** 64)
+            ID = random.randint(0, 2**64)
 
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -216,7 +217,10 @@ class StableDiffusion(Modifiers):
 
     @torch.no_grad()
     def get_context(
-        self, prompt: Optional[str], negative_prompt: str, batch_size: int
+        self,
+        negative_prompt: str,
+        prompt: Optional[str],
+        batch_size: int,
     ) -> tuple[Tensor, Optional[Tensor]]:
         """Creates a context Tensor (negative + positive prompt) and a emphasis weights."""
 
@@ -245,20 +249,16 @@ class StableDiffusion(Modifiers):
         for i in trange(skip_step, len(scheduler), desc="Denoising latents."):
             timestep = scheduler.timesteps[[i]]  # ndim=1
 
-            pred_noise = self.pred_noise(
-                latents,
-                timestep,
-                context,
-                context_weight,
-                unconditional,
-                scale,
-            )
+            # fmt: off
+            pred_noise = self.pred_noise(latents, timestep, context, context_weight, unconditional, scale)
+            # fmt: on
             latents = scheduler.step(pred_noise, latents, i, eta)
             del pred_noise
         clear_cuda()
 
         return latents
 
+    # fmt: off
     @torch.no_grad()
     def pred_noise(
         self,
@@ -277,33 +277,22 @@ class StableDiffusion(Modifiers):
         if self.low_ram:
             negative_context, prompt_context = context.chunk(2, dim=0)
             if context_weights is not None:
-                negative_weight, prompt_weight = context_weights.chunk(
-                    2, dim=0
-                )
+                #
+                negative_weight, prompt_weight = context_weights.chunk(2, dim=0)
             else:
                 negative_weight = prompt_weight = None
 
-            pred_noise_prompt = self.unet(
-                latents, timestep, prompt_context, prompt_weight,
-            )
-            pred_noise_negative = self.unet(
-                latents, timestep, negative_context, negative_weight,
-            )
+            pred_noise_prompt = self.unet(latents, timestep, prompt_context, prompt_weight)
+            pred_noise_negative = self.unet(latents, timestep, negative_context, negative_weight)
         else:
             latents = torch.cat([latents] * 2, dim=0)
 
-            pred_noise_all = self.unet(
-                latents, timestep, context, context_weights
-            )
-            pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(
-                2, dim=0
-            )
+            pred_noise_all = self.unet(latents, timestep, context, context_weights)
+            pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(2, dim=0)
             del pred_noise_all
 
-        return (
-            pred_noise_negative
-            + (pred_noise_prompt - pred_noise_negative) * scale
-        )
+        return pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scale
+    # fmt: on
 
     @torch.no_grad()
     def decode(self, latents: Tensor) -> Tensor:
@@ -323,27 +312,16 @@ class StableDiffusion(Modifiers):
 
         return [Image.fromarray(v) for v in data]
 
-    def _create_metadata(self, **kwargs: Any) -> PngInfo:
+    def _create_metadata(self, **kwargs: Any) -> Metadata:
         """Creates metadata to be used for the PNG."""
 
-        kwargs = dict(**kwargs, version=self.version, model=self.model_name,)
+        kwargs = dict(
+            **kwargs,
+            version=self.version,
+            model=self.model_name,
+        )
 
-        metadata = PngInfo()
-        for key, value in kwargs.items():
-            if isinstance(value, (int, float)):
-                value = str(value)
-            elif value is None:
-                value = "null"
-            elif isinstance(value, str):
-                pass
-            else:
-                raise TypeError(
-                    f"value ({value}) of type {type(value)} not supported."
-                )
-
-            metadata.add_text(f"SD {key}", value)
-
-        return metadata
+        return Metadata(**kwargs)
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

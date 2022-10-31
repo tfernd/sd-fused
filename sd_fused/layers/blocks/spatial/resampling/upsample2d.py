@@ -10,7 +10,9 @@ from ....base import Conv2d
 
 class Upsample2D(nn.Module):
     def __init__(
-        self, channels: int, out_channels: Optional[int] = None,
+        self,
+        channels: int,
+        out_channels: Optional[int] = None,
     ) -> None:
         super().__init__()
 

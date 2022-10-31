@@ -114,7 +114,8 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
         timestep_input_dim = block_out_channels[0]
 
         self.time_embedding = TimestepEmbedding(
-            channel=timestep_input_dim, time_embed_dim=time_embed_dim,
+            channel=timestep_input_dim,
+            time_embed_dim=time_embed_dim,
         )
 
         # down

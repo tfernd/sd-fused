@@ -15,7 +15,7 @@ class GroupNormSiLUConv2d(nn.Sequential):
         out_channels: Optional[int] = None,
         *,
         kernel_size: int = 1,
-        padding: int = 0
+        padding: int = 0,
     ) -> None:
         layers = (
             GroupNorm(num_groups, in_channels),

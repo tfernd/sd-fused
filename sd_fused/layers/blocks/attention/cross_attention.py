@@ -67,7 +67,11 @@ class CrossAttention(nn.Module):
         del x, context
 
         x = attention(
-            q, k, v, chunks=self.attention_chunks, weights=context_weights,
+            q,
+            k,
+            v,
+            chunks=self.attention_chunks,
+            weights=context_weights,
         )
         del q, k, v
         x = self.heads_to_channel(x)

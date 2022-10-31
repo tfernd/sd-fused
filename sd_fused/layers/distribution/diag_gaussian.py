@@ -7,7 +7,11 @@ from torch import Tensor
 
 class DiagonalGaussianDistribution:
     def __init__(
-        self, mean: Tensor, logvar: Tensor, *, deterministic: bool = False,
+        self,
+        mean: Tensor,
+        logvar: Tensor,
+        *,
+        deterministic: bool = False,
     ) -> None:
         super().__init__()
 

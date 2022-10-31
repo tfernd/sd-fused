@@ -23,8 +23,9 @@ def generate_noise(
     batch_size = shape[0]
 
     if seed is None:
-        seeds = torch.randint(0, 2 ** 32, (batch_size,)).tolist()
+        seeds = torch.randint(0, 2**32, (batch_size,)).tolist()
     elif isinstance(seed, int):
+        assert batch_size == 1
         seeds = [seed]
     else:
         seeds = seed

@@ -9,7 +9,11 @@ from ..base import Linear
 
 class TimestepEmbedding(nn.Sequential):
     def __init__(
-        self, *, channel: int, time_embed_dim: int, use_silu: bool = True,
+        self,
+        *,
+        channel: int,
+        time_embed_dim: int,
+        use_silu: bool = True,
     ) -> None:
 
         self.channel = channel

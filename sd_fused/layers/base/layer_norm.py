@@ -12,7 +12,7 @@ class LayerNorm(HalfWeights, nn.LayerNorm):
         num_channels: int,
         *,
         eps: float = 1e-6,
-        elementwise_affine: bool = True
+        elementwise_affine: bool = True,
     ) -> None:
         super().__init__(
             normalized_shape=num_channels,
