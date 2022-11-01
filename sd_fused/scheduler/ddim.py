@@ -79,8 +79,6 @@ class DDIMScheduler:
         eta: float | Tensor = 0,
     ) -> Tensor:
         """Get the previous latents according to the DDIM paper."""
-        shape = latents.shape
-
         i = to_tensor(i, steps=self.steps, device=self.device)
         eta = to_tensor(eta, device=self.device, dtype=self.dtype)
 
@@ -95,8 +93,9 @@ class DDIMScheduler:
         # eq (12) part 3
         if self.noises is None:
             # pre-generate noises for all steps # ! ugly... needs some work
+            shape = (*latents.shape, self.steps)
             self.noises, _ = generate_noise(
-                (*shape, self.steps), self.seed, self.device, self.dtype
+                shape, self.seed, self.device, self.dtype
             )
             self.noises = rearrange(self.noises, "B C H W S -> S B C H W")
         noise = self.noises[i.flatten()].flatten(0, 1)

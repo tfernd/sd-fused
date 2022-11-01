@@ -13,7 +13,7 @@ class NoiseOutput(NamedTuple):
 
 
 def generate_noise(
-    shape: tuple[int, int, int, int],
+    shape: tuple[int, ...],
     seed: Optional[int | list[int]] = None,
     device: Optional[torch.device] = None,
     dtype: Optional[torch.dtype] = None,

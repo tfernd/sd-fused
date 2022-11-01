@@ -177,7 +177,7 @@ class StableDiffusion(Modifiers):
         seed: Optional[int | list[int]] = None,
         batch_size: int = 1,
         mode: ResizeModes = "resize",
-    ) -> list[tuple[Image.Image, Path]]:
+    ):
         """Creates an image from a prompt and (optionally) a negative prompt
         with an image as a basis.
         """
