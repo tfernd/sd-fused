@@ -4,7 +4,6 @@ from typing_extensions import Self
 
 from pathlib import Path
 import json
-import re
 
 import torch
 import torch.nn as nn
