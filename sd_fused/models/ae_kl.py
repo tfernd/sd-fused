@@ -22,7 +22,10 @@ from .convert import diffusers2fused_vae
 
 
 class AutoencoderKL(
-    HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, nn.Module
+    HalfWeightsModel,
+    SplitAttentionModel,
+    FlashAttentionModel,
+    nn.Module,
 ):
     debug: bool = False
 

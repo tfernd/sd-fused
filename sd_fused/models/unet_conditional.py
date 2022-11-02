@@ -30,7 +30,10 @@ from .convert import diffusers2fused_unet
 
 
 class UNet2DConditional(
-    HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, nn.Module
+    HalfWeightsModel,
+    SplitAttentionModel,
+    FlashAttentionModel,
+    nn.Module,
 ):
     debug: bool = False
 
