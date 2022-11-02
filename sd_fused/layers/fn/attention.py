@@ -10,6 +10,9 @@ from .chunked_attention import chunked_attention
 from .flash_attention import flash_attention
 from .weight_modify_v import weight_modify_v
 
+# TODO tome debug
+# from tome.merge import  bipartite_soft_matching, merge_wavg
+
 
 def attention(
     q: Tensor,  # (B, T, C)
@@ -28,11 +31,20 @@ def attention(
     assert k.shape[1] == v.shape[1]
 
     B, T, C = q.shape
-    Tl = k.shape[1]
+    B, Tl, C = k.shape
     dtype = q.dtype
 
     # k = weight_modify_v(k, weights) # gives crappy result
     v = weight_modify_v(v, weights)
+
+    # TODO ToMe?
+    # if T == Tl:
+    #     merge, unmerge = bipartite_soft_matching(q, C//2)
+
+    #     # q, size = merge_wavg(merge, q)
+    #     k, size = merge_wavg(merge, k)
+    #     v, size = merge_wavg(merge, v)
+
 
     if chunks == "auto":
         chunks = auto_chunk_size(B, T, Tl, C, dtype)
