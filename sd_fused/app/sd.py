@@ -282,7 +282,6 @@ class StableDiffusion(Modifiers):
         if self.low_ram:
             negative_context, prompt_context = context.chunk(2, dim=0)
             if context_weights is not None:
-                #
                 negative_weight, prompt_weight = context_weights.chunk(2, dim=0)
             else:
                 negative_weight = prompt_weight = None
