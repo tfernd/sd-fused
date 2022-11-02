@@ -23,6 +23,7 @@ class VaeConfig:
     block_out_channels: list[int]
     down_block_types: list[str]
     up_block_types: list[str]
+    norm_num_groups: int = 32
 
     def __post_init__(self) -> None:
         assert self._class_name == "AutoencoderKL"
