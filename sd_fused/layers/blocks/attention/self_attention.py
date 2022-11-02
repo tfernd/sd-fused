@@ -7,12 +7,13 @@ from torch import Tensor
 from einops.layers.torch import Rearrange
 from einops import rearrange
 
+from ....utils.typing import Literal
 from ...base import GroupNorm, Linear
 from ...fn import attention
 
 
 class SelfAttention(nn.Module):
-    attention_chunks: Optional[int] = None
+    attention_chunks: Optional[int | Literal["auto"]] = None
     use_flash_attention: bool = False
 
     def __init__(

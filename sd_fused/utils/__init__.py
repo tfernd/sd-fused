@@ -6,4 +6,4 @@ from .generate_noise import generate_noise
 
 from .softmax import softmax
 
-from .clear_cuda import clear_cuda
+from .cuda import clear_cuda, free_memory

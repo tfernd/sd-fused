@@ -29,11 +29,12 @@ from .modifiers import Modifiers
 MAGIC = 0.18215
 
 
-#%%
 class StableDiffusion(Modifiers):
-    version: str = "0.4.3"
+    version: str = "0.4.4"
 
     clip: ClipEmbedding
+    vae: AutoencoderKL
+    unet: UNet2DConditional
 
     def __init__(
         self,
@@ -55,6 +56,7 @@ class StableDiffusion(Modifiers):
 
         # init
         self.set_low_ram(False)
+        self.split_attention("auto")
         self.cpu()
         self.float()
 
@@ -198,7 +200,10 @@ class StableDiffusion(Modifiers):
         )
 
     def save_image(
-        self, image: Image.Image, metadata: PngInfo, ID: Optional[int] = None
+        self,
+        image: Image.Image,
+        metadata: PngInfo,
+        ID: Optional[int] = None,
     ) -> Path:
         """Save the image using the provided metadata information."""
 

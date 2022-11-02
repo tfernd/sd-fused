@@ -78,7 +78,10 @@ class Modifiers:
 
         return self
 
-    def split_attention(self, attention_chunks: Optional[int] = None) -> Self:
+    def split_attention(
+        self,
+        attention_chunks: Optional[int | Literal["auto"]] = "auto",
+    ) -> Self:
         """Split cross-attention computation into chunks."""
 
         self.unet.split_attention(attention_chunks)
