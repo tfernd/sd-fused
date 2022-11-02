@@ -48,7 +48,7 @@ class AutoencoderKL(
             block_out_channels=tuple(config.block_out_channels),
             layers_per_block=config.layers_per_block,
             latent_channels=config.latent_channels,
-            norm_num_groups=config.norm_num_groups
+            norm_num_groups=config.norm_num_groups,
         )
 
     def __init__(
