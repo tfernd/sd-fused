@@ -1,11 +1,11 @@
 # Stable-Diffusion + Fused CUDA kernels = FUN!
 
-## For the impatiens:
+## For the inpatients:
 
 Using the notation `(a few words):weight` you can give emphasis (high number), take out emphasis (small number), or even avoid the subject (negative number).
-The words (tokens) inside the parentheses are given a weight that is passed down to the attention calculation, ehancing, attenuating or negative the attention to the given token.
+The words (tokens) inside the parentheses are given a weight that is passed down to the attention calculation, enhancing, attenuating, or negative the attention to the given token.
 
-Below is a small tests where the word `cyberpunk` is given different emphasis.
+Below is a small test where the word `cyberpunk` is given a different emphasis.
 
 ```python
 for t in np.linspace(-1.2, 4.2, 32):
@@ -23,14 +23,14 @@ for t in np.linspace(-1.2, 4.2, 32):
 
 ## Introduction
 
-This is a re-written implementation of Stable-Diffusion (SD) based on the original [diffusers](https://github.com/huggingface/diffusers) and [stable-diffusion](https://github.com/CompVis/stable-diffusion) repositories (all kudos for the original programers).
+This is a re-written implementation of Stable-Diffusion (SD) based on the original [diffusers](https://github.com/huggingface/diffusers) and [stable-diffusion](https://github.com/CompVis/stable-diffusion) repositories (all kudos for the original programmers).
 
-The goal of this reimplementation is to make it clearer, more redable, upgradable code that is easy to read and modify.
-Unfortunately the original code is very difficult to read due to the lack of proper typing, variable naming and other factors.
+The goal of this reimplementation is to make it clearer, more readable, and more upgradable code that is easy to read and modify.
+Unfortunately, the original code is very difficult to read due to the lack of proper typing, variable naming, and other factors.
 
 ## Kernel fusion
 
-This is an ongoing project to fuse many layers as possible to make it more memory friendly and faster.
+This is an ongoing project to fuse as many layers as possible to make it more memory friendly and faster.
 
 ## Installation
 
