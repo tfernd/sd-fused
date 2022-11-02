@@ -13,6 +13,7 @@ from ...fn import attention
 
 class SelfAttention(nn.Module):
     attention_chunks: Optional[int] = None
+    use_flash_attention: bool = False
 
     def __init__(
         self,
@@ -63,7 +64,13 @@ class SelfAttention(nn.Module):
         v = self.heads_to_batch(self.value(x))
         del x
 
-        x = attention(q, k, v, chunks=self.attention_chunks)
+        x = attention(
+            q,
+            k,
+            v,
+            chunks=self.attention_chunks,
+            use_flash_attention=self.use_flash_attention,
+        )
         del q, k, v
         x = self.proj_attn(self.heads_to_channel(x))
 

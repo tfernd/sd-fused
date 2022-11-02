@@ -3,18 +3,22 @@ from typing import Optional
 
 import torch.nn as nn
 
-from ..blocks.attention import CrossAttention
+from ..blocks.attention import CrossAttention, SelfAttention
 
 
 class SplitAttentionModel(nn.Module):
     def split_attention(
-        self, cross_attention_chunks: Optional[int] = None
+        self,
+        attention_chunks: Optional[int] = None,
     ) -> None:
         """Split cross/self-attention computation into chunks."""
 
-        if cross_attention_chunks is not None:
-            assert cross_attention_chunks >= 1
+        if attention_chunks is not None:
+            assert attention_chunks >= 1
 
         for name, module in self.named_modules():
-            if isinstance(module, CrossAttention):
-                module.attention_chunks = cross_attention_chunks
+            if isinstance(module, (CrossAttention, SelfAttention)):
+                module.attention_chunks = attention_chunks
+
+                if attention_chunks is not None:
+                    module.use_flash_attention = False

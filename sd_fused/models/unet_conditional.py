@@ -11,7 +11,12 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..layers.embedding import Timesteps, TimestepEmbedding
-from ..layers.base import Conv2d, HalfWeightsModel, SplitAttentionModel
+from ..layers.base import (
+    Conv2d,
+    HalfWeightsModel,
+    SplitAttentionModel,
+    FlashAttentionModel,
+)
 from ..layers.blocks.simple import GroupNormSiLUConv2d
 from ..layers.blocks.spatial import (
     UNetMidBlock2DCrossAttention,
@@ -24,7 +29,9 @@ from .config import UnetConfig
 from .convert import diffusers2fused_unet
 
 
-class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, nn.Module):
+class UNet2DConditional(
+    HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, nn.Module
+):
     debug: bool = False
 
     @classmethod

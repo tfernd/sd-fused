@@ -12,6 +12,7 @@ from ...fn import attention
 
 class CrossAttention(nn.Module):
     attention_chunks: Optional[int] = None
+    use_flash_attention: bool = False
 
     def __init__(
         self,
@@ -72,6 +73,7 @@ class CrossAttention(nn.Module):
             v,
             chunks=self.attention_chunks,
             weights=context_weights,
+            use_flash_attention=self.use_flash_attention,
         )
         del q, k, v
         x = self.heads_to_channel(x)

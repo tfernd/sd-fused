@@ -9,14 +9,21 @@ import torch.nn as nn
 from torch import Tensor
 
 from ..utils import normalize, denormalize
-from ..layers.base import Conv2d, HalfWeightsModel, SplitAttentionModel
+from ..layers.base import (
+    Conv2d,
+    HalfWeightsModel,
+    SplitAttentionModel,
+    FlashAttentionModel,
+)
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder import Encoder, Decoder
 from .config import VaeConfig
 from .convert import diffusers2fused_vae
 
 
-class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, nn.Module):
+class AutoencoderKL(
+    HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, nn.Module
+):
     debug: bool = False
 
     @classmethod
