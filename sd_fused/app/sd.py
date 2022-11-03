@@ -56,7 +56,7 @@ class StableDiffusion(Modifiers):
 
         # init
         self.set_low_ram(False)
-        self.split_attention("auto")
+        self.split_attention(None)
         self.cpu()
         self.float()
 
