@@ -31,6 +31,7 @@ class Parameters:
 
     # TODO add field
     device: Optional[torch.device] = None
+    dtype: Optional[torch.dtype] = None
 
     # TODO add field
     __save_args__ = [
@@ -188,16 +189,24 @@ class ParametersList:
         return devices.pop()
 
     @property
+    def dtype(self) -> Optional[torch.dtype]:
+        dtypes = set(p.dtype for p in self.parameters)
+
+        assert len(dtypes) == 1
+
+        return dtypes.pop()
+
+    @property
     def scales(self) -> Tensor:
         scales = [p.scale for p in self.parameters]
 
-        return torch.tensor(scales, device=self.device)
+        return torch.tensor(scales, device=self.device, dtype=self.dtype)
 
     @property
     def etas(self) -> Tensor:
         etas = [p.eta for p in self.parameters]
 
-        return torch.tensor(etas, device=self.device)
+        return torch.tensor(etas, device=self.device, dtype=self.dtype)
 
     @property
     def images_data(self) -> Optional[Tensor]:
