@@ -1,40 +1,28 @@
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Iterable, Optional
 
 from pathlib import Path
-from tqdm.auto import trange
-from datetime import datetime
-
+from tqdm.auto import trange, tqdm
+from itertools import product
 from PIL import Image
-from PIL.PngImagePlugin import PngInfo
 
 import random
-from einops import rearrange
 import torch
 from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
-from ..utils import (
-    image2tensor,
-    ResizeModes,
-    image_base64,
-    clear_cuda,
-    generate_noise,
-)
-from .utils import fix_batch_size, kwargs2ignore, Metadata
-from .modifiers import Modifiers
+from ..utils import ResizeModes, clear_cuda, generate_noise, async_display
+from .utils import to_list
+from .parameters import Parameters, ParametersList
 
-MAGIC = 0.18215
+from .setup import Setup
+from .helpers import Helpers
 
 
-class StableDiffusion(Modifiers):
-    version: str = "0.4.5"
-
-    clip: ClipEmbedding
-    vae: AutoencoderKL
-    unet: UNet2DConditional
+class StableDiffusion(Setup, Helpers):
+    version: str = "0.5.0"
 
     def __init__(
         self,
@@ -43,6 +31,8 @@ class StableDiffusion(Modifiers):
         save_dir: str | Path = "./gallery",
         model_name: Optional[str] = None,
     ) -> None:
+        """Load Stable-Diffusion diffusers checkpoint."""
+
         self.path = path = Path(path)
         self.save_dir = Path(save_dir)
         self.model_name = model_name or path.name
@@ -60,182 +50,171 @@ class StableDiffusion(Modifiers):
         self.cpu()
         self.float()
 
-    @property
-    def latent_channels(self) -> int:
-        """Latent-space channel size."""
-
-        return self.unet.in_channels
-
-    @torch.no_grad()
-    def _generate(
+    # TODO this needs to be divided into separated functions
+    def generate(
         self,
         *,
-        eta: float,
-        steps: int,
-        scale: float,
-        height: int,
-        width: int,
-        negative_prompt: str,
-        batch_size: int,
-        prompt: Optional[str],
-        img: Optional[str],
-        strength: Optional[float],
-        seed: Optional[int | list[int]],
-        mode: Optional[ResizeModes],
-    ) -> list[tuple[Image.Image, Path, Metadata]]:
-        """General purpose image generation."""
+        eta: float | Iterable[float] = 0,
+        steps: int | Iterable[int] = 32,
+        scale: float | Iterable[float] = 7.5,
+        height: int | Iterable[int] = 512,
+        width: int | Iterable[int] = 512,
+        negative_prompt: str | Iterable[str] = "",
+        # optional
+        prompt: Optional[str | Iterable[str]] = None,
+        img: Optional[str | Iterable[str]] = None,
+        mask: Optional[str | Iterable[str]] = None,
+        strength: Optional[float | Iterable[float]] = None,
+        seed: Optional[int | Iterable[int]] = None,
+        mode: Optional[ResizeModes] = None,
+        batch_size: int = 1,
+        repeat: int = 1,
+        show: bool = True,
+    ) -> list[tuple[Image.Image, Path, Parameters]]:
+        """Create a list of parameters and group them
+        into batches to be processed.
+        """
 
-        kwargs = kwargs2ignore(locals(), keys=["batch_size", "seed", "img"])
+        if seed is not None:
+            repeat = 1
+            seed = to_list(seed)
 
-        # allowed sizes are multiple of 64
-        assert height % 64 == 0
-        assert width % 64 == 0
+        # listify args
+        list_eta = to_list(eta)
+        list_steps = to_list(steps)
+        list_scale = to_list(scale)
+        list_height = to_list(height)
+        list_width = to_list(width)
+        list_negative_prompt = to_list(negative_prompt)
+        list_prompt = to_list(prompt)
+        list_img = to_list(img)
+        list_mask = to_list(mask)
+        list_strength = to_list(strength)
 
-        unconditional = prompt is None
-        seed, batch_size = fix_batch_size(seed, batch_size)
+        # all possible combinations of all parameters
+        # fmt: off
+        keys = [
+            'eta', 'steps', 'scale',
+            'height', 'width',
+            'negative_prompt', 'prompt',
+            'img', 'mask','strength'
+        ]
+        perms = list(product(
+            list_eta, list_steps, list_scale, 
+            list_height, list_width,
+            list_negative_prompt, list_prompt, 
+            list_img, list_mask, list_strength,
+        ))
+        list_kwargs = [
+            dict(zip(keys, args)) 
+            for args in perms 
+            for _ in range(repeat)
+        ]
+        # fmt: on
 
-        context, weight = self.get_context(negative_prompt, prompt, batch_size)
+        # generate seeds
+        size = len(list_kwargs)
+        if seed is None:
+            seeds = [random.randint(0, 2**32 - 1) for _ in range(size)]
+        else:
+            num_seeds = len(seed)
 
-        shape = (batch_size, self.latent_channels, height // 8, width // 8)
-        latents, seeds = generate_noise(shape, seed, self.device, self.dtype)
+            list_kwargs = [
+                kwargs for kwargs in list_kwargs for _ in range(num_seeds)
+            ]
+            seeds = [s for _ in range(size) for s in seed]
 
-        scheduler = DDIMScheduler(steps, self.device, self.dtype, seeds)
+        # create parameters list and group them
+        parameters = [
+            Parameters(**kwargs, mode=mode, seed=seed, device=self.device)
+            for (seed, kwargs) in zip(seeds, list_kwargs)
+        ]
 
-        if img is not None:
-            assert strength is not None
-            assert mode is not None
+        groups: list[list[Parameters]] = []
+        for parameter in parameters:
+            if len(groups) == 0:
+                groups.append([parameter])
+                continue
 
-            img_data = image2tensor(img, height, width, mode, self.device)
-            img_latents = self.encode(img_data)
+            can_share = False
+            for group in groups:
+                can_share = True
+                for other_parameter in group:
+                    can_share &= parameter.can_share_batch(other_parameter)
 
-            skip_step = scheduler.skip_step(strength)
-            latents = scheduler.add_noise(img_latents, latents, skip_step)
+                if can_share:
+                    group.append(parameter)
+                    break
 
-            kwargs["img_base64"] = image_base64(img)
+            if not can_share:
+                groups.append([parameter])
+
+        # optimal_batch_size = sum(len(g) for g in groups) // len(groups)
+
+        # create batches from groups
+        batched_parameters: list[list[Parameters]] = []
+        for group in groups:
+            for i in range(0, len(group), batch_size):
+                s = slice(i, min(i + batch_size, len(group)))
+
+                batched_parameters.append(group[s])
+
+        out: list[tuple[Image.Image, Path, Parameters]] = []
+        for params in batched_parameters:
+            ipp = self.generate_from_parameters(ParametersList(params))
+            out.extend(ipp)
+
+            if show:
+                for image, path, parameters in ipp:
+                    async_display(image, parameters)
+
+        return out
+
+    @torch.no_grad()
+    def generate_from_parameters(
+        self,
+        p: ParametersList,
+    ) -> list[tuple[Image.Image, Path, Parameters]]:
+        scheduler = DDIMScheduler(p.steps, self.device, self.dtype, p.seeds)
+        context, weight = self.get_context(p.negative_prompts, p.prompts)
+
+        height, width = p.size
+        shape = (len(p), self.latent_channels, height // 8, width // 8)
+        latents = generate_noise(shape, p.seeds, self.device, self.dtype)
+
+        # TODO make into its own function!
+        if p.images_data is not None:
+            assert p.strength is not None
+
+            images_latents = self.encode(p.images_data.to(self.device))
+
+            skip_step = scheduler.skip_step(p.strength)
+            latents = scheduler.add_noise(images_latents, latents, skip_step)
         else:
             skip_step = 0
 
-        # fmt: off
-        latents = self.denoise_latents(scheduler, latents, context, weight, scale, eta, unconditional, skip_step)
-        # fmt: on
+        # TODO add mask handling
+
+        latents = self.denoise_latents(
+            scheduler,
+            latents,
+            context,
+            weight,
+            p.scales,
+            p.etas,
+            p.unconditional,
+            skip_step,
+        )
 
         data = self.decode(latents)
         images = self.create_images(data)
 
         paths: list[Path] = []
-        metadatas: list[Metadata] = []
-        for seed, image in zip(seeds, images):
-            metadata = self._create_metadata(seed=seed, **kwargs)
-            path = self.save_image(image, metadata.png_info)
-
+        for parameter, image in zip(p, images):
+            path = self.save_image(image, parameter)
             paths.append(path)
-            metadatas.append(metadata)
 
-        return list(zip(images, paths, metadatas))
-
-    def text2img(
-        self,
-        prompt: str,
-        *,
-        negative_prompt: str = "",
-        steps: int = 32,
-        scale: float = 7.5,
-        eta: float = 0,
-        height: int = 512,
-        width: int = 512,
-        seed: Optional[int | list[int]] = None,
-        batch_size: int = 1,
-    ):
-        """Creates an image from a prompt and (optionally) a negative prompt."""
-
-        return self._generate(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            steps=steps,
-            scale=scale,
-            eta=eta,
-            height=height,
-            width=width,
-            seed=seed,
-            batch_size=batch_size,
-            # not used for text2img
-            img=None,
-            strength=None,
-            mode=None,
-        )
-
-    def img2img(
-        self,
-        prompt: str,
-        *,
-        img: str,
-        strength: float,
-        negative_prompt: str = "",
-        steps: int = 32,
-        scale: float = 7.5,
-        eta: float = 0,
-        height: int = 512,
-        width: int = 512,
-        seed: Optional[int | list[int]] = None,
-        batch_size: int = 1,
-        mode: ResizeModes = "resize",
-    ):
-        """Creates an image from a prompt and (optionally) a negative prompt
-        with an image as a basis.
-        """
-
-        return self._generate(
-            prompt=prompt,
-            img=img,
-            strength=strength,
-            negative_prompt=negative_prompt,
-            steps=steps,
-            scale=scale,
-            eta=eta,
-            height=height,
-            width=width,
-            seed=seed,
-            batch_size=batch_size,
-            mode=mode,
-        )
-
-    def save_image(
-        self,
-        image: Image.Image,
-        metadata: PngInfo,
-        ID: Optional[int] = None,
-    ) -> Path:
-        """Save the image using the provided metadata information."""
-
-        now = datetime.now()
-        timestamp = now.strftime(r"%Y-%m-%d %H-%M-%S.%f")
-
-        if ID is None:
-            ID = random.randint(0, 2**64)
-
-        self.save_dir.mkdir(parents=True, exist_ok=True)
-
-        path = self.save_dir / f"{timestamp} - {ID:x}.SD.png"
-        image.save(path, bitmap_format="png", pnginfo=metadata)
-
-        return path
-
-    @torch.no_grad()
-    def get_context(
-        self,
-        negative_prompt: str,
-        prompt: Optional[str],
-        batch_size: int,
-    ) -> tuple[Tensor, Optional[Tensor]]:
-        """Creates a context Tensor (negative + positive prompt) and a emphasis weights."""
-
-        texts = [negative_prompt] * batch_size
-        if prompt is not None:
-            texts.extend([prompt] * batch_size)
-
-        context, weight = self.clip(texts, self.device, self.dtype)
-
-        return context, weight
+        return list(zip(images, paths, list(p)))
 
     def denoise_latents(
         self,
@@ -243,8 +222,8 @@ class StableDiffusion(Modifiers):
         latents: Tensor,
         context: Tensor,
         context_weight: Optional[Tensor],
-        scale: float,
-        eta: float,
+        scales: Tensor,
+        etas: Tensor,
         unconditional: bool,
         skip_step: int = 0,
     ) -> Tensor:
@@ -254,27 +233,32 @@ class StableDiffusion(Modifiers):
         for i in trange(skip_step, len(scheduler), desc="Denoising latents."):
             timestep = scheduler.timesteps[[i]]  # ndim=1
 
-            # fmt: off
-            pred_noise = self.pred_noise(latents, timestep, context, context_weight, unconditional, scale)
-            # fmt: on
-            latents = scheduler.step(pred_noise, latents, i, eta)
+            pred_noise = self.pred_noise(
+                latents,
+                timestep,
+                context,
+                context_weight,
+                unconditional,
+                scales,
+            )
+            latents = scheduler.step(pred_noise, latents, i, etas)
             del pred_noise
         clear_cuda()
 
         return latents
 
-    # fmt: off
     @torch.no_grad()
     def pred_noise(
         self,
         latents: Tensor,
-        timestep: int | Tensor,
+        timestep: Tensor,
         context: Tensor,
         context_weights: Optional[Tensor],
         unconditional: bool,
-        scale: float,
+        scales: Tensor,
     ) -> Tensor:
         """Predict the noise from latents, context and current timestep."""
+        # fmt: off
 
         if unconditional:
             return self.unet(latents, timestep, context, context_weights)
@@ -294,62 +278,8 @@ class StableDiffusion(Modifiers):
             pred_noise_all = self.unet(latents, timestep, context, context_weights)
             pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(2, dim=0)
             del pred_noise_all
+        
+        scales = scales[:, None, None, None] # add fake channel/spatial dimensions
 
-        return pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scale
-    # fmt: on
-
-    @torch.no_grad()
-    def decode(self, latents: Tensor) -> Tensor:
-        """Decode latent vector into an RGB image."""
-
-        return self.vae.decode(latents.div(MAGIC))
-
-    def encode(self, data: Tensor) -> Tensor:
-        """Encodes (stochastically) a RGB image into a latent vector."""
-
-        return self.vae.encode(data).sample().mul(MAGIC)
-
-    def create_images(self, data: Tensor) -> list[Image.Image]:
-        """Creates a list of images according to the batch size."""
-
-        data = rearrange(data, "B C H W -> B H W C").cpu().numpy()
-
-        return [Image.fromarray(v) for v in data]
-
-    def _create_metadata(self, **kwargs: Any) -> Metadata:
-        """Creates metadata to be used for the PNG."""
-
-        kwargs = dict(
-            **kwargs,
-            version=self.version,
-            model=self.model_name,
-        )
-
-        return Metadata(**kwargs)
-
-    def __repr__(self) -> str:
-        name = self.__class__.__qualname__
-
-        return f'{name}(model="{self.model_name}", version={self.version})'
-
-
-# TODO re-implement this better
-#     def unet_scale(self, path: str | Path, scale: float = 1) -> Self:
-#         """Scales the UNet to use in-between two different stable-diffusion models."""
-
-#         path = Path(path)
-#         new_unet = UNet2DConditional.load_sd(path / "unet")
-
-#         for param, new_param in zip(
-#             self.unet.parameters(), new_unet.parameters()
-#         ):
-#             pnew = new_param.data.to(device=self.device, dtype=self.dtype)
-
-#             # TODO add support for other types of scaling
-#             if scale == 1:
-#                 param.data = pnew
-#             else:
-#                 param.data += pnew.sub_(param.data).mul_(scale)
-#             del pnew
-
-#         return self
+        return pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scales
+        # fmt: on

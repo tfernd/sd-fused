@@ -1,34 +1,17 @@
 from __future__ import annotations
-from typing import NamedTuple, Optional
+from typing import Optional
 
 import torch
 from torch import Tensor
 
 
-class NoiseOutput(NamedTuple):
-    """Noise tensor and their respective seeds."""
-
-    noise: Tensor
-    seed: list[int]
-
-
 def generate_noise(
     shape: tuple[int, ...],
-    seed: Optional[int | list[int]] = None,
+    seeds: list[int],
     device: Optional[torch.device] = None,
     dtype: Optional[torch.dtype] = None,
-) -> NoiseOutput:
+) -> Tensor:
     """Generate random noise with individual seeds per batch."""
-
-    batch_size = shape[0]
-
-    if seed is None:
-        seeds = torch.randint(0, 2**32, (batch_size,)).tolist()
-    elif isinstance(seed, int):
-        assert batch_size == 1
-        seeds = [seed]
-    else:
-        seeds = seed
 
     noise = torch.empty(shape)
     for i, s in enumerate(seeds):
@@ -37,6 +20,4 @@ def generate_noise(
 
         noise[i] = torch.randn(*shape[1:], generator=generator)
 
-    noise = noise.to(device=device, dtype=dtype)
-
-    return NoiseOutput(noise, seeds)
+    return noise.to(device=device, dtype=dtype)

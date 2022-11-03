@@ -8,16 +8,20 @@ The words (tokens) inside the parentheses are given a weight that is passed down
 Below is a small test where the word `cyberpunk` is given a different emphasis.
 
 ```python
-for t in np.linspace(-1.2, 4.2, 32):
-    out = pipeline.text2img(
-        prompt=f"portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful",
-        steps=24,
-        scale=11,
-        height=512,
-        width=512,
-        seed=1658926406,
-        eta=0.6,
-    )
+prompts = [
+    f"portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful"
+    for t in np.linspace(-1.2, 4.2, 32)
+]
+out = pipeline.generate(
+    prompt=prompts,
+    steps=24,
+    scale=11,
+    height=512,
+    width=512,
+    seed=1658926406,
+    eta=0.6,
+    show=True,
+)
 ```
 ![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.gif)
 
@@ -56,7 +60,7 @@ pipeline.split_attention(cross_attention_chunks=1)
 # if you have xformers installed, use the line below
 # pipeline.flash_attention()
 
-imgs = pipeline.text2img(
+out = pipeline.generate(
     prompt='portrait of zombie, digital art, detailed, artistic',
     negative_prompt='old man',
     steps=28,
@@ -64,9 +68,8 @@ imgs = pipeline.text2img(
     height=512,
     width=512,
     seed=42,
+    show=True
 )
-for img in imgs:
-    display(img)
 ```
 
 ![portrait of zombie, digital art, detailed, artistic](assets/text2img.png)

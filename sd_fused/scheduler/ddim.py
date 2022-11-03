@@ -92,9 +92,11 @@ class DDIMScheduler:
 
         # eq (12) part 3
         if self.noises is None:
+            assert self.seed is not None
+
             # pre-generate noises for all steps # ! ugly... needs some work
             shape = (*latents.shape, self.steps)
-            self.noises, _ = generate_noise(
+            self.noises = generate_noise(
                 shape, self.seed, self.device, self.dtype
             )
             self.noises = rearrange(self.noises, "B C H W S -> S B C H W")

@@ -9,7 +9,7 @@ from ..utils import clear_cuda
 from ..utils.typing import Literal
 
 
-class Modifiers:
+class Setup:
     low_ram: bool
 
     device: torch.device
