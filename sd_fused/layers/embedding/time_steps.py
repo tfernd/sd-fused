@@ -33,7 +33,7 @@ class Timesteps(nn.Module):
         self.scale = scale
         self.max_period = max_period
 
-        assert num_channels % 2 == 0  # TODO
+        assert num_channels % 2 == 0
         half_dim = num_channels // 2
 
         idx = torch.arange(half_dim)

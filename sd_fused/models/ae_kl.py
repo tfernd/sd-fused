@@ -19,6 +19,7 @@ from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder import Encoder, Decoder
 from .config import VaeConfig
 from .convert import diffusers2fused_vae
+from .convert.states import debug_state_replacements
 
 
 class AutoencoderKL(
@@ -27,8 +28,6 @@ class AutoencoderKL(
     FlashAttentionModel,
     nn.Module,
 ):
-    debug: bool = False
-
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
         """Creates a model from a config file."""
@@ -119,9 +118,11 @@ class AutoencoderKL(
         model = cls.from_config(path)
 
         state_path = next(path.glob("*.bin"))
-        state = torch.load(state_path, map_location="cpu")
+        old_state = torch.load(state_path, map_location="cpu")
+        replaced_state = diffusers2fused_vae(old_state)
 
-        state = diffusers2fused_vae(state)
-        model.load_state_dict(state)
+        debug_state_replacements(model.state_dict(), replaced_state)
+
+        model.load_state_dict(replaced_state)
 
         return model

@@ -26,6 +26,7 @@ from ..layers.blocks.spatial import (
 )
 from .config import UnetConfig
 from .convert import diffusers2fused_unet
+from .convert.states import debug_state_replacements
 
 
 class UNet2DConditional(
@@ -34,8 +35,6 @@ class UNet2DConditional(
     FlashAttentionModel,
     nn.Module,
 ):
-    debug: bool = False
-
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
         """'Creates a model from a config file."""
@@ -110,7 +109,7 @@ class UNet2DConditional(
         time_embed_dim = block_out_channels[0] * 4
 
         # input
-        self.conv_in = Conv2d(
+        self.pre_process = Conv2d(
             in_channels, block_out_channels[0], kernel_size=3, padding=1
         )
 
@@ -243,8 +242,8 @@ class UNet2DConditional(
         temb = self.time_proj(timestep)
         temb = self.time_embedding(temb)
 
-        # 2. pre-process # TODO RENAME
-        x = self.conv_in(x)
+        # 2. pre-process
+        x = self.pre_process(x)
 
         # 3. down
         # TODO it is possible to make it a list[list[Tensor]]? or is the number of elements wrong?
@@ -305,9 +304,11 @@ class UNet2DConditional(
         model = cls.from_config(path)
 
         state_path = next(path.glob("*.bin"))
-        state = torch.load(state_path, map_location="cpu")
+        old_state = torch.load(state_path, map_location="cpu")
+        replaced_state = diffusers2fused_unet(old_state)
 
-        state = diffusers2fused_unet(state)
-        model.load_state_dict(state)
+        debug_state_replacements(model.state_dict(), replaced_state)
+
+        model.load_state_dict(replaced_state)
 
         return model

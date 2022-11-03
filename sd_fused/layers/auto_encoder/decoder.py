@@ -28,8 +28,7 @@ class Decoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
-        # TODO rename to pre_process
-        self.conv_in = Conv2d(
+        self.pre_process = Conv2d(
             in_channels, block_out_channels[-1], kernel_size=3, padding=1
         )
 
@@ -73,7 +72,7 @@ class Decoder(nn.Module):
         )
 
     def __call__(self, x: Tensor) -> Tensor:
-        x = self.conv_in(x)
+        x = self.pre_process(x)
         x = self.mid_block(x)
 
         for up_block in self.up_blocks:

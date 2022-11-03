@@ -30,7 +30,7 @@ MAGIC = 0.18215
 
 
 class StableDiffusion(Modifiers):
-    version: str = "0.4.4"
+    version: str = "0.4.5"
 
     clip: ClipEmbedding
     vae: AutoencoderKL

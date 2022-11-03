@@ -45,7 +45,6 @@ def attention(
     #     k, size = merge_wavg(merge, k)
     #     v, size = merge_wavg(merge, v)
 
-
     if chunks == "auto":
         chunks = auto_chunk_size(B, T, Tl, C, dtype)
 

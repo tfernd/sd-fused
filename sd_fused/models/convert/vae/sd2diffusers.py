@@ -4,6 +4,7 @@ import re
 from torch import Tensor
 
 # TODO make a config from sd?
+# TODO work in progress...
 
 
 def sd2diffusers(old_state: dict[str, Tensor]) -> dict[str, Tensor]:
@@ -34,6 +35,7 @@ def sd2diffusers(old_state: dict[str, Tensor]) -> dict[str, Tensor]:
     return state
 
 
+# fmt: off
 # Stable-diffusion to diffusers replacements
 REPLACEMENTS: list[tuple[str, str]] = [
     # reverse up-block order
