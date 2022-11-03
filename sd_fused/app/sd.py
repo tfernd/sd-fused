@@ -110,7 +110,6 @@ class StableDiffusion(Setup, Helpers):
             for args in perms 
             for _ in range(repeat)
         ]
-        # fmt: on
 
         # generate seeds
         size = len(list_kwargs)
@@ -119,14 +118,13 @@ class StableDiffusion(Setup, Helpers):
         else:
             num_seeds = len(seed)
 
-            list_kwargs = [
-                kwargs for kwargs in list_kwargs for _ in range(num_seeds)
-            ]
+            list_kwargs = [kwargs for kwargs in list_kwargs for _ in range(num_seeds)]
             seeds = [s for _ in range(size) for s in seed]
+        # fmt: on
 
         # create parameters list and group them
         parameters = [
-            Parameters(**kwargs, mode=mode, seed=seed, device=self.device)
+            Parameters(**kwargs, mode=mode, seed=seed, device=self.device, dtype=self.dtype)
             for (seed, kwargs) in zip(seeds, list_kwargs)
         ]
 
