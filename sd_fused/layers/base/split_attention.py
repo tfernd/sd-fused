@@ -17,3 +17,6 @@ class SplitAttentionModel(nn.Module):
         for name, module in self.named_modules():
             if isinstance(module, (CrossAttention, SelfAttention)):
                 module.attention_chunks = attention_chunks
+
+                if attention_chunks is not None:
+                    module.use_flash_attention = False
