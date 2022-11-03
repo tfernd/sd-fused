@@ -5,6 +5,7 @@ from pathlib import Path
 from tqdm.auto import trange, tqdm
 from itertools import product
 from PIL import Image
+from IPython.display import display
 
 import random
 import torch
@@ -124,7 +125,13 @@ class StableDiffusion(Setup, Helpers):
 
         # create parameters list and group them
         parameters = [
-            Parameters(**kwargs, mode=mode, seed=seed, device=self.device, dtype=self.dtype)
+            Parameters(
+                **kwargs,
+                mode=mode,
+                seed=seed,
+                device=self.device,
+                dtype=self.dtype,
+            )
             for (seed, kwargs) in zip(seeds, list_kwargs)
         ]
 
@@ -158,13 +165,13 @@ class StableDiffusion(Setup, Helpers):
                 batched_parameters.append(group[s])
 
         out: list[tuple[Image.Image, Path, Parameters]] = []
-        for params in batched_parameters:
+        for params in tqdm(batched_parameters):
             ipp = self.generate_from_parameters(ParametersList(params))
             out.extend(ipp)
 
             if show:
                 for image, path, parameters in ipp:
-                    async_display(image, parameters)
+                    display(image, parameters)
 
         return out
 
