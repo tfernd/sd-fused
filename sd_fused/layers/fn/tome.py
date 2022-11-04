@@ -55,7 +55,7 @@ def tome(metric: Tensor, r: int | float) -> Merge:
 
 def merge_weighted_average(
     merge: Merge,
-    x: torch.Tensor,
+    x: Tensor,
     size: Optional[Tensor] = None,
 ) -> tuple[Tensor, Tensor]:
     B, T, C = x.shape
