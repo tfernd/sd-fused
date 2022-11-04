@@ -37,7 +37,7 @@ def attention(
     v = weight_modify_v(v, weights)
 
     if T == Tl and tome_r is not None:
-        merge = tome(q, tome_r)
+        merge = tome(k, tome_r)
 
         # q, size = merge_weighted_average(merge, q)
         k, size = merge_weighted_average(merge, k)
