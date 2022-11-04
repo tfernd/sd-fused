@@ -37,7 +37,8 @@ def image2tensor(
         response = requests.get(path)
         img = Image.open(BytesIO(response.content))
     else:
-        img = Image.open(path).convert("RGB")
+        img = Image.open(path)
+    img = img.convert("RGB")
 
     resize = partial(img.resize, resample=Image.LANCZOS)
 
