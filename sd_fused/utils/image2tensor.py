@@ -32,6 +32,7 @@ def image2tensor(
 ) -> Tensor:
     """Open an image/url as pytorch batched-Tensor (B=1 C H W)."""
 
+    # TODO de-duplicate
     if isinstance(path, str) and validators.url(path):  # type: ignore
         # as url
         response = requests.get(path)

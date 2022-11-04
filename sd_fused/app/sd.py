@@ -280,3 +280,8 @@ class StableDiffusion(Setup, Helpers):
 
         return pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scales
         # fmt: on
+
+    def __repr__(self) -> str:
+        name = self.__class__.__qualname__
+
+        return f'{name}(model={self.model_name}, version={self.version})'
