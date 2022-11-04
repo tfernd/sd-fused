@@ -92,7 +92,7 @@ class DDIMScheduler:
 
         # eq (12) part 2
         temp = 1 - self.ᾱ[i + 1] - self.σ[i].mul(eta).square()
-        pred_dir = torch.sqrt(temp.abs()) * pred_noise
+        pred_dir = temp.abs().sqrt() * pred_noise
 
         # eq (12) part 3
         if self.noises is None:
