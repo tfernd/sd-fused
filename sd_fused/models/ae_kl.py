@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 from typing_extensions import Self
 
 from pathlib import Path
@@ -90,10 +91,10 @@ class AutoencoderKL(
         self.quant_conv = Conv2d(2 * latent_channels)
         self.post_quant_conv = Conv2d(latent_channels)
 
-    def encode(self, x: Tensor) -> DiagonalGaussianDistribution:
+    def encode(self, x: Tensor, dtype: Optional[torch.dtype]=None) -> DiagonalGaussianDistribution:
         """Encode an byte-Tensor into a posterior distribution."""
 
-        x = normalize(x)
+        x = normalize(x, dtype)
         x = self.encoder(x)
 
         moments = self.quant_conv(x)

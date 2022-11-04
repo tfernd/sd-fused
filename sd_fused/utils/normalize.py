@@ -1,15 +1,16 @@
 from __future__ import annotations
+from typing import Optional
 
 import torch
 from torch import Tensor
 
 
-def normalize(data: Tensor) -> Tensor:
+def normalize(data: Tensor, dtype: Optional[torch.dtype]=None) -> Tensor:
     """Normalize a byte-Tensor to the [-1, 1] range."""
 
     assert data.dtype == torch.uint8
 
-    return data.div(255 / 2).sub(1)
+    return data.div(255 / 2).sub(1).to(dtype)
 
 
 def denormalize(data: Tensor) -> Tensor:

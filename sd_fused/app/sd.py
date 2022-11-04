@@ -175,7 +175,7 @@ class StableDiffusion(Setup, Helpers):
                 )
                 # latents = noise
             else:
-                images_latents = self.encode(pL.images_data)
+                images_latents = self.encode(pL.images_data, self.dtype)
                 latents = scheduler.add_noise(images_latents, noise, skip_step)
         else:
             latents = noise
