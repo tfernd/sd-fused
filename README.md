@@ -2,6 +2,8 @@
 
 ## For the inpatients:
 
+### Emphasis
+
 Using the notation `(a few words):weight` you can give emphasis (high number), take out emphasis (small number), or even avoid the subject (negative number).
 The words (tokens) inside the parentheses are given a weight that is passed down to the attention calculation, enhancing, attenuating, or negative the attention to the given token.
 
@@ -24,7 +26,31 @@ out = pipeline.generate(
     batch_size=8,
 )
 ```
-![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.gif)
+<!-- ![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.avi) -->
+
+<video src="./assets/animations/animation-1/animation.avi" controls="controls" muted="muted" class="d-block rounded-bottom-2 width-fit">
+
+
+### Batched sweep
+
+Any input parameter can be passed as a list for sweeping, where any multiple combinations of sweeps are allowed.
+For example:
+
+```python
+out = pipeline.generate(
+    prompt="portrait, woman, cyberpunk, digital art, detailed, epic, beautiful",
+    steps=26,
+    height=512,
+    width=512,
+    seed=1331366415,
+    eta=np.linspace(-1, 1, 64),
+    show=True,
+    batch_size=8,
+)
+```
+
+![portrait, woman, cyberpunk, digital art, detailed, epic, beautiful](assets/animations/animation-2/animation.gif)
+
 
 ## Introduction
 
