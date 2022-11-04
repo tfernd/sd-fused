@@ -10,7 +10,7 @@ def slerp(a: Tensor, b: Tensor, t: Tensor) -> Tensor:
     # https://en.wikipedia.org/wiki/Slerp
 
     # 0 <= t <= 1
-    assert t.gt(0).all() and t.lt(1).all()
+    assert t.ge(0).all() and t.le(1).all()
 
     assert a.shape == b.shape
     assert t.shape[0] == a.shape[0]
