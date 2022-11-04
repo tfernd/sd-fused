@@ -20,6 +20,8 @@ SAVE_ARGS = [
     "width",
     "seed",
     "negative_prompt",
+    "sub_seed",
+    "interpolation",
     "prompt",
     "strength",
     "mode",
@@ -34,11 +36,13 @@ class Parameters:
 
     eta: float
     steps: int
-    scale: float
+    scale: float  # TODO optional?
     height: int
     width: int
     seed: int
     negative_prompt: str
+    sub_seed: Optional[int] = None
+    interpolation: Optional[float] = None
     prompt: Optional[str] = None
     img: Optional[str] = None
     mask: Optional[str] = None
@@ -59,6 +63,11 @@ class Parameters:
         else:
             assert self.mode is not None
             assert self.strength is not None
+
+        if self.sub_seed is None:
+            assert self.interpolation is None
+        else:
+            assert self.interpolation is not None
 
     @property
     def unconditional(self) -> bool:
@@ -172,6 +181,25 @@ class ParametersList:
     @property
     def seeds(self) -> list[int]:
         return [p.seed for p in self.parameters]
+
+    @property
+    def sub_seeds(self) -> Optional[list[int]]:
+        sub_seeds = [p.sub_seed for p in self.parameters]
+        sub_seeds = separate(sub_seeds)
+
+        return sub_seeds
+
+    @property
+    def interpolations(self) -> Optional[Tensor]:
+        interpolations = [p.interpolation for p in self.parameters]
+        interpolations = separate(interpolations)
+
+        if interpolations is None:
+            return None
+
+        return torch.tensor(
+            interpolations, device=self.device, dtype=self.dtype
+        )
 
     @property
     def size(self) -> tuple[int, int]:

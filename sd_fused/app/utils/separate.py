@@ -3,7 +3,7 @@ from typing import Optional, TypeVar
 
 from torch import Tensor
 
-T = TypeVar("T", Tensor, str)
+T = TypeVar("T", Tensor, int, float, str)
 
 
 def separate(xs: list[T | None]) -> Optional[list[T]]:

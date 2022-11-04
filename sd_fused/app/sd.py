@@ -15,7 +15,7 @@ from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
 from ..utils import ResizeModes, clear_cuda, generate_noise
-from .utils import to_list, product_args
+from .utils import to_list, product_args, slerp
 from .parameters import (
     Parameters,
     ParametersList,
@@ -71,8 +71,10 @@ class StableDiffusion(Setup, Helpers):
         img: Optional[str | Iterable[str]] = None,
         mask: Optional[str | Iterable[str]] = None,
         strength: Optional[float | Iterable[float]] = None,
-        seed: Optional[int | Iterable[int]] = None,
         mode: Optional[ResizeModes] = None,
+        seed: Optional[int | Iterable[int]] = None,
+        sub_seed: Optional[int] = None,  # TODO Iterable
+        interpolation: Optional[float | Iterable[float]] = None,
         batch_size: int = 1,
         repeat: int = 1,
         show: bool = True,
@@ -97,6 +99,7 @@ class StableDiffusion(Setup, Helpers):
             img=img,
             mask=mask,
             strength=strength,
+            interpolation=interpolation,
             repeat=repeat,
         )
 
@@ -118,6 +121,7 @@ class StableDiffusion(Setup, Helpers):
                 **kwargs,
                 mode=mode,
                 seed=seed,
+                sub_seed=sub_seed,
                 device=self.device,
                 dtype=self.dtype,
             )
@@ -153,6 +157,12 @@ class StableDiffusion(Setup, Helpers):
         height, width = pL.size
         shape = (len(pL), self.latent_channels, height // 8, width // 8)
         noise = generate_noise(shape, pL.seeds, self.device, self.dtype)
+        if pL.sub_seeds is not None:
+            assert pL.interpolations
+            sub_noise = generate_noise(
+                shape, pL.sub_seeds, self.device, self.dtype
+            )
+            noise = slerp(noise, sub_noise, pL.interpolations)
 
         # TODO make into its own function!
         masks: Optional[Tensor] = None

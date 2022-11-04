@@ -11,7 +11,7 @@ def standard_attention(
     q: Tensor,  # (B, T, C)
     k: Tensor,  # (B, T', C)
     v: Tensor,  # (B, T', C)
-    bias: Optional[Tensor] = None
+    bias: Optional[Tensor] = None,
 ) -> Tensor:
     """Standard attention computation."""
 
@@ -20,4 +20,3 @@ def standard_attention(
     del q, k
 
     return attn @ v
-
