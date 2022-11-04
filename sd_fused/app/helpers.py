@@ -72,7 +72,9 @@ class Helpers:
         return [Image.fromarray(v) for v in data]
 
     @torch.no_grad()
-    def encode(self, data: Tensor, dtype: Optional[torch.dtype]=None) -> Tensor:
+    def encode(
+        self, data: Tensor, dtype: Optional[torch.dtype] = None
+    ) -> Tensor:
         """Encodes (stochastically) a RGB image into a latent vector."""
 
         return self.vae.encode(data, dtype).sample().mul(MAGIC)

@@ -284,4 +284,4 @@ class StableDiffusion(Setup, Helpers):
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
 
-        return f'{name}(model={self.model_name}, version={self.version})'
+        return f"{name}(model={self.model_name}, version={self.version})"

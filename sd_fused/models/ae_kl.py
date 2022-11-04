@@ -91,7 +91,9 @@ class AutoencoderKL(
         self.quant_conv = Conv2d(2 * latent_channels)
         self.post_quant_conv = Conv2d(latent_channels)
 
-    def encode(self, x: Tensor, dtype: Optional[torch.dtype]=None) -> DiagonalGaussianDistribution:
+    def encode(
+        self, x: Tensor, dtype: Optional[torch.dtype] = None
+    ) -> DiagonalGaussianDistribution:
         """Encode an byte-Tensor into a posterior distribution."""
 
         x = normalize(x, dtype)
