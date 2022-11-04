@@ -57,6 +57,15 @@ out = pipeline.generate(
 https://user-images.githubusercontent.com/35351230/200014913-c9d21aea-85ab-4c65-8c92-8fdd6e288d2b.mp4
 
 
+<!-- ### Seed-Interpolations -->
+
+<!-- 
+```python
+
+
+``` -->
+
+
 <!-- ### Bad artists friend
 
 Image-to-image generation.

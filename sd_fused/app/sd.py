@@ -158,7 +158,7 @@ class StableDiffusion(Setup, Helpers):
         shape = (len(pL), self.latent_channels, height // 8, width // 8)
         noise = generate_noise(shape, pL.seeds, self.device, self.dtype)
         if pL.sub_seeds is not None:
-            assert pL.interpolations
+            assert pL.interpolations is not None
             sub_noise = generate_noise(
                 shape, pL.sub_seeds, self.device, self.dtype
             )
