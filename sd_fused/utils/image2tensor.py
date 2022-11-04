@@ -32,7 +32,7 @@ def image2tensor(
 ) -> Tensor:
     """Open an image/url as pytorch batched-Tensor (B=1 C H W)."""
 
-    if isinstance(path, str) and validators.url(path): # type: ignore
+    if isinstance(path, str) and validators.url(path):  # type: ignore
         # as url
         response = requests.get(path)
         img = Image.open(BytesIO(response.content))
@@ -72,4 +72,3 @@ def image2tensor(
     data = F.pad(data, pad, value=0)
 
     return data
-

@@ -162,7 +162,7 @@ class StableDiffusion(Setup, Helpers):
                 # TODO for now only the real deal
                 assert self.is_true_inpainting
                 assert pL.masked_images_data is not None
-                raise NotImplemented('Needs some rework') # TODO
+                raise NotImplemented("Needs some rework")  # TODO
 
                 masks = F.interpolate(
                     pL.masks_data.float(),
@@ -170,7 +170,9 @@ class StableDiffusion(Setup, Helpers):
                 )
 
                 masked_images_latents = self.encode(pL.masked_images_data)
-                latents = scheduler.add_noise(masked_images_latents, noise, skip_step)
+                latents = scheduler.add_noise(
+                    masked_images_latents, noise, skip_step
+                )
                 # latents = noise
             else:
                 images_latents = self.encode(pL.images_data)
