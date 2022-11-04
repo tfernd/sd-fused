@@ -9,6 +9,7 @@ from torch import Tensor
 from einops import rearrange
 
 from ..utils import generate_noise
+from .utils import to_tensor
 
 TRAINED_STEPS = 1_000
 BETA_BEGIN = 0.00085
@@ -79,6 +80,9 @@ class DDIMScheduler:
         eta: float | Tensor = 0,
     ) -> Tensor:
         """Get the previous latents according to the DDIM paper."""
+
+        # TODO does it make sense for i to be a tensor for inference only??
+
         i = to_tensor(i, steps=self.steps, device=self.device)
         eta = to_tensor(eta, device=self.device, dtype=self.dtype)
 
@@ -107,7 +111,10 @@ class DDIMScheduler:
         return pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
 
     def add_noise(
-        self, latents: Tensor, eps: Tensor, i: int | Tensor
+        self,
+        latents: Tensor,
+        eps: Tensor,
+        i: int | Tensor,
     ) -> Tensor:
         """Add noise to latents according to the index i."""
 
@@ -116,8 +123,11 @@ class DDIMScheduler:
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 
-    def skip_step(self, strength: float) -> int:
+    def skip_step(self, strength: Optional[float]) -> int:
         """The index generation needs to start."""
+
+        if strength is None:
+            return 0
 
         assert 0 < strength <= 1
 
@@ -130,26 +140,3 @@ class DDIMScheduler:
         name = self.__class__.__qualname__
 
         return f"{name}(steps={self.steps})"
-
-
-def to_tensor(
-    x: int | float | Tensor,
-    *,
-    steps: Optional[int] = None,
-    device: Optional[torch.device] = None,
-    dtype: Optional[torch.dtype] = None,
-) -> Tensor:
-    """Convert a number to a Tensor with fake channel/spatial dimensions."""
-
-    if isinstance(x, (int, float)):
-        x = torch.tensor([x], device=device, dtype=dtype)
-    else:
-        assert x.ndim == 1
-        x = x.to(device=device, dtype=dtype)
-
-    if steps is not None:
-        assert torch.all(0 <= x) and torch.all(x < steps)
-
-    x = x.view(-1, 1, 1, 1)
-
-    return x

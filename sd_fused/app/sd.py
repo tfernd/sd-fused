@@ -3,27 +3,31 @@ from typing import Iterable, Optional
 
 from pathlib import Path
 from tqdm.auto import trange, tqdm
-from itertools import product
 from PIL import Image
 from IPython.display import display
 
 import random
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..scheduler import DDIMScheduler
-from ..utils import ResizeModes, clear_cuda, generate_noise, async_display
-from .utils import to_list
-from .parameters import Parameters, ParametersList
-
+from ..utils import ResizeModes, clear_cuda, generate_noise
+from .utils import to_list, product_args
+from .parameters import (
+    Parameters,
+    ParametersList,
+    group_parameters,
+    batch_parameters,
+)
 from .setup import Setup
 from .helpers import Helpers
 
 
 class StableDiffusion(Setup, Helpers):
-    version: str = "0.5.0"
+    version: str = "0.5.1"
 
     def __init__(
         self,
@@ -48,6 +52,7 @@ class StableDiffusion(Setup, Helpers):
         # init
         self.set_low_ram(False)
         self.split_attention(None)
+        self.flash_attention(False)
         self.cpu()
         self.float()
 
@@ -79,51 +84,35 @@ class StableDiffusion(Setup, Helpers):
         if seed is not None:
             repeat = 1
             seed = to_list(seed)
+        # TODO add SHARE-seed, so parameters combinations share the same seed.
 
-        # listify args
-        list_eta = to_list(eta)
-        list_steps = to_list(steps)
-        list_scale = to_list(scale)
-        list_height = to_list(height)
-        list_width = to_list(width)
-        list_negative_prompt = to_list(negative_prompt)
-        list_prompt = to_list(prompt)
-        list_img = to_list(img)
-        list_mask = to_list(mask)
-        list_strength = to_list(strength)
+        list_kwargs = product_args(
+            eta=eta,
+            steps=steps,
+            scale=scale,
+            height=height,
+            width=width,
+            negative_prompt=negative_prompt,
+            prompt=prompt,
+            img=img,
+            mask=mask,
+            strength=strength,
+            repeat=repeat,
+        )
 
-        # all possible combinations of all parameters
-        # fmt: off
-        keys = [
-            'eta', 'steps', 'scale',
-            'height', 'width',
-            'negative_prompt', 'prompt',
-            'img', 'mask','strength'
-        ]
-        perms = list(product(
-            list_eta, list_steps, list_scale, 
-            list_height, list_width,
-            list_negative_prompt, list_prompt, 
-            list_img, list_mask, list_strength,
-        ))
-        list_kwargs = [
-            dict(zip(keys, args)) 
-            for args in perms 
-            for _ in range(repeat)
-        ]
-
-        # generate seeds
+        # generate seeds # TODO separate
         size = len(list_kwargs)
         if seed is None:
             seeds = [random.randint(0, 2**32 - 1) for _ in range(size)]
         else:
             num_seeds = len(seed)
 
-            list_kwargs = [kwargs for kwargs in list_kwargs for _ in range(num_seeds)]
+            list_kwargs = [
+                kwargs for kwargs in list_kwargs for _ in range(num_seeds)
+            ]
             seeds = [s for _ in range(size) for s in seed]
-        # fmt: on
 
-        # create parameters list and group them
+        # create parameters list and group/batch them
         parameters = [
             Parameters(
                 **kwargs,
@@ -134,35 +123,9 @@ class StableDiffusion(Setup, Helpers):
             )
             for (seed, kwargs) in zip(seeds, list_kwargs)
         ]
-
-        groups: list[list[Parameters]] = []
-        for parameter in parameters:
-            if len(groups) == 0:
-                groups.append([parameter])
-                continue
-
-            can_share = False
-            for group in groups:
-                can_share = True
-                for other_parameter in group:
-                    can_share &= parameter.can_share_batch(other_parameter)
-
-                if can_share:
-                    group.append(parameter)
-                    break
-
-            if not can_share:
-                groups.append([parameter])
-
+        groups = group_parameters(parameters)
+        batched_parameters = batch_parameters(groups, batch_size)
         # optimal_batch_size = sum(len(g) for g in groups) // len(groups)
-
-        # create batches from groups
-        batched_parameters: list[list[Parameters]] = []
-        for group in groups:
-            for i in range(0, len(group), batch_size):
-                s = slice(i, min(i + batch_size, len(group)))
-
-                batched_parameters.append(group[s])
 
         out: list[tuple[Image.Image, Path, Parameters]] = []
         for params in tqdm(batched_parameters):
@@ -178,48 +141,65 @@ class StableDiffusion(Setup, Helpers):
     @torch.no_grad()
     def generate_from_parameters(
         self,
-        p: ParametersList,
+        pL: ParametersList,
     ) -> list[tuple[Image.Image, Path, Parameters]]:
-        scheduler = DDIMScheduler(p.steps, self.device, self.dtype, p.seeds)
-        context, weight = self.get_context(p.negative_prompts, p.prompts)
 
-        height, width = p.size
-        shape = (len(p), self.latent_channels, height // 8, width // 8)
-        latents = generate_noise(shape, p.seeds, self.device, self.dtype)
+        context, weight = self.get_context(pL.negative_prompts, pL.prompts)
+
+        scheduler = DDIMScheduler(pL.steps, self.device, self.dtype, pL.seeds)
+        skip_step = scheduler.skip_step(pL.strength)
+
+        height, width = pL.size
+        shape = (len(pL), self.latent_channels, height // 8, width // 8)
+        noise = generate_noise(shape, pL.seeds, self.device, self.dtype)
 
         # TODO make into its own function!
-        if p.images_data is not None:
-            assert p.strength is not None
+        masks: Optional[Tensor] = None
+        masked_images_latents: Optional[Tensor] = None
+        if pL.images_data is not None:
 
-            images_latents = self.encode(p.images_data.to(self.device))
+            if pL.masks_data is not None:
+                # TODO for now only the real deal
+                assert self.is_true_inpainting
+                assert pL.masked_images_data is not None
+                raise NotImplemented('Needs some rework') # TODO
 
-            skip_step = scheduler.skip_step(p.strength)
-            latents = scheduler.add_noise(images_latents, latents, skip_step)
+                masks = F.interpolate(
+                    pL.masks_data.float(),
+                    size=(height // 8, width // 8),
+                )
+
+                masked_images_latents = self.encode(pL.masked_images_data)
+                latents = scheduler.add_noise(masked_images_latents, noise, skip_step)
+                # latents = noise
+            else:
+                images_latents = self.encode(pL.images_data)
+                latents = scheduler.add_noise(images_latents, noise, skip_step)
         else:
-            skip_step = 0
-
-        # TODO add mask handling
+            latents = noise
 
         latents = self.denoise_latents(
             scheduler,
             latents,
             context,
             weight,
-            p.scales,
-            p.etas,
-            p.unconditional,
+            pL.scales,
+            pL.etas,
+            pL.unconditional,
             skip_step,
+            masks,
+            masked_images_latents,
         )
 
         data = self.decode(latents)
         images = self.create_images(data)
 
         paths: list[Path] = []
-        for parameter, image in zip(p, images):
-            path = self.save_image(image, parameter)
+        for parameter, image in zip(pL, images):
+            path = self.save_image(image, parameter.png_info)
             paths.append(path)
 
-        return list(zip(images, paths, list(p)))
+        return list(zip(images, paths, list(pL)))
 
     def denoise_latents(
         self,
@@ -230,7 +210,9 @@ class StableDiffusion(Setup, Helpers):
         scales: Tensor,
         etas: Tensor,
         unconditional: bool,
-        skip_step: int = 0,
+        skip_step: int,
+        masks: Optional[Tensor],
+        masked_images_latents: Optional[Tensor],
     ) -> Tensor:
         """Main loop where latents are denoised."""
 
@@ -238,8 +220,16 @@ class StableDiffusion(Setup, Helpers):
         for i in trange(skip_step, len(scheduler), desc="Denoising latents."):
             timestep = scheduler.timesteps[[i]]  # ndim=1
 
+            if masks is not None and masked_images_latents is not None:
+                input_latents = torch.cat(
+                    [latents, masks, masked_images_latents],
+                    dim=1,
+                )
+            else:
+                input_latents = latents
+
             pred_noise = self.pred_noise(
-                latents,
+                input_latents,
                 timestep,
                 context,
                 context_weight,

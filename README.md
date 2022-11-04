@@ -21,6 +21,7 @@ out = pipeline.generate(
     seed=1658926406,
     eta=0.6,
     show=True,
+    batch_size=8,
 )
 ```
 ![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.gif)

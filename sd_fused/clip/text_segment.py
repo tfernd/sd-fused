@@ -5,20 +5,17 @@ import re
 
 
 class TextSegment:
-    """Split a (words):factor for parsing."""
+    """Split `(words):weight` for parsing."""
 
     text: str
-    weight: Optional[float] = None
+    weight: float = 1
 
     def __init__(self, text: str) -> None:
         self.text = text
-        self.weight = None
 
         pattern = r"\((.+?)\):([+-]?\d+(?:.\d+)?)"
         match = re.match(pattern, text)
-        if not match:
-            self.text = text
-        else:
+        if match:
             self.text = match.group(1)
             self.weight = float(match.group(2))
 

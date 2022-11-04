@@ -11,7 +11,7 @@ class DiagonalGaussianDistribution:
         mean: Tensor,
         logvar: Tensor,
         *,
-        deterministic: bool = False,
+        deterministic: bool = False,  # TODO to delete
     ) -> None:
         super().__init__()
 

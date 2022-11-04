@@ -80,19 +80,19 @@ class Setup:
 
     def split_attention(
         self,
-        attention_chunks: Optional[int | Literal["auto"]] = "auto",
+        chunks: Optional[int | Literal["auto"]] = "auto",
     ) -> Self:
         """Split cross-attention computation into chunks."""
 
-        self.unet.split_attention(attention_chunks)
-        self.vae.split_attention(attention_chunks)
+        self.unet.split_attention(chunks)
+        self.vae.split_attention(chunks)
 
         return self
 
-    def flash_attention(self, use_flash_attention: bool = True) -> Self:
+    def flash_attention(self, use: bool = True) -> Self:
         """Use xformers flash-attention."""
 
-        self.unet.flash_attention(use_flash_attention)
-        self.vae.flash_attention(use_flash_attention)
+        self.unet.flash_attention(use)
+        self.vae.flash_attention(use)
 
         return self

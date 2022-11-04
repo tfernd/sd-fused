@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import torch
 from torch import Tensor
 
 from ...utils import softmax
@@ -12,6 +13,9 @@ def standard_attention(
     v: Tensor,  # (B, T', C)
 ) -> Tensor:
     """Standard attention computation."""
+
+    # ! Faster to use baddbmm?
+    # score = torch.baddbmm()
 
     q, k = scale_qk(q, k)
     attn = softmax(q @ k.transpose(1, 2), dim=-1)

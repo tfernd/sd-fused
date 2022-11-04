@@ -8,9 +8,11 @@ def softmax(x: Tensor, *, dim: int) -> Tensor:
 
     dtype = x.dtype
 
-    x = x.float()
+    # TODO test only half!
+    # TODO use in-place?
+    # x = x.float()
     x = x.softmax(dim)
     # x = x.softmax(dim, dtype=torch.float32) # ? is this better?
-    x = x.to(dtype)
+    # x = x.to(dtype)
 
     return x

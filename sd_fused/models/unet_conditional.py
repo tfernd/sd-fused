@@ -37,7 +37,7 @@ class UNet2DConditional(
 ):
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
-        """'Creates a model from a config file."""
+        """Creates a model from a config file."""
 
         path = Path(path)
         if path.is_dir():
@@ -172,7 +172,7 @@ class UNet2DConditional(
         )
 
         # up
-        reversed_block_out_channels = list(reversed(block_out_channels))
+        reversed_block_out_channels = tuple(reversed(block_out_channels))
         output_channel = reversed_block_out_channels[0]
         self.up_blocks = nn.ModuleList()
         for i, block in enumerate(up_blocks):
@@ -231,6 +231,7 @@ class UNet2DConditional(
         B, C, H, W = x.shape
 
         # 1. time embedding
+        # TODO use the to_tensor function?
         if isinstance(timestep, int):
             timestep = torch.tensor([timestep] * B, device=x.device)
         else:
@@ -261,20 +262,24 @@ class UNet2DConditional(
                 )
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
-            assert states is not None
+            assert states is not None  # ! hacky...
 
             all_states.extend(states)
             del states
 
         # 4. mid
         x = self.mid_block(
-            x, temb=temb, context=context, context_weights=context_weights
+            x,
+            temb=temb,
+            context=context,
+            context_weights=context_weights,
         )
 
         # 5. up
         for block in self.up_blocks:
             assert isinstance(block, (CrossAttentionUpBlock2D, UpBlock2D))
 
+            # ! I don't like the construction of this...
             states = list(all_states.pop() for _ in range(block.num_layers))
 
             if isinstance(block, CrossAttentionUpBlock2D):
@@ -307,7 +312,7 @@ class UNet2DConditional(
         old_state = torch.load(state_path, map_location="cpu")
         replaced_state = diffusers2fused_unet(old_state)
 
-        debug_state_replacements(model.state_dict(), replaced_state)
+        # debug_state_replacements(model.state_dict(), replaced_state)
 
         model.load_state_dict(replaced_state)
 

@@ -42,12 +42,12 @@ def image2tensor(
         if mode == "resize-pad":
             diff = not diff
 
-        w = width if diff else math.ceil(height * src_ar)
-        h = height if not diff else math.ceil(width / src_ar)
+        w = math.ceil(width if diff else height * src_ar)
+        h = math.ceil(height if not diff else width / src_ar)
 
         img = resize((w, h))
 
-    data = torch.from_numpy(np.asarray(img)).to(device)
+    data = torch.from_numpy(np.asarray(img).copy()).to(device)
     data = rearrange(data, "H W C -> 1 C H W")
 
     # crop/padding size

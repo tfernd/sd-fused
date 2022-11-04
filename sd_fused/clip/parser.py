@@ -7,7 +7,7 @@ MAX_EMPHASIS = 8
 
 
 def add_delimiter4words(text: str) -> str:
-    """Replaces word:factor -> (word):factor."""
+    """Replaces `word:weight` -> `(word):weight`."""
 
     text = re.sub(r"(\w+):([+-]?\d+(?:.\d+)?)", r"(\1):\2", text)
 
@@ -16,8 +16,8 @@ def add_delimiter4words(text: str) -> str:
 
 def expand_delimiters(text: str) -> str:
     """
-    replace (^n ... )^n with ( ... ):factor^n
-    replace [^n ... ]^n with ( ... ):factor^-n
+    replace `(^n ... )^n` with `( ... ):factor^n`
+    replace `[^n ... ]^n` with `( ... ):factor^-n`
     """
 
     delimiters = [
@@ -25,6 +25,7 @@ def expand_delimiters(text: str) -> str:
         for repeat in range(MAX_EMPHASIS, 0, -1)
         for left, right, sign in ((r"\(", r"\)", 1), (r"\[", r"\]", 1))
     ]
+
     avoid = r"\(\)\[\]\\"
     for left, right, signed_repeat in delimiters:
         pattern = f"{left}([^{avoid}]+?){right}([^:])"

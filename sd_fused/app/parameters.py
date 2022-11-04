@@ -1,15 +1,31 @@
 from __future__ import annotations
 from typing import Iterator, Optional
-
-from dataclasses import dataclass
 from typing_extensions import Self
+
+from dataclasses import dataclass, field
+from functools import lru_cache
 from PIL.PngImagePlugin import PngInfo
 
 import torch
 from torch import Tensor
 
 from ..utils import ResizeModes, image2tensor, image_base64
-from .utils import separate
+from .utils import separate, single
+
+SAVE_ARGS = [
+    "eta",
+    "steps",
+    "scale",
+    "height",
+    "width",
+    "seed",
+    "negative_prompt",
+    "prompt",
+    "strength",
+    "mode",
+    "image_base64",
+    "mask_base64",
+]
 
 
 @dataclass
@@ -29,29 +45,24 @@ class Parameters:
     strength: Optional[float] = None
     mode: Optional[ResizeModes] = None
 
-    # TODO add field
-    device: Optional[torch.device] = None
-    dtype: Optional[torch.dtype] = None
-
-    # TODO add field
-    __save_args__ = [
-        "eta",
-        "steps",
-        "scale",
-        "height",
-        "width",
-        "seed",
-        "negative_prompt",
-        "prompt",
-        "strength",
-        "mode",
-        "image_base64",
-        "mask_base64",
-    ]
+    device: Optional[torch.device] = field(default=None, repr=False)
+    dtype: Optional[torch.dtype] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
-        assert self.height % 64 == 0
-        assert self.width % 64 == 0
+        assert self.height % 8 == 0
+        assert self.width % 8 == 0
+
+        if self.img is None:
+            assert self.mode is None
+            assert self.strength is None
+            assert self.mask is None
+        else:
+            assert self.mode is not None
+            assert self.strength is not None
+
+    @property
+    def unconditional(self) -> bool:
+        return self.prompt is None
 
     def can_share_batch(self, other: Self) -> bool:
         """Determine if two parameters can share a batch."""
@@ -61,12 +72,12 @@ class Parameters:
         value &= self.height == other.height
         value &= self.width == other.width
         # guided/inguided?
-        value &= (self.prompt is None) == (other.prompt is None)
+        value &= self.unconditional == other.unconditional  # XNOR?
 
         return value
 
     @property
-    # @lru_cache(None)
+    # @lru_cache(None) # TODO cached_property?
     def image_data(self) -> Optional[Tensor]:
         """Image data as a Tensor."""
 
@@ -85,16 +96,21 @@ class Parameters:
         if self.mask is None or self.mode is None:
             return
 
-        return image2tensor(
+        data = image2tensor(
             self.mask, self.height, self.width, self.mode, self.device
         )
+
+        # single-channel
+        data = data.float().mean(dim=1, keepdim=True)
+
+        return data >= 255 / 2  # bool-Tensor
 
     @property
     # @lru_cache(None)
     def image_base64(self) -> Optional[str]:
         """Image data as a base64 string."""
 
-        if self.img is None or self.mode is None:
+        if self.img is None:
             return
 
         return image_base64(self.img)
@@ -104,16 +120,18 @@ class Parameters:
     def mask_base64(self) -> Optional[str]:
         """Mask data as a base64 string."""
 
-        if self.mask is None or self.mode is None:
+        if self.mask is None:
             return
 
         return image_base64(self.mask)
 
     @property
     def png_info(self) -> PngInfo:
+        """PNG metadata."""
+
         info = PngInfo()
 
-        for key in self.__save_args__:
+        for key in SAVE_ARGS:
             value = getattr(self, key)
 
             if value is None:
@@ -160,41 +178,31 @@ class ParametersList:
         height = set(p.height for p in self.parameters)
         width = set(p.width for p in self.parameters)
 
-        assert len(height) == len(width) == 1
-
-        return height.pop(), width.pop()
+        return single(height), single(width)
 
     @property
     def steps(self) -> int:
         steps = set(p.steps for p in self.parameters)
 
-        assert len(steps) == 1
-
-        return steps.pop()
+        return single(steps)
 
     @property
     def strength(self) -> Optional[float]:
         strength = set(p.strength for p in self.parameters)
 
-        assert len(strength) == 1
-
-        return strength.pop()
+        return single(strength)
 
     @property
     def device(self) -> Optional[torch.device]:
         devices = set(p.device for p in self.parameters)
 
-        assert len(devices) == 1
-
-        return devices.pop()
+        return single(devices)
 
     @property
     def dtype(self) -> Optional[torch.dtype]:
         dtypes = set(p.dtype for p in self.parameters)
 
-        assert len(dtypes) == 1
-
-        return dtypes.pop()
+        return single(dtypes)
 
     @property
     def scales(self) -> Tensor:
@@ -209,6 +217,7 @@ class ParametersList:
         return torch.tensor(etas, device=self.device, dtype=self.dtype)
 
     @property
+    @lru_cache(None)
     def images_data(self) -> Optional[Tensor]:
         data = [p.image_data for p in self.parameters]
         data = separate(data)
@@ -219,6 +228,7 @@ class ParametersList:
         return torch.cat(data, dim=0)
 
     @property
+    @lru_cache(None)
     def masks_data(self) -> Optional[Tensor]:
         data = [p.mask_data for p in self.parameters]
         data = separate(data)
@@ -227,3 +237,48 @@ class ParametersList:
             return None
 
         return torch.cat(data, dim=0)
+
+    @property
+    @lru_cache(None)
+    def masked_images_data(self) -> Optional[Tensor]:
+        if self.images_data is None or self.masks_data is None:
+            return None
+
+        return self.images_data * (~self.masks_data)
+
+
+def group_parameters(parameters: list[Parameters]) -> list[list[Parameters]]:
+    groups: list[list[Parameters]] = []
+    for parameter in parameters:
+        if len(groups) == 0:
+            groups.append([parameter])
+            continue
+
+        can_share = False
+        for group in groups:
+            can_share = True
+            for other_parameter in group:
+                can_share &= parameter.can_share_batch(other_parameter)
+
+            if can_share:
+                group.append(parameter)
+                break
+
+        if not can_share:
+            groups.append([parameter])
+
+    return groups
+
+
+def batch_parameters(
+    groups: list[list[Parameters]],
+    batch_size: int,
+) -> list[list[Parameters]]:
+    batched_parameters: list[list[Parameters]] = []
+    for group in groups:
+        for i in range(0, len(group), batch_size):
+            s = slice(i, min(i + batch_size, len(group)))
+
+            batched_parameters.append(group[s])
+
+    return batched_parameters

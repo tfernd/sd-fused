@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import random
 
-
+# TODO experimental
 def jiggle_prompt(prompt: str, vmin: float = 0, vmax: float = 1) -> str:
     assert ":" not in prompt
 

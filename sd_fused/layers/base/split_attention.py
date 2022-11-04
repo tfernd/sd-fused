@@ -10,13 +10,13 @@ from ..blocks.attention import CrossAttention, SelfAttention
 class SplitAttentionModel(nn.Module):
     def split_attention(
         self,
-        attention_chunks: Optional[int | Literal["auto"]] = "auto",
+        chunks: Optional[int | Literal["auto"]] = "auto",
     ) -> None:
         """Split cross/self-attention computation into chunks."""
 
         for name, module in self.named_modules():
             if isinstance(module, (CrossAttention, SelfAttention)):
-                module.attention_chunks = attention_chunks
+                module.attention_chunks = chunks
 
-                if attention_chunks is not None:
+                if chunks is not None:
                     module.use_flash_attention = False

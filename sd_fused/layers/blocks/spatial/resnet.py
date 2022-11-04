@@ -49,14 +49,12 @@ class ResnetBlock2D(nn.Module):
             padding=1,
         )
 
-        # self.nonlinearity = SiLU()
         if temb_channels is not None:
             self.time_emb_proj = nn.Sequential(
                 SiLU(),
                 Linear(temb_channels, out_channels),
                 Rearrange("b c -> b c 1 1"),
             )
-            # self.time_emb_proj = Linear(temb_channels, out_channels)
         else:
             self.time_emb_proj = None
 
@@ -68,10 +66,7 @@ class ResnetBlock2D(nn.Module):
         if self.time_emb_proj is not None:
             assert temb is not None
 
-            # temb = self.nonlinearity(temb)
             temb = self.time_emb_proj(temb)
-            # temb = temb[..., None, None]
-
             x = x + temb
             del temb
 

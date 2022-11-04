@@ -22,6 +22,7 @@ def attention(
     weights: Optional[Tensor] = None,  # (B, T')
     chunks: Optional[int | Literal["auto"]] = None,
     use_flash_attention: bool = False,
+    # use_tome: bool = False, # TODO implement
 ) -> Tensor:
     """General attention computation."""
 
@@ -34,7 +35,6 @@ def attention(
     B, Tl, C = k.shape
     dtype = q.dtype
 
-    # k = weight_modify_v(k, weights) # gives crappy result
     v = weight_modify_v(v, weights)
 
     # TODO ToMe?

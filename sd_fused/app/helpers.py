@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 
 import random
 from einops import rearrange
@@ -13,7 +14,6 @@ from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
-from .parameters import Parameters
 
 MAGIC = 0.18215
 
@@ -35,12 +35,18 @@ class Helpers:
     def latent_channels(self) -> int:
         """Latent-space channel size."""
 
-        return self.unet.in_channels
+        return self.unet.out_channels
+
+    @property
+    def is_true_inpainting(self) -> bool:
+        """RunwayMl true inpainting model."""
+
+        return self.unet.in_channels != self.latent_channels
 
     def save_image(
         self,
         image: Image.Image,
-        parameters: Parameters,
+        png_inf: PngInfo,
         ID: Optional[int] = None,
     ) -> Path:
         """Save the image using the provided metadata information."""
@@ -54,7 +60,7 @@ class Helpers:
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
         path = self.save_dir / f"{timestamp} - {ID:x}.SD.png"
-        image.save(path, bitmap_format="png", pnginfo=parameters.png_info)
+        image.save(path, bitmap_format="png", pnginfo=png_inf)
 
         return path
 

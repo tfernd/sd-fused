@@ -64,33 +64,34 @@ class ClipEmbedding:
         text = self.clean_spaces(text)
         text = self.parse_emphasis(text)
 
+        # TODO split ⏎ should be its own function
         segments = [TextSegment(t) for t in text.split("⏎")]
 
         ids: list[int] = []
         weights: list[float] = []
         for n, seg in enumerate(segments):
-            w = 1 if seg.weight is None else seg.weight
             seg_ids = self.tokenizer.encode(seg.text)
 
             # remove initial/final ids
             seg_ids = seg_ids[1:-1]
 
             ids.extend(seg_ids)
-            weights.extend([w] * (len(seg_ids)))
+            weights.extend([seg.weight] * (len(seg_ids)))
 
         # add padding and initial/final ids
-        n = MAX_TOKENS - len(ids) - 2
-        assert n >= 0, "Text too big, it will result in truncation"
+        pad_size = MAX_TOKENS - len(ids) - 2
+        assert pad_size >= 0, "Text too big, it will result in truncation"
         assert self.tokenizer.bos_token_id is not None
         assert self.tokenizer.eos_token_id is not None
         assert self.tokenizer.pad_token_id is not None
+
         ids = [
             self.tokenizer.bos_token_id,
             *ids,
-            *[self.tokenizer.pad_token_id] * n,
+            *[self.tokenizer.pad_token_id] * pad_size,
             self.tokenizer.eos_token_id,
         ]
-        weights = [1, *weights, *[1] * n, 1]
+        weights = [1, *weights, *[1] * pad_size, 1]
 
         return TensorAndWeight(
             torch.tensor([ids]),
@@ -124,7 +125,7 @@ class ClipEmbedding:
 
         emb = emb.to(device=device, dtype=dtype, non_blocking=True)
 
-        # special case where the weights are all one
+        # special case where the weights are not all one
         if weight.diff(1).any():
             weight = weight.to(device=device, dtype=dtype, non_blocking=True)
 

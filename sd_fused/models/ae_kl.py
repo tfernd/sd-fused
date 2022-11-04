@@ -86,6 +86,7 @@ class AutoencoderKL(
             norm_num_groups=norm_num_groups,
         )
 
+        # TODO very bad names...
         self.quant_conv = Conv2d(2 * latent_channels)
         self.post_quant_conv = Conv2d(latent_channels)
 
@@ -121,7 +122,7 @@ class AutoencoderKL(
         old_state = torch.load(state_path, map_location="cpu")
         replaced_state = diffusers2fused_vae(old_state)
 
-        debug_state_replacements(model.state_dict(), replaced_state)
+        # debug_state_replacements(model.state_dict(), replaced_state)
 
         model.load_state_dict(replaced_state)
 

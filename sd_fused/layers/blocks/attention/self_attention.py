@@ -46,7 +46,8 @@ class SelfAttention(nn.Module):
             heads=num_heads,
         )
         self.heads_to_channel = Rearrange(
-            "(B heads) HW C -> B HW (heads C)", heads=num_heads
+            "(B heads) HW C -> B HW (heads C)",
+            heads=num_heads,
         )
 
     def __call__(self, x: Tensor) -> Tensor:

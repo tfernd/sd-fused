@@ -55,7 +55,10 @@ class DownBlock2D(nn.Module):
             self.downsampler = None
 
     def __call__(
-        self, x: Tensor, *, temb: Optional[Tensor] = None
+        self,
+        x: Tensor,
+        *,
+        temb: Optional[Tensor] = None,
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet in self.resnets:
