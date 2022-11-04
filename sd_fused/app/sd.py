@@ -13,6 +13,7 @@ from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
+from ..clip.parser import prompt_choices
 from ..scheduler import DDIMScheduler
 from ..utils import ResizeModes, clear_cuda, generate_noise
 from .utils import to_list, product_args, slerp
@@ -87,6 +88,9 @@ class StableDiffusion(Setup, Helpers):
             repeat = 1
             seed = to_list(seed)
         # TODO add SHARE-seed, so parameters combinations share the same seed.
+
+        if prompt is not None:
+            prompt = [c for p in to_list(prompt) for c in prompt_choices(p)]
 
         list_kwargs = product_args(
             eta=eta,
