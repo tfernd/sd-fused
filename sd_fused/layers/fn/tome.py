@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Optional, Protocol
+from typing import Optional
 
 import torch
 from torch import Tensor
 import math
+
+from ...utils.typing import Protocol
 
 
 class Merge(Protocol):
@@ -32,7 +34,7 @@ def tome(metric: Tensor, r: int | float) -> Merge:
         del score
         edge_idx = node_max.argsort(dim=1, descending=True)
 
-        # Unmerged/ Merged Tokens
+        # Unmerged/Merged Tokens
         size = (math.ceil(T / 2) - r, r)
         unmerged_idx, src_idx = edge_idx.split(size, dim=1)
 
