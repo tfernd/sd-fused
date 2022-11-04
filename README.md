@@ -27,10 +27,7 @@ out = pipeline.generate(
 )
 ```
 
-![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.gif)
-
-<!-- <video src="./assets/animations/animation-1/animation.avi" controls="controls" muted="muted" class="d-block rounded-bottom-2 width-fit"> -->
-
+https://user-images.githubusercontent.com/35351230/200015161-ebbbc949-2c4e-407c-b0fa-044242b40ede.mp4
 
 ### Batched sweep
 
@@ -50,8 +47,7 @@ out = pipeline.generate(
 )
 ```
 
-![portrait, woman, cyberpunk, digital art, detailed, epic, beautiful](assets/animations/animation-2/animation.gif)
-
+https://user-images.githubusercontent.com/35351230/200014913-c9d21aea-85ab-4c65-8c92-8fdd6e288d2b.mp4
 
 ## Introduction
 
