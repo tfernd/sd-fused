@@ -10,8 +10,7 @@ from .chunked_attention import chunked_attention
 from .flash_attention import flash_attention
 from .weight_modify_v import weight_modify_v
 
-# TODO tome debug
-# from tome.merge import  bipartite_soft_matching, merge_wavg
+from .tome import tome, merge_weighted_average
 
 
 def attention(
@@ -22,7 +21,7 @@ def attention(
     weights: Optional[Tensor] = None,  # (B, T')
     chunks: Optional[int | Literal["auto"]] = None,
     use_flash_attention: bool = False,
-    # use_tome: bool = False, # TODO implement
+    tome_r: Optional[int | float] = None,
 ) -> Tensor:
     """General attention computation."""
 
@@ -37,13 +36,17 @@ def attention(
 
     v = weight_modify_v(v, weights)
 
-    # TODO ToMe?
-    # if T == Tl:
-    #     merge, unmerge = bipartite_soft_matching(q, C//2)
+    if T == Tl and tome_r is not None:
+        merge = tome(q, tome_r)
 
-    #     # q, size = merge_wavg(merge, q)
-    #     k, size = merge_wavg(merge, k)
-    #     v, size = merge_wavg(merge, v)
+        # q, size = merge_wavg(merge, q)
+        k, size = merge_weighted_average(merge, k)
+        v, size = merge_weighted_average(merge, v)
+
+        # TODO use size for attention bias
+        bias = size.log()
+    else:
+        bias = None
 
     if chunks == "auto":
         chunks = auto_chunk_size(B, T, Tl, C, dtype)
@@ -54,6 +57,7 @@ def attention(
 
     if use_flash_attention:
         assert chunks is None
+        assert tome_r is None  # ! temp?
         return flash_attention(q, k, v)
 
     return standard_attention(q, k, v)

@@ -15,6 +15,7 @@ from ..layers.base import (
     HalfWeightsModel,
     SplitAttentionModel,
     FlashAttentionModel,
+    ToMe,
 )
 from ..layers.distribution import DiagonalGaussianDistribution
 from ..layers.auto_encoder import Encoder, Decoder
@@ -27,6 +28,7 @@ class AutoencoderKL(
     HalfWeightsModel,
     SplitAttentionModel,
     FlashAttentionModel,
+    ToMe,
     nn.Module,
 ):
     @classmethod

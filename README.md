@@ -19,7 +19,7 @@ Below is a small test where the word `cyberpunk` is given a different emphasis.
 ```python
 prompts = [
     f"portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful"
-    for t in np.linspace(-1.2, 4.2, 32)
+    for t in torch.linspace(-1.2, 4.2, 32)
 ]
 out = pipeline.generate(
     prompt=prompts,
@@ -48,13 +48,34 @@ out = pipeline.generate(
     height=512,
     width=512,
     seed=1331366415,
-    eta=np.linspace(-1, 1, 64),
+    eta=torch.linspace(-1, 1, 64).tolist(),
     show=True,
     batch_size=8,
 )
 ```
 
 https://user-images.githubusercontent.com/35351230/200014913-c9d21aea-85ab-4c65-8c92-8fdd6e288d2b.mp4
+
+
+<!-- ### Bad artists friend
+
+Image-to-image generation.
+Some parameters such as `steps`, `height`, `width` and `strength` unfortunatelly cannot be batched.
+
+```python
+out = pipeline.generate(
+    prompt="a warrior and horse walking to Morder, (lord of the rings):2, digital art, detailed:2, trending on artstation, epic:3",
+    steps=32,
+    height=512,
+    width=512,
+    seed=1022981499,
+    eta=0.8,
+    show=True,
+    img='masterpiece.png',
+    strength=torch.linspace(0.05, 1, 32).sqrt().tolist(),
+    mode='resize-pad',
+)
+``` -->
 
 
 ## Kernel fusion

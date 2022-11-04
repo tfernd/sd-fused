@@ -96,3 +96,11 @@ class Setup:
         self.vae.flash_attention(use)
 
         return self
+
+    def tome(self, r: Optional[int | float] = None) -> Self:
+        """Merge similar tokens."""
+
+        self.unet.tome(r)
+        self.vae.tome(r)
+
+        return self

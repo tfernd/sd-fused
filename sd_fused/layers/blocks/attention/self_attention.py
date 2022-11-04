@@ -15,6 +15,7 @@ from ...fn import attention
 class SelfAttention(nn.Module):
     attention_chunks: Optional[int | Literal["auto"]] = None
     use_flash_attention: bool = False
+    tome_r: Optional[int | float] = None
 
     def __init__(
         self,
@@ -72,6 +73,7 @@ class SelfAttention(nn.Module):
             v,
             chunks=self.attention_chunks,
             use_flash_attention=self.use_flash_attention,
+            tome_r=self.tome_r,
         )
         del q, k, v
         x = self.proj_attn(self.heads_to_channel(x))

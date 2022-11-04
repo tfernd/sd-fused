@@ -15,6 +15,7 @@ from ..layers.base import (
     HalfWeightsModel,
     SplitAttentionModel,
     FlashAttentionModel,
+    ToMe,
 )
 from ..layers.blocks.simple import GroupNormSiLUConv2d
 from ..layers.blocks.spatial import (
@@ -33,6 +34,7 @@ class UNet2DConditional(
     HalfWeightsModel,
     SplitAttentionModel,
     FlashAttentionModel,
+    ToMe,
     nn.Module,
 ):
     @classmethod
