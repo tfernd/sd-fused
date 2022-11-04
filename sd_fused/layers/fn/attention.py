@@ -39,7 +39,7 @@ def attention(
     if T == Tl and tome_r is not None:
         merge = tome(q, tome_r)
 
-        # q, size = merge_wavg(merge, q)
+        # q, size = merge_weighted_average(merge, q)
         k, size = merge_weighted_average(merge, k)
         v, size = merge_weighted_average(merge, v)
 
@@ -53,11 +53,11 @@ def attention(
 
     if chunks is not None:
         assert not use_flash_attention
-        return chunked_attention(q, k, v, chunks)
+        return chunked_attention(q, k, v, chunks, bias)
 
     if use_flash_attention:
         assert chunks is None
         assert tome_r is None  # ! temp?
         return flash_attention(q, k, v)
 
-    return standard_attention(q, k, v)
+    return standard_attention(q, k, v, bias)

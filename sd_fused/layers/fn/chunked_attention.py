@@ -1,5 +1,7 @@
 from __future__ import annotations
+from typing import Optional
 
+import math
 import torch
 from torch import Tensor
 
@@ -12,6 +14,7 @@ def chunked_attention(
     k: Tensor,  # (B, T', C)
     v: Tensor,  # (B, T', C)
     chunks: int,
+    bias: Optional[Tensor] = None,
 ) -> Tensor:
     """Chunked attention computation."""
 
