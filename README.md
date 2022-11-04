@@ -34,7 +34,8 @@ out = pipeline.generate(
 )
 ```
 
-https://user-images.githubusercontent.com/35351230/200015161-ebbbc949-2c4e-407c-b0fa-044242b40ede.mp4
+<video src=https://user-images.githubusercontent.com/35351230/200015161-ebbbc949-2c4e-407c-b0fa-044242b40ede.mp4></video>
+
 
 ### Batched sweep
 
@@ -54,16 +55,28 @@ out = pipeline.generate(
 )
 ```
 
-https://user-images.githubusercontent.com/35351230/200014913-c9d21aea-85ab-4c65-8c92-8fdd6e288d2b.mp4
+<video src=https://user-images.githubusercontent.com/35351230/200014913-c9d21aea-85ab-4c65-8c92-8fdd6e288d2b.mp4></video>
 
 
-<!-- ### Seed-Interpolations -->
+### Seed-Interpolations
 
-<!-- 
 ```python
+# pipeline.tome(None)
+out = pipeline.generate(
+    prompt="portrait, woman, cyberpunk, digital art, detailed, epic, beautiful",
+    steps=26,
+    height=512,
+    width=512,
+    seed=3783195593,
+    sub_seed=2148348002,
+    interpolation=torch.linspace(0, 1, 64).tolist(),
+    eta=0.6,
+    show=True,
+    batch_size=8,
+)
+```
 
-
-``` -->
+<!-- <video src=></video> -->
 
 
 <!-- ### Bad artists friend
@@ -128,6 +141,3 @@ out = pipeline.generate(
 ```
 
 ![portrait of zombie, digital art, detailed, artistic](assets/text2img.png)
-
-
-<!-- ## TODO list -->
