@@ -134,7 +134,8 @@ class StableDiffusion(Setup, Helpers):
 
             if show:
                 for image, path, parameters in ipp:
-                    display(image, parameters)
+                    print(parameters)
+                    display(image)
 
         return out
 
