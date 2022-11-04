@@ -26,9 +26,9 @@ out = pipeline.generate(
     batch_size=8,
 )
 ```
-<!-- ![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.avi) -->
+![portrait, woman, cyberpunk:{t}, digital art, detailed, epic, beautiful](assets/animations/animation-1/animation.avi)
 
-<video src="./assets/animations/animation-1/animation.avi" controls="controls" muted="muted" class="d-block rounded-bottom-2 width-fit">
+<!-- <video src="./assets/animations/animation-1/animation.avi" controls="controls" muted="muted" class="d-block rounded-bottom-2 width-fit"> -->
 
 
 ### Batched sweep
