@@ -76,8 +76,7 @@ out = pipeline.generate(
 )
 ```
 
-<!-- <video src=></video> -->
-
+<video src=https://user-images.githubusercontent.com/35351230/200084486-24bc31c6-441f-495e-997c-9334a1315dd6.mp4></video>
 
 <!-- ### Bad artists friend
 
