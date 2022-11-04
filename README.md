@@ -1,5 +1,12 @@
 # Stable-Diffusion + Fused CUDA kernels = FUN!
 
+## Introduction
+
+This is a re-written implementation of Stable-Diffusion (SD) based on the original [diffusers](https://github.com/huggingface/diffusers) and [stable-diffusion](https://github.com/CompVis/stable-diffusion) repositories (all kudos for the original programmers).
+
+The goal of this reimplementation is to make it clearer, more readable, and more upgradable code that is easy to read and modify.
+Unfortunately, the original code is very difficult to read due to the lack of proper typing, variable naming, and other factors.
+
 ## For the inpatients:
 
 ### Emphasis
@@ -49,12 +56,6 @@ out = pipeline.generate(
 
 https://user-images.githubusercontent.com/35351230/200014913-c9d21aea-85ab-4c65-8c92-8fdd6e288d2b.mp4
 
-## Introduction
-
-This is a re-written implementation of Stable-Diffusion (SD) based on the original [diffusers](https://github.com/huggingface/diffusers) and [stable-diffusion](https://github.com/CompVis/stable-diffusion) repositories (all kudos for the original programmers).
-
-The goal of this reimplementation is to make it clearer, more readable, and more upgradable code that is easy to read and modify.
-Unfortunately, the original code is very difficult to read due to the lack of proper typing, variable naming, and other factors.
 
 ## Kernel fusion
 
