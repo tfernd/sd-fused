@@ -60,6 +60,8 @@ out = pipeline.generate(
 
 ### Seed-Interpolations
 
+You can perform interpolation between many to one known seeds.
+
 ```python
 # pipeline.tome(None)
 out = pipeline.generate(
@@ -77,6 +79,29 @@ out = pipeline.generate(
 ```
 
 <video src=https://user-images.githubusercontent.com/35351230/200084486-24bc31c6-441f-495e-997c-9334a1315dd6.mp4></video>
+
+<!-- 
+### Prompt choices
+
+Using the format `{words | more words | and more more words}` you can create different prompts where each iteration a different word is selected and all possible combinations are made.
+
+```python
+age = torch.linspace(5, 100, 80).round().byte().tolist()
+choices = '|'.join(map(str, age))
+
+out = pipeline.generate(
+    prompt=f"portrait, {{{choices}}}-year-old woman, cyberpunk, digital art, detailed, epic, beautiful",
+    steps=24,
+    height=512,
+    width=512,
+    seed=1658926406,
+    eta=0.6,
+    show=True,
+    batch_size=8,
+)
+``` -->
+
+<!-- <video src=></video> -->
 
 <!-- ### Bad artists friend
 

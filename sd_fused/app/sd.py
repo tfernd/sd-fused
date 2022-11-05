@@ -91,6 +91,7 @@ class StableDiffusion(Setup, Helpers):
 
         if prompt is not None:
             prompt = [c for p in to_list(prompt) for c in prompt_choices(p)]
+        negative_prompt = [c for p in to_list(negative_prompt) for c in prompt_choices(p)]
 
         list_kwargs = product_args(
             eta=eta,
