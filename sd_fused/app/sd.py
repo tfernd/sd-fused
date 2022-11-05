@@ -78,9 +78,8 @@ class StableDiffusion(Setup, Helpers):
         mode: Optional[ResizeModes] = None,
         seed: Optional[int | Iterable[int]] = None,
         sub_seed: Optional[int] = None,  # TODO Iterable?
-        interpolation: Optional[
-            float | Iterable[float]
-        ] = None,  # TODO seed_interpolation?
+        # TODO seed_interpolation?
+        interpolation: Optional[float | Iterable[float]] = None,
         batch_size: int = 1,
         repeat: int = 1,
         show: bool = True,
