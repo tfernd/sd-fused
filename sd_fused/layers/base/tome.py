@@ -3,7 +3,6 @@ from typing import Optional
 
 import torch.nn as nn
 
-from ...utils.typing import Literal
 from ..blocks.attention import CrossAttention, SelfAttention
 
 

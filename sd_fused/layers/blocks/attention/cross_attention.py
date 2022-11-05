@@ -8,7 +8,7 @@ from einops.layers.torch import Rearrange
 
 from ....utils.typing import Literal
 from ...base import Linear, LayerNorm
-from ...fn import attention
+from .fn import attention
 
 
 class CrossAttention(nn.Module):

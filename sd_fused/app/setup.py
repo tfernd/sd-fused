@@ -5,7 +5,7 @@ from typing_extensions import Self
 import torch
 
 from ..models import AutoencoderKL, UNet2DConditional
-from ..utils import clear_cuda
+from ..utils.cuda import clear_cuda
 from ..utils.typing import Literal
 
 

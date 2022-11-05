@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 import math
 
-from ...utils.typing import Protocol
+from .....utils.typing import Protocol
 
 
 class Merge(Protocol):

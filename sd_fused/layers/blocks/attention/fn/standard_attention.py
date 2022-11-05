@@ -3,7 +3,7 @@ from typing import Optional
 
 from torch import Tensor
 
-from ...utils import softmax
+from .....utils.tensors import softmax
 from .scale_qk import scale_qk
 
 

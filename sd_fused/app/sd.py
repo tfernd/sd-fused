@@ -15,9 +15,11 @@ from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..clip.parser import prompt_choices
 from ..scheduler import DDIMScheduler
-from ..utils import ResizeModes, clear_cuda, generate_noise
-from .utils import to_list, product_args, slerp
-from .parameters import (
+from ..utils.cuda import clear_cuda
+from ..utils.diverse import to_list, product_args
+from ..utils.image import ResizeModes
+from ..utils.tensors import slerp, generate_noise
+from ..utils.parameters import (
     Parameters,
     ParametersList,
     group_parameters,
@@ -28,7 +30,7 @@ from .helpers import Helpers
 
 
 class StableDiffusion(Setup, Helpers):
-    version: str = "0.5.1"
+    version: str = "0.5.2"
 
     def __init__(
         self,
@@ -54,6 +56,7 @@ class StableDiffusion(Setup, Helpers):
         self.set_low_ram(False)
         self.split_attention(None)
         self.flash_attention(False)
+        self.tome(None)
         self.cpu()
         self.float()
 
@@ -74,8 +77,10 @@ class StableDiffusion(Setup, Helpers):
         strength: Optional[float | Iterable[float]] = None,
         mode: Optional[ResizeModes] = None,
         seed: Optional[int | Iterable[int]] = None,
-        sub_seed: Optional[int] = None,  # TODO Iterable
-        interpolation: Optional[float | Iterable[float]] = None,
+        sub_seed: Optional[int] = None,  # TODO Iterable?
+        interpolation: Optional[
+            float | Iterable[float]
+        ] = None,  # TODO seed_interpolation?
         batch_size: int = 1,
         repeat: int = 1,
         show: bool = True,
@@ -91,7 +96,9 @@ class StableDiffusion(Setup, Helpers):
 
         if prompt is not None:
             prompt = [c for p in to_list(prompt) for c in prompt_choices(p)]
-        negative_prompt = [c for p in to_list(negative_prompt) for c in prompt_choices(p)]
+        negative_prompt = [
+            c for p in to_list(negative_prompt) for c in prompt_choices(p)
+        ]
 
         list_kwargs = product_args(
             eta=eta,
@@ -219,6 +226,27 @@ class StableDiffusion(Setup, Helpers):
 
         return list(zip(images, paths, list(pL)))
 
+    def enhance(
+        self,
+        *,
+        img: str,
+        factor: int,
+        strength: float,
+        overlap: int = 64,
+        prompt: Optional[str] = None,
+        negative_prompt: str = "",
+        seed: Optional[int] = None,
+        eta: float = 0,
+        steps: int = 32,
+        scale: float = 7.5,
+        height: int = 512,
+        width: int = 512,
+        batch_size: int = 1,
+        show: bool = True,
+    ):
+
+        ...
+
     def denoise_latents(
         self,
         scheduler: DDIMScheduler,
@@ -255,6 +283,7 @@ class StableDiffusion(Setup, Helpers):
                 scales,
             )
             latents = scheduler.step(pred_noise, latents, i, etas)
+
             del pred_noise
         clear_cuda()
 

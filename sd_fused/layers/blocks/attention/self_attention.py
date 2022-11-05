@@ -9,7 +9,7 @@ from einops import rearrange
 
 from ....utils.typing import Literal
 from ...base import GroupNorm, Linear
-from ...fn import attention
+from .fn import attention
 
 
 class SelfAttention(nn.Module):

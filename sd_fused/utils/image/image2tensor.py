@@ -4,9 +4,6 @@ from typing import Optional
 from functools import partial
 from pathlib import Path
 from PIL import Image
-import validators
-import requests
-from io import BytesIO
 
 import math
 import numpy as np
@@ -17,7 +14,8 @@ from torch import Tensor
 
 from einops import rearrange
 
-from .typing import Literal
+from ..typing import Literal
+from .open_image import open_image
 
 
 ResizeModes = Literal["resize", "resize-crop", "resize-pad"]
@@ -32,15 +30,7 @@ def image2tensor(
 ) -> Tensor:
     """Open an image/url as pytorch batched-Tensor (B=1 C H W)."""
 
-    # TODO de-duplicate
-    if isinstance(path, str) and validators.url(path):  # type: ignore
-        # as url
-        response = requests.get(path)
-        img = Image.open(BytesIO(response.content))
-    else:
-        img = Image.open(path)
-    img = img.convert("RGB")
-
+    img = open_image(path)
     resize = partial(img.resize, resample=Image.LANCZOS)
 
     if mode == "resize":
@@ -65,12 +55,7 @@ def image2tensor(
     h, w = data.shape[-2:]
     dh, dw = height - h, width - w
 
-    pad = (
-        dw // 2,
-        dw - dw // 2,
-        dh // 2,
-        dh - dh // 2,
-    )
+    pad = (dw // 2, dw - dw // 2, dh // 2, dh - dh // 2)
     data = F.pad(data, pad, value=0)
 
     return data

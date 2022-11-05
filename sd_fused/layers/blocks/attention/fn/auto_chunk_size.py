@@ -3,7 +3,7 @@ from typing import Optional
 import torch
 import math
 
-from ...utils import free_memory
+from .....utils.cuda import free_memory
 
 
 def auto_chunk_size(

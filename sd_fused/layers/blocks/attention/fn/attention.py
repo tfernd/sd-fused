@@ -3,13 +3,12 @@ from typing import Optional
 
 from torch import Tensor
 
-from ...utils.typing import Literal
+from .....utils.typing import Literal
 from .auto_chunk_size import auto_chunk_size
 from .standard_attention import standard_attention
 from .chunked_attention import chunked_attention
 from .flash_attention import flash_attention
 from .weight_modify_v import weight_modify_v
-
 from .tome import tome, merge_weighted_average
 
 
@@ -57,7 +56,7 @@ def attention(
 
     if use_flash_attention:
         assert chunks is None
-        assert tome_r is None  # ! temp?
+        assert tome_r is None  # TODO add bias to flash-attention
         return flash_attention(q, k, v)
 
     return standard_attention(q, k, v, bias)

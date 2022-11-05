@@ -10,12 +10,8 @@ class DiagonalGaussianDistribution:
         self,
         mean: Tensor,
         logvar: Tensor,
-        *,
-        deterministic: bool = False,  # TODO to delete
     ) -> None:
         super().__init__()
-
-        self.deterministic = deterministic
 
         self.device = mean.device
         self.dtype = mean.dtype
@@ -26,11 +22,6 @@ class DiagonalGaussianDistribution:
         self.std = torch.exp(logvar / 2)
 
     def sample(self, generator: Optional[torch.Generator] = None) -> Tensor:
-        if self.deterministic:
-            assert generator is None
-
-            return self.mean
-
         # TODO use seeds?
         noise = torch.randn(
             self.std.shape,

@@ -8,8 +8,7 @@ from torch import Tensor
 
 from einops import rearrange
 
-from ..utils import generate_noise
-from .utils import to_tensor
+from ..utils.tensors import to_tensor, generate_noise
 
 TRAINED_STEPS = 1_000
 BETA_BEGIN = 0.00085
@@ -35,6 +34,9 @@ class DDIMScheduler:
         device: Optional[torch.device] = None,
         dtype: torch.dtype = torch.float32,
         seed: Optional[list[int]] = None,
+        *,
+        # ! Testing phase
+        renorm: bool = False,
     ) -> None:
         assert steps <= TRAINED_STEPS
 
@@ -42,6 +44,8 @@ class DDIMScheduler:
         self.device = device
         self.dtype = dtype
         self.seed = seed
+
+        self.renorm = renorm
 
         # scheduler betas and alphas
         β_begin = math.pow(BETA_BEGIN, 1 / POWER)
@@ -76,14 +80,11 @@ class DDIMScheduler:
         self,
         pred_noise: Tensor,
         latents: Tensor,
-        i: int | Tensor,
+        i: int,
         eta: float | Tensor = 0,
     ) -> Tensor:
         """Get the previous latents according to the DDIM paper."""
 
-        # TODO does it make sense for i to be a tensor for inference only??
-
-        i = to_tensor(i, steps=self.steps, device=self.device)
         eta = to_tensor(eta, device=self.device, dtype=self.dtype)
 
         # eq (12) part 1
@@ -104,21 +105,24 @@ class DDIMScheduler:
                 shape, self.seed, self.device, self.dtype
             )
             self.noises = rearrange(self.noises, "B C H W S -> S B C H W")
-        noise = self.noises[i.flatten()].flatten(0, 1)
+        noise = self.noises[i]
         noise *= self.σ[i] * eta
 
         # full eq (12)
-        return pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
+        latents = pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
+
+        if self.renorm:
+            latents /= latents.std(dim=(1, 2, 3), keepdim=True)
+
+        return latents
 
     def add_noise(
         self,
         latents: Tensor,
         eps: Tensor,
-        i: int | Tensor,
+        i: int,
     ) -> Tensor:
         """Add noise to latents according to the index i."""
-
-        i = to_tensor(i, steps=self.steps, device=self.device)
 
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()

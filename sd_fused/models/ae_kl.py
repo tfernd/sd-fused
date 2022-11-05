@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from ..utils import normalize, denormalize
+from ..utils.tensors import normalize, denormalize
 from ..layers.base import (
     Conv2d,
     HalfWeightsModel,
@@ -42,7 +42,6 @@ class AutoencoderKL(
 
         db = json.load(open(path, "r"))
         config = VaeConfig(**db)
-        # TODO raise an exception?
 
         return cls(
             in_channels=config.in_channels,

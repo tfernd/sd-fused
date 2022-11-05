@@ -22,9 +22,11 @@ def slerp(a: Tensor, b: Tensor, t: Tensor) -> Tensor:
     an = a / a.norm(dim=1, keepdim=True)
     bn = b / b.norm(dim=1, keepdim=True)
 
-    Ω = an.mul(bn).sum(dim=1, keepdim=True).acos()
+    Ω = an.mul(bn).sum(1).clamp(-1, 1).acos()
 
-    A = torch.sin((1 - t) * Ω) / Ω.sin()
-    B = torch.sin(t * Ω) / Ω.sin()
+    den = torch.sin(Ω)
 
-    return A * a + B * b
+    A = torch.sin((1 - t) * Ω)
+    B = torch.sin(t * Ω)
+
+    return (A * a + B * b) / den

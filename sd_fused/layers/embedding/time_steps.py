@@ -7,10 +7,6 @@ import torch.nn as nn
 from torch import Tensor
 
 
-def reverse(x: Tensor, half_dim: int) -> Tensor:
-    return torch.cat([x[:, half_dim:], x[:, :half_dim]], dim=1)
-
-
 class Timesteps(nn.Module):
     freq: Tensor
     amplitude: Tensor
@@ -63,3 +59,7 @@ class Timesteps(nn.Module):
         x = x[..., None]
 
         return self.amplitude * torch.sin(x * self.freq + self.phase)
+
+
+def reverse(x: Tensor, half_dim: int) -> Tensor:
+    return torch.cat([x[:, half_dim:], x[:, :half_dim]], dim=1)

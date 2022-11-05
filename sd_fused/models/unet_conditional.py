@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from ..utils.tensors import to_tensor
 from ..layers.embedding import Timesteps, TimestepEmbedding
 from ..layers.base import (
     Conv2d,
@@ -48,7 +49,6 @@ class UNet2DConditional(
 
         db = json.load(open(path, "r"))
         config = UnetConfig(**db)
-        # TODO raise an exception?
 
         return cls(
             in_channels=config.in_channels,
@@ -233,14 +233,12 @@ class UNet2DConditional(
         B, C, H, W = x.shape
 
         # 1. time embedding
-        # TODO use the to_tensor function?
-        if isinstance(timestep, int):
-            timestep = torch.tensor([timestep] * B, device=x.device)
-        else:
-            assert timestep.ndim == 1
-        if timestep.shape[0] == 1:
+        timestep = to_tensor(
+            timestep, device=x.device, dtype=x.dtype, add_spatial=False
+        )
+        if timestep.size(0) != B:
+            assert timestep.size(0) == 1
             timestep = timestep.expand(B)
-        assert timestep.shape == (B,)
 
         temb = self.time_proj(timestep)
         temb = self.time_embedding(temb)

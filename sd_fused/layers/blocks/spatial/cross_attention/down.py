@@ -7,7 +7,7 @@ from torch import Tensor
 from ...transformer import SpatialTransformer
 from ..resampling import Downsample2D
 from ..resnet import ResnetBlock2D
-from ..utils import OutputStates
+from ..output_states import OutputStates
 
 
 class CrossAttentionDownBlock2D(nn.Module):

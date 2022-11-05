@@ -32,7 +32,6 @@ class ClipEmbedding:
         tokenizer_path: str | Path,
         text_encoder_path: str | Path,
     ) -> None:
-        # TODO check if valid paths?
         # no need for CUDA for simple embeddings...
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)  # type: ignore
