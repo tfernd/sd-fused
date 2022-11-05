@@ -26,6 +26,7 @@ class DDIMScheduler:
     ϖ: Tensor
     σ: Tensor
 
+    skip_step: int = 0
     noises: Optional[Tensor] = None
 
     def __init__(
@@ -35,8 +36,7 @@ class DDIMScheduler:
         dtype: torch.dtype = torch.float32,
         seed: Optional[list[int]] = None,
         *,
-        # ! Testing phase
-        renorm: bool = False,
+        renorm: bool = True,
     ) -> None:
         assert steps <= TRAINED_STEPS
 
@@ -112,6 +112,7 @@ class DDIMScheduler:
         latents = pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
 
         if self.renorm:
+            latents -= latents.mean(dim=(1, 2, 3), keepdim=True)
             latents /= latents.std(dim=(1, 2, 3), keepdim=True)
 
         return latents
@@ -127,15 +128,15 @@ class DDIMScheduler:
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 
-    def skip_step(self, strength: Optional[float]) -> int:
+    def set_skip_step(self, strength: Optional[float]) -> None:
         """The index generation needs to start."""
 
         if strength is None:
-            return 0
+            self.skip_step = 0
+        else:
+            assert 0 < strength <= 1
 
-        assert 0 < strength <= 1
-
-        return math.ceil(len(self) * (1 - strength))
+            self.skip_step = math.ceil(len(self) * (1 - strength))
 
     def __len__(self) -> int:
         return self.steps

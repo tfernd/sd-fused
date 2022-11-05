@@ -104,3 +104,8 @@ class Setup:
         self.vae.tome(r)
 
         return self
+
+    def scheduler_renorm(self, renorm: bool = False) -> Self:
+        self.renorm = renorm
+
+        return self

@@ -1,21 +1,24 @@
 from __future__ import annotations
+from typing import Iterable
 
 import re
 
+from ...utils.diverse import to_list
 
-def prompt_choices(text: str) -> list[str]:
+
+def prompt_choices(prompt: str) -> list[str]:
     """Create a set of prompt word-choices from
     `{word 1 | another word | yet another one}`"""
 
     pattern = re.compile(r"{([^{}]+)}")
 
-    temp: list[str] = [text]
-    texts: list[str] = []
+    temp: list[str] = [prompt]
+    prompts: list[str] = []
 
     while len(temp) != 0:
-        text = temp.pop()
+        prompt = temp.pop()
 
-        match = pattern.search(text)
+        match = pattern.search(prompt)
         if match is not None:
             start, end = match.span()
 
@@ -24,9 +27,20 @@ def prompt_choices(text: str) -> list[str]:
 
             for choice in choices:
                 choice = choice.strip()
-                new_text = "".join([text[:start], choice, text[end:]])
+                new_text = "".join([prompt[:start], choice, prompt[end:]])
                 temp.append(new_text.strip())
         else:
-            texts.append(text)
+            prompts.append(prompt)
 
-    return texts[::-1]
+    return prompts[::-1]
+
+
+def prompts_choices(prompts: str | Iterable[str]) -> list[str]:
+    """Create a set of prompt word-choices from
+    `{word 1 | another word | yet another one}`"""
+
+    return [
+        choice
+        for prompt in to_list(prompts)
+        for choice in prompt_choices(prompt)
+    ]

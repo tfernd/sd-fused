@@ -13,12 +13,11 @@ from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
-from ..clip.parser import prompt_choices
+from ..clip.parser import prompts_choices
 from ..scheduler import DDIMScheduler
 from ..utils.cuda import clear_cuda
 from ..utils.diverse import to_list, product_args
 from ..utils.image import ResizeModes
-from ..utils.tensors import slerp, generate_noise
 from ..utils.parameters import (
     Parameters,
     ParametersList,
@@ -53,6 +52,7 @@ class StableDiffusion(Setup, Helpers):
         self.unet = UNet2DConditional.from_diffusers(path / "unet")
 
         # init
+        self.scheduler_renorm(False)
         self.set_low_ram(False)
         self.split_attention(None)
         self.flash_attention(False)
@@ -72,6 +72,7 @@ class StableDiffusion(Setup, Helpers):
         negative_prompt: str | Iterable[str] = "",
         # optional
         prompt: Optional[str | Iterable[str]] = None,
+        # TODO add support for PIL.Image
         img: Optional[str | Iterable[str]] = None,
         mask: Optional[str | Iterable[str]] = None,
         strength: Optional[float | Iterable[float]] = None,
@@ -80,6 +81,7 @@ class StableDiffusion(Setup, Helpers):
         sub_seed: Optional[int] = None,  # TODO Iterable?
         # TODO seed_interpolation?
         interpolation: Optional[float | Iterable[float]] = None,
+        # latents: Optional[Tensor] = None, # TODO
         batch_size: int = 1,
         repeat: int = 1,
         show: bool = True,
@@ -94,10 +96,8 @@ class StableDiffusion(Setup, Helpers):
         # TODO add SHARE-seed, so parameters combinations share the same seed.
 
         if prompt is not None:
-            prompt = [c for p in to_list(prompt) for c in prompt_choices(p)]
-        negative_prompt = [
-            c for p in to_list(negative_prompt) for c in prompt_choices(p)
-        ]
+            prompt = prompts_choices(prompt)
+        negative_prompt = prompts_choices(negative_prompt)
 
         list_kwargs = product_args(
             eta=eta,
@@ -160,20 +160,12 @@ class StableDiffusion(Setup, Helpers):
         pL: ParametersList,
     ) -> list[tuple[Image.Image, Path, Parameters]]:
 
-        context, weight = self.get_context(pL.negative_prompts, pL.prompts)
-
-        scheduler = DDIMScheduler(pL.steps, self.device, self.dtype, pL.seeds)
-        skip_step = scheduler.skip_step(pL.strength)
-
-        height, width = pL.size
-        shape = (len(pL), self.latent_channels, height // 8, width // 8)
-        noise = generate_noise(shape, pL.seeds, self.device, self.dtype)
-        if pL.sub_seeds is not None:
-            assert pL.interpolations is not None
-            sub_noise = generate_noise(
-                shape, pL.sub_seeds, self.device, self.dtype
-            )
-            noise = slerp(noise, sub_noise, pL.interpolations)
+        context, weight = self.get_context(pL)
+        noise = self.generate_noise(pL)
+        scheduler = DDIMScheduler(
+            pL.steps, self.device, self.dtype, pL.seeds, renorm=self.renorm
+        )
+        scheduler.set_skip_step(pL.strength)
 
         # TODO make into its own function!
         masks: Optional[Tensor] = None
@@ -198,7 +190,9 @@ class StableDiffusion(Setup, Helpers):
                 # latents = noise
             else:
                 images_latents = self.encode(pL.images_data, self.dtype)
-                latents = scheduler.add_noise(images_latents, noise, skip_step)
+                latents = scheduler.add_noise(
+                    images_latents, noise, scheduler.skip_step
+                )
         else:
             latents = noise
 
@@ -207,10 +201,7 @@ class StableDiffusion(Setup, Helpers):
             latents,
             context,
             weight,
-            pL.scales,
-            pL.etas,
-            pL.unconditional,
-            skip_step,
+            pL,
             masks,
             masked_images_latents,
         )
@@ -252,17 +243,16 @@ class StableDiffusion(Setup, Helpers):
         latents: Tensor,
         context: Tensor,
         context_weight: Optional[Tensor],
-        scales: Tensor,
-        etas: Tensor,
-        unconditional: bool,
-        skip_step: int,
+        p: ParametersList,
         masks: Optional[Tensor],
         masked_images_latents: Optional[Tensor],
     ) -> Tensor:
         """Main loop where latents are denoised."""
 
         clear_cuda()
-        for i in trange(skip_step, len(scheduler), desc="Denoising latents."):
+        for i in trange(
+            scheduler.skip_step, len(scheduler), desc="Denoising latents."
+        ):
             timestep = scheduler.timesteps[[i]]  # ndim=1
 
             if masks is not None and masked_images_latents is not None:
@@ -278,10 +268,10 @@ class StableDiffusion(Setup, Helpers):
                 timestep,
                 context,
                 context_weight,
-                unconditional,
-                scales,
+                p.unconditional,
+                p.scales,
             )
-            latents = scheduler.step(pred_noise, latents, i, etas)
+            latents = scheduler.step(pred_noise, latents, i, p.etas)
 
             del pred_noise
         clear_cuda()
