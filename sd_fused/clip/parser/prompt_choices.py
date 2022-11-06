@@ -4,6 +4,7 @@ from typing import Iterable
 import re
 
 from ...utils.diverse import to_list
+from ...utils.typing import MaybeIterable
 
 
 def prompt_choices(prompt: str) -> list[str]:
@@ -35,7 +36,7 @@ def prompt_choices(prompt: str) -> list[str]:
     return prompts[::-1]
 
 
-def prompts_choices(prompts: str | Iterable[str]) -> list[str]:
+def prompts_choices(prompts: MaybeIterable[str]) -> list[str]:
     """Create a set of prompt word-choices from
     `{word 1 | another word | yet another one}`"""
 

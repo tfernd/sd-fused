@@ -22,18 +22,27 @@ ResizeModes = Literal["resize", "resize-crop", "resize-pad"]
 
 
 def image2tensor(
-    path: str | Path,
-    height: int,
-    width: int,
-    mode: ResizeModes,
+    path: str | Path | Image.Image,
+    height: Optional[int] = None,
+    width: Optional[int] = None,
+    mode: ResizeModes = "resize",
     device: Optional[torch.device] = None,
+    rescale: Optional[float] = None,
 ) -> Tensor:
     """Open an image/url as pytorch batched-Tensor (B=1 C H W)."""
 
     img = open_image(path)
     resize = partial(img.resize, resample=Image.LANCZOS)
 
-    if mode == "resize":
+    if height is None or width is None:
+        assert height is None and width is None
+
+        width, height = img.size
+        if rescale is not None:
+            width = math.ceil(width * rescale)
+            height = math.ceil(height * rescale)
+
+    if mode == "resize" or rescale is not None:
         img = resize((width, height))
     else:
         ar = width / height

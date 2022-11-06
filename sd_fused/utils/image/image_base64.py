@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PIL import Image
 from pathlib import Path
 import base64
 from io import BytesIO
@@ -7,7 +8,7 @@ from io import BytesIO
 from .open_image import open_image
 
 
-def image_base64(path: str | Path) -> str:
+def image_base64(path: str | Path | Image.Image) -> str:
     """Encodes an image as base64 string."""
 
     img = open_image(path)

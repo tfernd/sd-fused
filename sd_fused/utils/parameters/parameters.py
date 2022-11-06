@@ -3,6 +3,7 @@ from typing import Optional
 from typing_extensions import Self
 
 from dataclasses import dataclass, field
+from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 import torch
@@ -34,16 +35,17 @@ class Parameters:
 
     eta: float
     steps: int
-    scale: float  # TODO optional!
     height: int
     width: int
     seed: int
     negative_prompt: str
+    scale: float
+    # scale: Optional[float] = None
     sub_seed: Optional[int] = None
     interpolation: Optional[float] = None
     prompt: Optional[str] = None
-    img: Optional[str] = None
-    mask: Optional[str] = None
+    img: Optional[str | Image.Image] = None
+    mask: Optional[str | Image.Image] = None
     strength: Optional[float] = None
     mode: Optional[ResizeModes] = None
 
@@ -66,6 +68,8 @@ class Parameters:
             assert self.interpolation is None
         else:
             assert self.interpolation is not None
+
+        # TODO eta
 
     @property
     def unconditional(self) -> bool:

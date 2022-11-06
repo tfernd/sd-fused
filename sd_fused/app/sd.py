@@ -1,15 +1,16 @@
 from __future__ import annotations
-from typing import Iterable, Optional
+from typing import Optional
 
 from pathlib import Path
 from tqdm.auto import trange, tqdm
 from PIL import Image
 from IPython.display import display
 
+import math
 import random
 import torch
-import torch.nn.functional as F
 from torch import Tensor
+
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
@@ -17,7 +18,8 @@ from ..clip.parser import prompts_choices
 from ..scheduler import DDIMScheduler
 from ..utils.cuda import clear_cuda
 from ..utils.diverse import to_list, product_args
-from ..utils.image import ResizeModes
+from ..utils.image import ResizeModes, tensor2images, image2tensor
+from ..utils.typing import MaybeIterable
 from ..utils.parameters import (
     Parameters,
     ParametersList,
@@ -29,7 +31,7 @@ from .helpers import Helpers
 
 
 class StableDiffusion(Setup, Helpers):
-    version: str = "0.5.2"
+    version: str = "0.5.3"
 
     def __init__(
         self,
@@ -64,23 +66,23 @@ class StableDiffusion(Setup, Helpers):
     def generate(
         self,
         *,
-        eta: float | Iterable[float] = 0,
-        steps: int | Iterable[int] = 32,
-        scale: float | Iterable[float] = 7.5,
-        height: int | Iterable[int] = 512,
-        width: int | Iterable[int] = 512,
-        negative_prompt: str | Iterable[str] = "",
+        eta: MaybeIterable[float] = 0,
+        steps: MaybeIterable[int] = 32,
+        scale: MaybeIterable[float] = 7.5,  # ?Optional
+        height: MaybeIterable[int] = 512,
+        width: MaybeIterable[int] = 512,
+        negative_prompt: MaybeIterable[str] = "",
         # optional
-        prompt: Optional[str | Iterable[str]] = None,
+        prompt: Optional[MaybeIterable[str]] = None,
         # TODO add support for PIL.Image
-        img: Optional[str | Iterable[str]] = None,
-        mask: Optional[str | Iterable[str]] = None,
-        strength: Optional[float | Iterable[float]] = None,
+        img: Optional[MaybeIterable[str | Image.Image]] = None,
+        mask: Optional[MaybeIterable[str | Image.Image]] = None,
+        strength: Optional[MaybeIterable[float]] = None,
         mode: Optional[ResizeModes] = None,
-        seed: Optional[int | Iterable[int]] = None,
+        seed: Optional[MaybeIterable[int]] = None,
         sub_seed: Optional[int] = None,  # TODO Iterable?
         # TODO seed_interpolation?
-        interpolation: Optional[float | Iterable[float]] = None,
+        interpolation: Optional[MaybeIterable[float]] = None,
         # latents: Optional[Tensor] = None, # TODO
         batch_size: int = 1,
         repeat: int = 1,
@@ -129,7 +131,7 @@ class StableDiffusion(Setup, Helpers):
         # create parameters list and group/batch them
         parameters = [
             Parameters(
-                **kwargs,
+                **kwargs,  # type: ignore
                 mode=mode,
                 seed=seed,
                 sub_seed=sub_seed,
@@ -174,20 +176,20 @@ class StableDiffusion(Setup, Helpers):
 
             if pL.masks_data is not None:
                 # TODO for now only the real deal
-                assert self.is_true_inpainting
-                assert pL.masked_images_data is not None
+                # assert self.is_true_inpainting
+                # assert pL.masked_images_data is not None
                 raise NotImplemented("Needs some rework")  # TODO
 
-                masks = F.interpolate(
-                    pL.masks_data.float(),
-                    size=(height // 8, width // 8),
-                )
+                # masks = F.interpolate(
+                #     pL.masks_data.float(),
+                #     size=(height // 8, width // 8),
+                # )
 
-                masked_images_latents = self.encode(pL.masked_images_data)
-                latents = scheduler.add_noise(
-                    masked_images_latents, noise, skip_step
-                )
-                # latents = noise
+                # masked_images_latents = self.encode(pL.masked_images_data)
+                # latents = scheduler.add_noise(
+                #     masked_images_latents, noise, skip_step
+                # )
+                # # latents = noise
             else:
                 images_latents = self.encode(pL.images_data, self.dtype)
                 latents = scheduler.add_noise(
@@ -207,7 +209,7 @@ class StableDiffusion(Setup, Helpers):
         )
 
         data = self.decode(latents)
-        images = self.create_images(data)
+        images = tensor2images(data)
 
         paths: list[Path] = []
         for parameter, image in zip(pL, images):
@@ -220,7 +222,7 @@ class StableDiffusion(Setup, Helpers):
         self,
         *,
         img: str,
-        factor: int,
+        factor: int | float,
         strength: float,
         overlap: int = 64,
         prompt: Optional[str] = None,
@@ -234,8 +236,51 @@ class StableDiffusion(Setup, Helpers):
         batch_size: int = 1,
         show: bool = True,
     ):
+        assert factor > 1
+        assert 0 < overlap < min(height, width)
 
-        ...
+        data = image2tensor(img)
+        B, C, H, W = data.shape
+
+        H = round(factor * H)
+        W = round(factor * W)
+        data = image2tensor(img, H, W, mode="resize")
+        B, C, H, W = data.shape
+
+        nH = math.ceil(H / (height - overlap / 2))
+        nW = math.ceil(W / (width - overlap / 2))
+
+        pi = torch.linspace(0, H - height - 1, nH).round().long()
+        pj = torch.linspace(0, W - width - 1, nW).round().long()
+
+        # TODO avoid for-loop
+        datas: list[Tensor] = []
+        for i in pi:
+            for j in pj:
+                d = data[..., i : i + height, j : j + width]
+                datas.append(d)
+        data = torch.cat(datas, dim=0)
+
+        imgs = tensor2images(data)
+
+        out = self.generate(
+            eta=eta,
+            steps=steps,
+            scale=scale,
+            height=height,
+            width=width,
+            negative_prompt=negative_prompt,
+            prompt=prompt,
+            img=imgs,
+            strength=strength,
+            mode="resize",
+            seed=seed,
+            # sub_seed/interpolation
+            batch_size=batch_size,
+            show=show,
+        )
+
+        # TODO stich images
 
     def denoise_latents(
         self,

@@ -8,7 +8,6 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 import random
-from einops import rearrange
 import torch
 from torch import Tensor
 
@@ -66,16 +65,11 @@ class Helpers:
 
         return path
 
-    def create_images(self, data: Tensor) -> list[Image.Image]:
-        """Creates a list of images according to the batch size."""
-
-        data = rearrange(data, "B C H W -> B H W C").cpu().numpy()
-
-        return [Image.fromarray(v) for v in data]
-
     @torch.no_grad()
     def encode(
-        self, data: Tensor, dtype: Optional[torch.dtype] = None
+        self,
+        data: Tensor,
+        dtype: Optional[torch.dtype] = None,
     ) -> Tensor:
         """Encodes (stochastically) a RGB image into a latent vector."""
 
@@ -89,7 +83,8 @@ class Helpers:
 
     @torch.no_grad()
     def get_context(
-        self, p: ParametersList
+        self,
+        p: ParametersList,
     ) -> tuple[Tensor, Optional[Tensor]]:
         """Creates a context Tensor (negative + positive prompt) and a emphasis weights."""
 

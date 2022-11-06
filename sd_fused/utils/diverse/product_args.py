@@ -1,11 +1,15 @@
 from __future__ import annotations
+from typing import Optional
 
 from itertools import product
 
+from ..typing import MaybeIterable
 from .to_list import to_list
 
 
-def product_args(repeat: int = 1, **kwargs):
+def product_args(
+    repeat: int = 1, **kwargs: Optional[MaybeIterable]
+) -> list[dict[str, Optional[MaybeIterable]]]:
     args = list(kwargs.values())
     keys = list(kwargs.keys())
 
