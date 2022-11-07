@@ -44,8 +44,7 @@ def attention(
 
         # TODO use size for attention bias
         bias = size.log()
-    else:
-        bias = None
+    bias = None
 
     if chunks == "auto":
         chunks = auto_chunk_size(B, T, Tl, C, dtype)
@@ -56,7 +55,7 @@ def attention(
 
     if use_flash_attention:
         assert chunks is None
-        assert tome_r is None  # TODO add bias to flash-attention
-        return flash_attention(q, k, v)
+        assert tome_r is None
+        return flash_attention(q, k, v, bias)
 
     return standard_attention(q, k, v, bias)

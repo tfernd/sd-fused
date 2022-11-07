@@ -22,11 +22,13 @@ def chunked_attention(
 
     q, k = scale_qk(q, k)
 
+    kT = k.transpose(1, 2)
+
     out = torch.empty_like(q)
     for i in range(0, len(k), chunks):
         s = slice(i, min(i + chunks, len(k)))
 
-        attn = softmax(q[s] @ k[s].transpose(1, 2), dim=-1)
+        attn = softmax(q[s] @ kT[s], dim=-1)
 
         out[s] = attn @ v[s]
         del attn

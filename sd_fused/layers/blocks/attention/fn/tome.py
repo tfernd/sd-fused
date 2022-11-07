@@ -5,11 +5,14 @@ import torch
 from torch import Tensor
 import math
 
-from .....utils.typing import Protocol
+from .....utils.typing import Protocol, Literal
+
+
+Modes = Literal["sum", "mean"]
 
 
 class Merge(Protocol):
-    def __call__(self, x: Tensor, mode: str) -> Tensor:
+    def __call__(self, x: Tensor, mode: Modes) -> Tensor:
         ...
 
 
@@ -40,7 +43,7 @@ def tome(metric: Tensor, r: int | float) -> Merge:
 
         dst_idx = node_idx.gather(dim=1, index=src_idx)
 
-    def merge(x: Tensor, mode: str = "mean") -> Tensor:
+    def merge(x: Tensor, mode: Modes = "mean") -> Tensor:
         src, dst = x[:, ::2], x[:, 1::2]
         B, T, C = src.shape
 

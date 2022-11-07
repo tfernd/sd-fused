@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 from torch import Tensor
 
@@ -12,6 +13,7 @@ def flash_attention(
     q: Tensor,  # (B, T, C)
     k: Tensor,  # (B, T', C)
     v: Tensor,  # (B, T', C)
+    bias: Optional[Tensor] = None,
 ) -> Tensor:
     """xformers flash-attention computation."""
 
@@ -21,4 +23,4 @@ def flash_attention(
     k = k.contiguous()
     v = v.contiguous()
 
-    return memory_efficient_attention(q, k, v)
+    return memory_efficient_attention(q, k, v, memory_efficient_attention=bias)
