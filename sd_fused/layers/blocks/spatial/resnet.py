@@ -37,9 +37,7 @@ class ResnetBlock2D(nn.Module):
         else:
             self.conv_shortcut = nn.Identity()
 
-        self.pre_process = GroupNormSiLUConv2d(
-            num_groups, in_channels, out_channels, kernel_size=3, padding=1
-        )
+        self.pre_process = GroupNormSiLUConv2d(num_groups, in_channels, out_channels, kernel_size=3, padding=1)
 
         self.post_process = GroupNormSiLUConv2d(
             num_out_groups,

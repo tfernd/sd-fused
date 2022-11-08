@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional
+from typing_extensions import Self
 
 import math
 
@@ -45,7 +46,6 @@ class DDIMScheduler(Scheduler):
         device: Optional[torch.device] = None,
         dtype: torch.dtype = torch.float32,
         seed: Optional[list[int]] = None,
-        *,
         renorm: bool = True,
     ) -> None:
         assert steps <= TRAINED_STEPS
@@ -93,9 +93,7 @@ class DDIMScheduler(Scheduler):
         i: int,
         eta: float | Tensor = 0,
     ) -> Tensor:
-        eta = to_tensor(
-            eta, device=self.device, dtype=self.dtype, add_spatial=True
-        )
+        eta = to_tensor(eta, device=self.device, dtype=self.dtype, add_spatial=True)
 
         # eq (12) part 1
         pred_latent = latents - self.ϖ[i].sqrt() * pred_noise
@@ -111,9 +109,7 @@ class DDIMScheduler(Scheduler):
 
             # pre-generate noises for all steps # ! ugly... needs some work
             shape = (*latents.shape, self.steps)
-            self.noises = generate_noise(
-                shape, self.seed, self.device, self.dtype
-            )
+            self.noises = generate_noise(shape, self.seed, self.device, self.dtype)
             self.noises = rearrange(self.noises, "B C H W S -> S B C H W")
         noise = self.noises[i]
         noise *= self.σ[i] * eta
@@ -136,15 +132,15 @@ class DDIMScheduler(Scheduler):
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 
-    def set_skip_step(self, strength: Optional[float]) -> None:
-        """The index generation needs to start."""
-
+    def set_skip_step(self, strength: Optional[float]) -> Self:
         if strength is None:
             self.skip_step = 0
         else:
             assert 0 < strength <= 1
 
             self.skip_step = math.ceil(len(self) * (1 - strength))
+
+        return self
 
     def __len__(self) -> int:
         return self.steps

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional
 from typing_extensions import Self
 
+from pathlib import Path
 from dataclasses import dataclass, field
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -9,7 +10,7 @@ from PIL.PngImagePlugin import PngInfo
 import torch
 from torch import Tensor
 
-from ..image import ResizeModes, image2tensor, image_base64
+from ..image import ResizeModes, image2tensor, image_base64, ImageType
 
 SAVE_ARGS = [
     "eta",
@@ -44,8 +45,8 @@ class Parameters:
     sub_seed: Optional[int] = None
     interpolation: Optional[float] = None
     prompt: Optional[str] = None
-    img: Optional[str | Image.Image] = None
-    mask: Optional[str | Image.Image] = None
+    img: Optional[ImageType] = None
+    mask: Optional[ImageType] = None
     strength: Optional[float] = None
     mode: Optional[ResizeModes] = None
 
@@ -93,9 +94,7 @@ class Parameters:
         if self.img is None or self.mode is None:
             return
 
-        return image2tensor(
-            self.img, self.height, self.width, self.mode, self.device
-        )
+        return image2tensor(self.img, self.height, self.width, self.mode, self.device)
 
     @property
     def mask_data(self) -> Optional[Tensor]:
@@ -104,14 +103,12 @@ class Parameters:
         if self.mask is None or self.mode is None:
             return
 
-        data = image2tensor(
-            self.mask, self.height, self.width, self.mode, self.device
-        )
+        data = image2tensor(self.mask, self.height, self.width, self.mode, self.device)
 
         # single-channel
         data = data.float().mean(dim=1, keepdim=True)
 
-        return data >= 255 / 2  # bool-Tensor # ?correct mask?
+        return data >= 255 / 2  # bool-Tensor
 
     @property
     def image_base64(self) -> Optional[str]:

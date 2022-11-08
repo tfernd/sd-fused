@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from PIL import Image
-from pathlib import Path
 import base64
 from io import BytesIO
 
 from .open_image import open_image
+from .types import ImageType
 
 
-def image_base64(path: str | Path | Image.Image) -> str:
+def image_base64(path: ImageType) -> str:
     """Encodes an image as base64 (JPGE) string."""
 
     img = open_image(path)

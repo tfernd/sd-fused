@@ -16,6 +16,7 @@ from .parser import (
     add_delimiter4words,
     expand_delimiters,
     add_split_maker4emphasis,
+    split_text,
 )
 
 MAX_TOKENS = 77
@@ -63,8 +64,7 @@ class ClipEmbedding:
         text = self.clean_spaces(text)
         text = self.parse_emphasis(text)
 
-        # TODO split ⏎ should be its own function
-        segments = [TextSegment(t) for t in text.split("⏎")]
+        segments = [TextSegment(t) for t in split_text(text)]
 
         ids: list[int] = []
         weights: list[float] = []
@@ -92,10 +92,7 @@ class ClipEmbedding:
         ]
         weights = [1, *weights, *[1] * pad_size, 1]
 
-        return TensorAndWeight(
-            torch.tensor([ids]),
-            torch.tensor([weights]).float(),
-        )
+        return TensorAndWeight(torch.tensor([ids]), torch.tensor([weights]).float())
 
     @lru_cache(maxsize=None)
     @torch.no_grad()
@@ -116,18 +113,17 @@ class ClipEmbedding:
         """Creates embeddings/weights for a text and send to the correct device/dtype."""
 
         if isinstance(text, str):
-            emb, weight = self.get_embedding(text)
-        else:
-            values = [self.get_embedding(t) for t in text]
-            emb = torch.cat([v.tensor for v in values])
-            weight = torch.cat([v.weight for v in values])
+            text = [text]
+        values = [self.get_embedding(t) for t in text]
+        emb = torch.cat([v.tensor for v in values])
+        weight = torch.cat([v.weight for v in values])
 
         emb = emb.to(device=device, dtype=dtype, non_blocking=True)
 
-        # special case where the weights are not all one
-        if weight.diff(1).any():
-            weight = weight.to(device=device, dtype=dtype, non_blocking=True)
+        # special case where all weights are one
+        if weight.eq(1).all():
+            return TensorAndMaybeWeight(emb)
 
-            return TensorAndMaybeWeight(emb, weight)
+        weight = weight.to(device=device, dtype=dtype, non_blocking=True)
 
-        return TensorAndMaybeWeight(emb)
+        return TensorAndMaybeWeight(emb, weight)

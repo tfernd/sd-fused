@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Optional
 
 from functools import partial
-from pathlib import Path
 from PIL import Image
 
 import math
@@ -14,15 +13,12 @@ from torch import Tensor
 
 from einops import rearrange
 
-from ..typing import Literal
 from .open_image import open_image
-
-
-ResizeModes = Literal["resize", "resize-crop", "resize-pad"]
+from .types import ResizeModes, ImageType
 
 
 def image2tensor(
-    path: str | Path | Image.Image,
+    path: ImageType,
     height: Optional[int] = None,
     width: Optional[int] = None,
     mode: Optional[ResizeModes] = None,

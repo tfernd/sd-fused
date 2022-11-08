@@ -43,13 +43,9 @@ class CrossAttention(nn.Module):
 
         self.to_out = Linear(inner_dim, query_features)
 
-        self.heads_to_batch = Rearrange(
-            "B T (heads C) -> (B heads) T C", heads=num_heads
-        )
+        self.heads_to_batch = Rearrange("B T (heads C) -> (B heads) T C", heads=num_heads)
 
-        self.heads_to_channel = Rearrange(
-            "(B heads) T C -> B T (heads C)", heads=num_heads
-        )
+        self.heads_to_channel = Rearrange("(B heads) T C -> B T (heads C)", heads=num_heads)
 
     def __call__(
         self,

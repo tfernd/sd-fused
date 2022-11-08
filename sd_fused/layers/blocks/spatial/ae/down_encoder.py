@@ -42,11 +42,7 @@ class DownEncoderBlock2D(nn.Module):
             )
 
         if add_downsample:
-            self.downsampler = Downsample2D(
-                in_channels,
-                out_channels,
-                padding=downsample_padding,
-            )
+            self.downsampler = Downsample2D(in_channels, out_channels, padding=downsample_padding)
         else:
             self.downsampler = nn.Identity()
 

@@ -30,9 +30,7 @@ class Encoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
-        self.pre_process = Conv2d(
-            in_channels, block_out_channels[0], kernel_size=3, padding=1
-        )
+        self.pre_process = Conv2d(in_channels, block_out_channels[0], kernel_size=3, padding=1)
 
         # down
         output_channel = block_out_channels[0]

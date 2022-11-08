@@ -20,12 +20,7 @@ class GroupNormSiLUConv2d(nn.Sequential):
         layers = (
             GroupNorm(num_groups, in_channels),
             SiLU(),
-            Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                padding=padding,
-            ),
+            Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
         )
 
         super().__init__(*layers)

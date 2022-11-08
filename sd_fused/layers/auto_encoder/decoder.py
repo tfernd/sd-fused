@@ -28,9 +28,7 @@ class Decoder(nn.Module):
 
         num_blocks = len(block_out_channels)
 
-        self.pre_process = Conv2d(
-            in_channels, block_out_channels[-1], kernel_size=3, padding=1
-        )
+        self.pre_process = Conv2d(in_channels, block_out_channels[-1], kernel_size=3, padding=1)
 
         # mid
         self.mid_block = UNetMidBlock2DSelfAttention(

@@ -3,6 +3,7 @@ from typing import Optional
 
 from pathlib import Path
 from datetime import datetime
+from copy import deepcopy
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -14,7 +15,6 @@ from torch import Tensor
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..utils.tensors import slerp, generate_noise
-from ..utils.parameters import ParametersList
 
 MAGIC = 0.18215
 
@@ -84,28 +84,38 @@ class Helpers:
     @torch.no_grad()
     def get_context(
         self,
-        p: ParametersList,
+        negative_prompts: list[str],
+        prompts: Optional[list[str]],
     ) -> tuple[Tensor, Optional[Tensor]]:
         """Creates a context Tensor (negative + positive prompt) and a emphasis weights."""
 
-        texts = p.negative_prompts
-        if p.prompts is not None:
-            texts.extend(p.prompts)
+        texts = deepcopy(negative_prompts)
+        if prompts is not None:
+            texts.extend(deepcopy(prompts))
 
         context, weight = self.clip(texts, self.device, self.dtype)
 
         return context, weight
 
-    def generate_noise(self, p: ParametersList) -> Tensor:
-        height, width = p.size
-        shape = (len(p), self.latent_channels, height // 8, width // 8)
+    def generate_noise(
+        self,
+        seeds: list[int],
+        sub_seeds: Optional[list[int]],
+        interpolations: Optional[Tensor],
+        height: int,
+        width: int,
+        batch_size: int,
+    ) -> Tensor:
+        """Generate random noise with individual seeds per batch and
+        possible sub-seed interpolation."""
 
-        noise = generate_noise(shape, p.seeds, self.device, self.dtype)
-        if p.sub_seeds is not None:
-            assert p.interpolations is not None
-            sub_noise = generate_noise(
-                shape, p.sub_seeds, self.device, self.dtype
-            )
-            noise = slerp(noise, sub_noise, p.interpolations)
+        shape = (batch_size, self.latent_channels, height // 8, width // 8)
+        noise = generate_noise(shape, seeds, self.device, self.dtype)
+        if sub_seeds is None:
+            return noise
+
+        assert interpolations is not None
+        sub_noise = generate_noise(shape, sub_seeds, self.device, self.dtype)
+        noise = slerp(noise, sub_noise, interpolations)
 
         return noise

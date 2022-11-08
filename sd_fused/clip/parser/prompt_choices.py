@@ -39,8 +39,4 @@ def prompts_choices(prompts: MaybeIterable[str]) -> list[str]:
     """Create a set of prompt word-choices from
     `{word 1 | another word | yet another one}`"""
 
-    return [
-        choice
-        for prompt in to_list(prompts)
-        for choice in prompt_choices(prompt)
-    ]
+    return [choice for prompt in to_list(prompts) for choice in prompt_choices(prompt)]

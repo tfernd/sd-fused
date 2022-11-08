@@ -1,4 +1,4 @@
-from .generate_noise import generate_noise
+from .generate_noise import generate_noise, random_seeds
 from .normalize import normalize, denormalize
 from .softmax import softmax
 from .slerp import slerp

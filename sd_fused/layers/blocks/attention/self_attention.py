@@ -43,14 +43,8 @@ class SelfAttention(nn.Module):
         self.proj_attn = Linear(in_features)
 
         self.channel_last_and_spatial_join = Rearrange("B C H W -> B (H W) C")
-        self.heads_to_batch = Rearrange(
-            "B HW (heads C) -> (B heads) HW C",
-            heads=num_heads,
-        )
-        self.heads_to_channel = Rearrange(
-            "(B heads) HW C -> B HW (heads C)",
-            heads=num_heads,
-        )
+        self.heads_to_batch = Rearrange("B HW (heads C) -> (B heads) HW C", heads=num_heads)
+        self.heads_to_channel = Rearrange("(B heads) HW C -> B HW (heads C)", heads=num_heads)
 
     def __call__(self, x: Tensor) -> Tensor:
         B, C, H, W = x.shape

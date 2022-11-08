@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from pathlib import Path
 from PIL import Image
 import requests
 
 from io import BytesIO
 import validators
 
+from .types import ImageType
 
-def open_image(path: str | Path | Image.Image) -> Image.Image:
+
+def open_image(path: ImageType) -> Image.Image:
     """Open a path or url as an image."""
 
     if isinstance(path, Image.Image):

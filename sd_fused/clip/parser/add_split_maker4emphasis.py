@@ -10,3 +10,7 @@ def add_split_maker4emphasis(text: str) -> str:
     text = re.sub(pattern, r"⏎\1⏎", text)
 
     return text
+
+
+def split_text(text: str) -> list[str]:
+    return text.split("⏎")

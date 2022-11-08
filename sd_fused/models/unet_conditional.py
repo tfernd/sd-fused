@@ -72,17 +72,13 @@ class UNet2DConditional(
         out_channels: int = 4,
         flip_sin_to_cos: bool = True,
         freq_shift: int = 0,
-        down_blocks: tuple[
-            Type[CrossAttentionDownBlock2D] | Type[DownBlock2D], ...
-        ] = (
+        down_blocks: tuple[Type[CrossAttentionDownBlock2D] | Type[DownBlock2D], ...] = (
             CrossAttentionDownBlock2D,
             CrossAttentionDownBlock2D,
             CrossAttentionDownBlock2D,
             DownBlock2D,
         ),
-        up_blocks: tuple[
-            Type[CrossAttentionUpBlock2D] | Type[UpBlock2D], ...
-        ] = (
+        up_blocks: tuple[Type[CrossAttentionUpBlock2D] | Type[UpBlock2D], ...] = (
             UpBlock2D,
             CrossAttentionUpBlock2D,
             CrossAttentionUpBlock2D,
@@ -111,9 +107,7 @@ class UNet2DConditional(
         time_embed_dim = block_out_channels[0] * 4
 
         # input
-        self.pre_process = Conv2d(
-            in_channels, block_out_channels[0], kernel_size=3, padding=1
-        )
+        self.pre_process = Conv2d(in_channels, block_out_channels[0], kernel_size=3, padding=1)
 
         # time
         self.time_proj = Timesteps(
@@ -123,10 +117,7 @@ class UNet2DConditional(
         )
         timestep_input_dim = block_out_channels[0]
 
-        self.time_embedding = TimestepEmbedding(
-            channel=timestep_input_dim,
-            time_embed_dim=time_embed_dim,
-        )
+        self.time_embedding = TimestepEmbedding(channel=timestep_input_dim, time_embed_dim=time_embed_dim)
 
         # down
         output_channel = block_out_channels[0]
@@ -180,9 +171,7 @@ class UNet2DConditional(
         for i, block in enumerate(up_blocks):
             prev_output_channel = output_channel
             output_channel = reversed_block_out_channels[i]
-            input_channel = reversed_block_out_channels[
-                min(i + 1, len(block_out_channels) - 1)
-            ]
+            input_channel = reversed_block_out_channels[min(i + 1, len(block_out_channels) - 1)]
 
             is_final_block = i == len(block_out_channels) - 1
 
@@ -249,12 +238,7 @@ class UNet2DConditional(
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
             if isinstance(block, CrossAttentionDownBlock2D):
-                x, states = block(
-                    x,
-                    temb=temb,
-                    context=context,
-                    context_weights=context_weights,
-                )
+                x, states = block(x, temb=temb, context=context, context_weights=context_weights)
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
             else:
@@ -264,12 +248,7 @@ class UNet2DConditional(
             del states
 
         # 4. mid
-        x = self.mid_block(
-            x,
-            temb=temb,
-            context=context,
-            context_weights=context_weights,
-        )
+        x = self.mid_block(x, temb=temb, context=context, context_weights=context_weights)
 
         # 5. up
         for block in self.up_blocks:
@@ -279,13 +258,7 @@ class UNet2DConditional(
             states = list(all_states.pop() for _ in range(block.num_layers))
 
             if isinstance(block, CrossAttentionUpBlock2D):
-                x = block(
-                    x,
-                    states=states,
-                    temb=temb,
-                    context=context,
-                    context_weights=context_weights,
-                )
+                x = block(x, states=states, temb=temb, context=context, context_weights=context_weights)
             elif isinstance(block, UpBlock2D):
                 x = block(x, states=states, temb=temb)
 

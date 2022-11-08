@@ -23,11 +23,6 @@ class DiagonalGaussianDistribution:
 
     def sample(self, generator: Optional[torch.Generator] = None) -> Tensor:
         # TODO use seeds?
-        noise = torch.randn(
-            self.std.shape,
-            generator=generator,
-            device=self.device,
-            dtype=self.dtype,
-        )
+        noise = torch.randn(self.std.shape, generator=generator, device=self.device, dtype=self.dtype)
 
         return self.mean + self.std * noise

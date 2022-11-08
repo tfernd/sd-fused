@@ -49,9 +49,7 @@ def tome(metric: Tensor, r: int | float) -> Merge:
 
         unmerged = src.gather(dim=1, index=unmerged_idx.expand(-1, -1, C))
         src = src.gather(dim=1, index=src_idx.expand(-1, -1, C))
-        dst = dst.scatter_reduce(
-            1, dst_idx.expand(-1, -1, C), src, reduce=mode
-        )
+        dst = dst.scatter_reduce(1, dst_idx.expand(-1, -1, C), src, reduce=mode)
 
         return torch.cat([unmerged, dst], dim=1)
 

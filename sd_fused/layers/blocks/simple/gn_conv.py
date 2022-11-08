@@ -18,12 +18,7 @@ class GroupNormConv2d(nn.Sequential):
     ) -> None:
         layers = (
             GroupNorm(num_groups, in_channels),
-            Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                padding=padding,
-            ),
+            Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
         )
 
         super().__init__(*layers)

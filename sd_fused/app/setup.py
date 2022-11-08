@@ -112,6 +112,7 @@ class Setup:
         return self
 
     def scheduler_renorm(self, renorm: bool = False) -> Self:
+        # TODO this should not be here... ugly
         self.renorm = renorm
 
         return self

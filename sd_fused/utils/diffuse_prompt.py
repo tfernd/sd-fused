@@ -32,12 +32,7 @@ def diffuse_prompt(
 
     prompts: list[str] = []
     for weight in weigths:
-        prompt = "".join(
-            [
-                f"{w}:{a:.3f}" if pattern.search(w) else w
-                for w, a in zip(words, weight)
-            ]
-        )
+        prompt = "".join([f"{w}:{a:.3f}" if pattern.search(w) else w for w, a in zip(words, weight)])
         prompts.append(prompt)
 
     return prompts

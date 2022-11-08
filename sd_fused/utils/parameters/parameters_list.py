@@ -57,16 +57,26 @@ class ParametersList:
         if interpolations is None:
             return None
 
-        return torch.tensor(
-            interpolations, device=self.device, dtype=self.dtype
-        )
+        return torch.tensor(interpolations, device=self.device, dtype=self.dtype)
+
+    # @property
+    # def size(self) -> tuple[int, int]:
+    #     height = set(p.height for p in self.parameters)
+    #     width = set(p.width for p in self.parameters)
+
+    #     return single(height), single(width)
 
     @property
-    def size(self) -> tuple[int, int]:
+    def height(self) -> int:
         height = set(p.height for p in self.parameters)
+
+        return single(height)
+
+    @property
+    def width(self) -> int:
         width = set(p.width for p in self.parameters)
 
-        return single(height), single(width)
+        return single(width)
 
     @property
     def steps(self) -> int:
