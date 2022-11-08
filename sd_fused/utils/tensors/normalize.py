@@ -18,5 +18,4 @@ def denormalize(data: Tensor) -> Tensor:
 
     assert data.requires_grad == False
 
-    # ? what if we want gradients?
     return data.add(1).mul(255 / 2).clamp(0, 255).byte()

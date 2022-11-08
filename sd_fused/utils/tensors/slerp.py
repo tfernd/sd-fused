@@ -19,6 +19,7 @@ def slerp(a: Tensor, b: Tensor, t: Tensor) -> Tensor:
 
     t = t[:, None, None, None]
 
+    # ? that's how you normalize?
     an = a / a.norm(dim=1, keepdim=True)
     bn = b / b.norm(dim=1, keepdim=True)
 

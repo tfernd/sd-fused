@@ -7,6 +7,8 @@ def batch_parameters(
     groups: list[list[Parameters]],
     batch_size: int,
 ) -> list[list[Parameters]]:
+    """Separate groups into batches of an specified size."""
+
     batched_parameters: list[list[Parameters]] = []
     for group in groups:
         for i in range(0, len(group), batch_size):

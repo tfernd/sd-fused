@@ -6,10 +6,13 @@ from itertools import product
 from ..typing import MaybeIterable
 from .to_list import to_list
 
-
+# TODO types!
 def product_args(
-    repeat: int = 1, **kwargs: Optional[MaybeIterable]
-) -> list[dict[str, Optional[MaybeIterable]]]:
+    repeat: int = 1,
+    **kwargs: Optional[MaybeIterable],
+) -> list[dict]:
+    """All possible combintations of kwargs"""
+
     args = list(kwargs.values())
     keys = list(kwargs.keys())
 

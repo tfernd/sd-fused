@@ -45,6 +45,8 @@ def image2tensor(
     if mode == "resize" or rescale is not None:
         img = resize((width, height))
     else:
+        assert mode is not None
+
         ar = width / height
         src_ar = img.width / img.height
 

@@ -233,9 +233,7 @@ class UNet2DConditional(
         B, C, H, W = x.shape
 
         # 1. time embedding
-        timestep = to_tensor(
-            timestep, device=x.device, dtype=x.dtype, add_spatial=False
-        )
+        timestep = to_tensor(timestep, device=x.device, dtype=x.dtype)
         if timestep.size(0) != B:
             assert timestep.size(0) == 1
             timestep = timestep.expand(B)

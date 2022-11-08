@@ -10,6 +10,8 @@ def separate(xs: list[T | None]) -> Optional[list[T]]:
     """Separate a list of that may containt `None` into a list
     that does not contain `None` or is `None` itself."""
 
+    assert len(xs) >= 1
+
     if xs[0] is None:
         for x in xs:
             assert x is None
@@ -19,6 +21,4 @@ def separate(xs: list[T | None]) -> Optional[list[T]]:
     for x in xs:
         assert x is not None
 
-    xs = [x for x in xs if x is not None]
-
-    return xs  # type: ignore
+    return [x for x in xs if x is not None]

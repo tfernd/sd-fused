@@ -17,6 +17,8 @@ def single(x: set[T | None]) -> Optional[T]:
 
 
 def single(x: set[T | None] | set[T]) -> Optional[T]:
+    """Get the single element of a set."""
+
     assert len(x) == 1
 
     return x.pop()

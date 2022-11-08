@@ -9,7 +9,7 @@ from .open_image import open_image
 
 
 def image_base64(path: str | Path | Image.Image) -> str:
-    """Encodes an image as base64 string."""
+    """Encodes an image as base64 (JPGE) string."""
 
     img = open_image(path)
 

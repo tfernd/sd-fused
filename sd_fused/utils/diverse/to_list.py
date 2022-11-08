@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Optional, TypeVar, overload
+from typing import Optional, overload
 
 from PIL import Image
 
@@ -17,6 +17,8 @@ def to_list(x: Optional[MaybeIterable[T]]) -> tuple[None] | list[T]:
 
 
 def to_list(x: Optional[MaybeIterable[T]]) -> tuple[None] | list[T]:
+    """Convert a `MaybeIterable` into a list."""
+
     if x is None:
         return (None,)
 

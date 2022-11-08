@@ -12,6 +12,8 @@ from .parameters import Parameters
 
 
 class ParametersList:
+    """Hold information from a many image generations."""
+
     def __init__(self, parameters: list[Parameters]) -> None:
         self.parameters = parameters
 
@@ -93,6 +95,7 @@ class ParametersList:
     @property
     def scales(self) -> Tensor:
         scales = [p.scale for p in self.parameters]
+        # ! could be none in the future
 
         return torch.tensor(scales, device=self.device, dtype=self.dtype)
 

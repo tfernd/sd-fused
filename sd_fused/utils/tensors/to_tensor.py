@@ -8,10 +8,9 @@ from torch import Tensor
 def to_tensor(
     x: int | float | Tensor,
     *,
-    steps: Optional[int] = None,
     device: Optional[torch.device] = None,
     dtype: Optional[torch.dtype] = None,
-    add_spatial: bool = True,
+    add_spatial: bool = False,
 ) -> Tensor:
     """Convert a number to a Tensor with fake channel/spatial dimensions."""
 
@@ -20,10 +19,6 @@ def to_tensor(
     else:
         assert x.ndim == 1
         x = x.to(device=device, dtype=dtype)
-
-    # TODO Remove?
-    if steps is not None:
-        assert torch.all(0 <= x) and torch.all(x < steps)
 
     if add_spatial:
         x = x.view(-1, 1, 1, 1)

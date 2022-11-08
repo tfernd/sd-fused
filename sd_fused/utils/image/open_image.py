@@ -20,4 +20,6 @@ def open_image(path: str | Path | Image.Image) -> Image.Image:
         img = Image.open(path)
     img = img.convert("RGB")
 
+    # TODO get alpha channel as mask?
+
     return img

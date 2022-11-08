@@ -85,7 +85,9 @@ class DDIMScheduler:
     ) -> Tensor:
         """Get the previous latents according to the DDIM paper."""
 
-        eta = to_tensor(eta, device=self.device, dtype=self.dtype)
+        eta = to_tensor(
+            eta, device=self.device, dtype=self.dtype, add_spatial=True
+        )
 
         # eq (12) part 1
         pred_latent = latents - self.ϖ[i].sqrt() * pred_noise

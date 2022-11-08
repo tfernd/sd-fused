@@ -4,6 +4,8 @@ from .parameters import Parameters
 
 
 def group_parameters(parameters: list[Parameters]) -> list[list[Parameters]]:
+    """Group parameters that can share a batch."""
+
     groups: list[list[Parameters]] = []
     for parameter in parameters:
         if len(groups) == 0:

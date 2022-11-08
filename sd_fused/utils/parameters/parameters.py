@@ -13,12 +13,12 @@ from ..image import ResizeModes, image2tensor, image_base64
 
 SAVE_ARGS = [
     "eta",
-    "steps",
     "scale",
+    "steps",
     "height",
     "width",
-    "seed",
     "negative_prompt",
+    "seed",
     "sub_seed",
     "interpolation",
     "prompt",
@@ -40,7 +40,7 @@ class Parameters:
     seed: int
     negative_prompt: str
     scale: float
-    # scale: Optional[float] = None
+    # ? scale: Optional[float] = None
     sub_seed: Optional[int] = None
     interpolation: Optional[float] = None
     prompt: Optional[str] = None
@@ -69,7 +69,7 @@ class Parameters:
         else:
             assert self.interpolation is not None
 
-        # TODO eta
+        # TODO eta and scale
 
     @property
     def unconditional(self) -> bool:
@@ -82,13 +82,11 @@ class Parameters:
         value &= self.strength == other.strength
         value &= self.height == other.height
         value &= self.width == other.width
-        # guided/inguided?
-        value &= self.unconditional == other.unconditional  # XNOR?
+        value &= self.unconditional == other.unconditional
 
         return value
 
     @property
-    # @lru_cache(None) # TODO cached_property?
     def image_data(self) -> Optional[Tensor]:
         """Image data as a Tensor."""
 
@@ -100,7 +98,6 @@ class Parameters:
         )
 
     @property
-    # @lru_cache(None)
     def mask_data(self) -> Optional[Tensor]:
         """Mask data as a Tensor."""
 
@@ -114,10 +111,9 @@ class Parameters:
         # single-channel
         data = data.float().mean(dim=1, keepdim=True)
 
-        return data >= 255 / 2  # bool-Tensor
+        return data >= 255 / 2  # bool-Tensor # ?correct mask?
 
     @property
-    # @lru_cache(None)
     def image_base64(self) -> Optional[str]:
         """Image data as a base64 string."""
 
@@ -127,7 +123,6 @@ class Parameters:
         return image_base64(self.img)
 
     @property
-    # @lru_cache(None)
     def mask_base64(self) -> Optional[str]:
         """Mask data as a base64 string."""
 
@@ -141,7 +136,6 @@ class Parameters:
         """PNG metadata."""
 
         info = PngInfo()
-
         for key in SAVE_ARGS:
             value = getattr(self, key)
 
