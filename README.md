@@ -80,6 +80,27 @@ out = pipeline.generate(
 
 <video src=https://user-images.githubusercontent.com/35351230/200084486-24bc31c6-441f-495e-997c-9334a1315dd6.mp4></video>
 
+<!-- ### Prompt diffusion
+
+The function `diffuse_prompt` assigns a different attention weight for each word, starting from 1 to all words and slowly diffusing the weights to random values.
+
+```python
+prompt = "portrait, full body, woman, steampunk, digital art, detailed, epic, beautiful"
+out = pipeline.generate(
+    prompt=diffuse_prompt(prompt, size=128),
+    steps=26,
+    height=512,
+    width=512,
+    seed=3205701113,
+    eta=-1.2,
+    show=True,
+    batch_size=8,
+)
+``` -->
+
+<!-- <video src=?></video> -->
+
+
 <!-- 
 ### Prompt choices
 
