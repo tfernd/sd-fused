@@ -294,6 +294,7 @@ class StableDiffusion(Setup, Helpers):
             return latents, None
 
         # inpainting
+        # https://github.com/huggingface/diffusers/blob/32b0736d8ad7ec124affca3a00a266f5addcbd91/src/diffusers/pipelines/stable_diffusion/pipeline_onnx_stable_diffusion_inpaint.py#L371
         assert self.is_true_inpainting
 
         B, C, H, W = images.shape
@@ -325,7 +326,7 @@ class StableDiffusion(Setup, Helpers):
 
             input_latents = latents
             if masked_latents is not None:
-                assert scheduler.skip_step == 0 
+                assert scheduler.skip_step == 0
                 input_latents = torch.cat([latents, masked_latents], dim=1)
 
             pred_noise = self.pred_noise(input_latents, timestep, context, context_weight, unconditional, scales)
