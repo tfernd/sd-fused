@@ -1,9 +1,12 @@
 from typing import Optional
 
 import torch
-import math
 
+from .....utils.typing import Literal
 from .....utils.cuda import free_memory
+
+
+ChunkType = Literal["batch", "sequence"]
 
 
 def auto_chunk_size(
@@ -12,20 +15,28 @@ def auto_chunk_size(
     Tl: int,
     C: int,
     dtype: torch.dtype,
+    chunk_type: ChunkType,
 ) -> Optional[int]:
-    """Determine the maximum chunk size accordint
+    """Determine the maximum chunk size according
     to the available free memory.
     """
 
     assert dtype in (torch.float32, torch.float16)
 
-    numel = 2 * B * T * Tl + B * T * C
     num_bytes = 2 if dtype == torch.float16 else 4
-    memory = numel * num_bytes
-
     free = free_memory()
 
-    if free > memory:
-        return None
+    if chunk_type == "batch":
+        # Memory used: (2*Bchunks*T*Tl + Bchunks*T*C) * num_bytes
+        Bchunks = free // (num_bytes * T * (C + 2 * Tl))
 
-    return math.floor(B * free / memory)
+        if Bchunks >= B:
+            return None
+        return Bchunks
+
+    # Memory used: (2*B*Tchunk*Tl + B*Tchunk*C) * num_bytes
+    Tchunks = free // (num_bytes * B * (C + 2 * Tl))
+
+    if Tchunks >= T:
+        return None
+    return Tchunks

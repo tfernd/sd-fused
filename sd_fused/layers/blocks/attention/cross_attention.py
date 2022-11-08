@@ -8,11 +8,12 @@ from einops.layers.torch import Rearrange
 
 from ....utils.typing import Literal
 from ...base import Linear, LayerNorm
-from .fn import attention
+from .fn import attention, ChunkType
 
 
 class CrossAttention(nn.Module):
     attention_chunks: Optional[int | Literal["auto"]] = None
+    chunk_type: Optional[ChunkType] = None
     use_flash_attention: bool = False
     tome_r: Optional[int | float] = None
 
@@ -74,6 +75,7 @@ class CrossAttention(nn.Module):
             k,
             v,
             chunks=self.attention_chunks,
+            chunk_type=self.chunk_type,
             weights=context_weights,
             use_flash_attention=self.use_flash_attention,
             tome_r=self.tome_r,

@@ -5,9 +5,10 @@ import math
 from torch import Tensor
 
 
-def scale_qk(*xs: Tensor) -> tuple[Tensor, Tensor]:
+def scale_qk(q: Tensor, k: Tensor) -> tuple[Tensor, Tensor]:
     """Scale the qk tensor by the channel-dimension."""
 
-    assert len(xs) == 2
+    C = q.size(2)
+    scale = math.pow(C, -1 / 4)
 
-    return tuple(x * math.pow(x.size(-1), -1 / 4) for x in xs)
+    return q * scale, k * scale

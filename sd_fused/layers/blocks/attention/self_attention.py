@@ -9,11 +9,12 @@ from einops import rearrange
 
 from ....utils.typing import Literal
 from ...base import GroupNorm, Linear
-from .fn import attention
+from .fn import attention, ChunkType
 
 
 class SelfAttention(nn.Module):
     attention_chunks: Optional[int | Literal["auto"]] = None
+    chunk_type: Optional[ChunkType] = None
     use_flash_attention: bool = False
     tome_r: Optional[int | float] = None
 
@@ -72,6 +73,7 @@ class SelfAttention(nn.Module):
             k,
             v,
             chunks=self.attention_chunks,
+            chunk_type=self.chunk_type,
             use_flash_attention=self.use_flash_attention,
             tome_r=self.tome_r,
         )

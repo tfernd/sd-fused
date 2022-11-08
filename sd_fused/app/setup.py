@@ -4,9 +4,10 @@ from typing_extensions import Self
 
 import torch
 
-from ..models import AutoencoderKL, UNet2DConditional
-from ..utils.cuda import clear_cuda
 from ..utils.typing import Literal
+from ..utils.cuda import clear_cuda
+from ..models import AutoencoderKL, UNet2DConditional
+from ..layers.blocks.attention import ChunkType
 
 
 class Setup:
@@ -81,11 +82,16 @@ class Setup:
     def split_attention(
         self,
         chunks: Optional[int | Literal["auto"]] = "auto",
+        chunk_types: Optional[ChunkType] = None,
     ) -> Self:
         """Split cross-attention computation into chunks."""
 
-        self.unet.split_attention(chunks)
-        self.vae.split_attention(chunks)
+        # default to batch if not set
+        if chunks is not None and chunk_types is None:
+            chunk_types = "batch"
+
+        self.unet.split_attention(chunks, chunk_types)
+        self.vae.split_attention(chunks, chunk_types)
 
         return self
 

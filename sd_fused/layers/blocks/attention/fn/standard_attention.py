@@ -16,7 +16,10 @@ def standard_attention(
     """Standard attention computation."""
 
     q, k = scale_qk(q, k)
-    attn = softmax(q @ k.transpose(1, 2), dim=2)
-    del q, k
+    score = q @ k.transpose(1, 2)
+    if bias is not None:
+        score += bias
+    attn = softmax(score, dim=2)
+    del score
 
     return attn @ v

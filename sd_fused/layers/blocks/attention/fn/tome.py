@@ -74,3 +74,17 @@ def merge_weighted_average(
     x = x / size
 
     return x, size
+
+
+def token_average(
+    k: Tensor,
+    v: Tensor,
+    r: int | float,
+) -> tuple[Tensor, Tensor, Tensor]:
+    merge = tome(k, r)
+
+    k, size = merge_weighted_average(merge, k)
+    v, size = merge_weighted_average(merge, v)
+    bias = size.log()
+
+    return k, v, bias
