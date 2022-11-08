@@ -31,7 +31,7 @@ from .helpers import Helpers
 
 
 class StableDiffusion(Setup, Helpers):
-    version: str = "0.5.3"
+    version: str = "0.5.4"
 
     def __init__(
         self,
@@ -62,7 +62,6 @@ class StableDiffusion(Setup, Helpers):
         self.cpu()
         self.float()
 
-    # TODO this needs to be divided into separated functions
     def generate(
         self,
         *,
@@ -74,14 +73,13 @@ class StableDiffusion(Setup, Helpers):
         negative_prompt: MaybeIterable[str] = "",
         # optional
         prompt: Optional[MaybeIterable[str]] = None,
-        # TODO add support for PIL.Image
         img: Optional[MaybeIterable[str | Image.Image]] = None,
         mask: Optional[MaybeIterable[str | Image.Image]] = None,
         strength: Optional[MaybeIterable[float]] = None,
         mode: Optional[ResizeModes] = None,
         seed: Optional[MaybeIterable[int]] = None,
         sub_seed: Optional[int] = None,  # TODO Iterable?
-        # TODO seed_interpolation?
+        # TODO rename to seed_interpolation?
         interpolation: Optional[MaybeIterable[float]] = None,
         # latents: Optional[Tensor] = None, # TODO
         batch_size: int = 1,
@@ -116,7 +114,7 @@ class StableDiffusion(Setup, Helpers):
             repeat=repeat,
         )
 
-        # generate seeds # TODO separate
+        # generate seeds
         size = len(list_kwargs)
         if seed is None:
             seeds = [random.randint(0, 2**32 - 1) for _ in range(size)]
@@ -175,10 +173,10 @@ class StableDiffusion(Setup, Helpers):
         if pL.images_data is not None:
 
             if pL.masks_data is not None:
+                raise NotImplemented("Needs some rework")  # TODO
                 # TODO for now only the real deal
                 # assert self.is_true_inpainting
                 # assert pL.masked_images_data is not None
-                raise NotImplemented("Needs some rework")  # TODO
 
                 # masks = F.interpolate(
                 #     pL.masks_data.float(),
@@ -236,34 +234,43 @@ class StableDiffusion(Setup, Helpers):
         batch_size: int = 1,
         show: bool = True,
     ):
+        """Upscale an image."""
+
+        # not greate results. We have to stitch the latents to make sure
+        # the image is coherent at the end...
+
+        raise NotImplemented
+
         assert factor > 1
         assert 0 < overlap < min(height, width)
 
-        data = image2tensor(img)
+        # upscale using standard methods
+        data = image2tensor(img, rescale=factor)
         B, C, H, W = data.shape
 
-        H = round(factor * H)
-        W = round(factor * W)
-        data = image2tensor(img, H, W, mode="resize")
+        resized_data = torch.zeros_like(data).float()
+        weight = torch.zeros_like(data).float()
         B, C, H, W = data.shape
 
+        # number of crops along the two dimensions
         nH = math.ceil(H / (height - overlap / 2))
         nW = math.ceil(W / (width - overlap / 2))
 
+        # start indices for the crops
         pi = torch.linspace(0, H - height - 1, nH).round().long()
         pj = torch.linspace(0, W - width - 1, nW).round().long()
 
-        # TODO avoid for-loop
+        # cropped images
         datas: list[Tensor] = []
         for i in pi:
             for j in pj:
                 d = data[..., i : i + height, j : j + width]
+                weight[..., i : i + height, j : j + width] += 1
                 datas.append(d)
         data = torch.cat(datas, dim=0)
-
         imgs = tensor2images(data)
 
-        out = self.generate(
+        ipp_list = self.generate(
             eta=eta,
             steps=steps,
             scale=scale,
@@ -275,12 +282,24 @@ class StableDiffusion(Setup, Helpers):
             strength=strength,
             mode="resize",
             seed=seed,
-            # sub_seed/interpolation
+            # ? sub_seed/interpolation
             batch_size=batch_size,
             show=show,
         )
 
-        # TODO stich images
+        # stitch-images
+        for n, (image, path, param) in enumerate(ipp_list):
+            i, j = pi[n // nW], pj[n % nW]
+
+            d = image2tensor(image)
+            resized_data[..., i : i + height, j : j + width] += d.float()
+        resized_data /= weight
+        resized_data = resized_data.clamp(0, 255).byte()
+
+        image = tensor2images(resized_data)[0]
+        path = self.save_image(image)
+
+        return path, image
 
     def denoise_latents(
         self,

@@ -47,7 +47,7 @@ class Helpers:
     def save_image(
         self,
         image: Image.Image,
-        png_inf: PngInfo,
+        png_info: Optional[PngInfo] = None,
         ID: Optional[int] = None,
     ) -> Path:
         """Save the image using the provided metadata information."""
@@ -61,7 +61,7 @@ class Helpers:
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
         path = self.save_dir / f"{timestamp} - {ID:x}.SD.png"
-        image.save(path, bitmap_format="png", pnginfo=png_inf)
+        image.save(path, bitmap_format="png", pnginfo=png_info)
 
         return path
 
@@ -99,6 +99,7 @@ class Helpers:
     def generate_noise(self, p: ParametersList) -> Tensor:
         height, width = p.size
         shape = (len(p), self.latent_channels, height // 8, width // 8)
+
         noise = generate_noise(shape, p.seeds, self.device, self.dtype)
         if p.sub_seeds is not None:
             assert p.interpolations is not None

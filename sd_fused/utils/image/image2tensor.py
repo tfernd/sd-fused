@@ -25,7 +25,7 @@ def image2tensor(
     path: str | Path | Image.Image,
     height: Optional[int] = None,
     width: Optional[int] = None,
-    mode: ResizeModes = "resize",
+    mode: Optional[ResizeModes] = None,
     device: Optional[torch.device] = None,
     rescale: Optional[float] = None,
 ) -> Tensor:
