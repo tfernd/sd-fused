@@ -8,7 +8,10 @@ import torch
 
 
 def diffuse_prompt(
-    prompt: str, vmax: float = 1, size: int = 1, seed: Optional[int] = None
+    prompt: str,
+    vmax: float = 1,
+    size: int = 1,
+    seed: Optional[int] = None,
 ) -> list[str]:
     """Diffuse attention-weights to a prompt."""
 
