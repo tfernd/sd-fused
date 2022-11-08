@@ -15,3 +15,4 @@ class FlashAttentionModel(nn.Module):
 
                 if use:
                     module.attention_chunks = None
+                    module.chunk_type = None
