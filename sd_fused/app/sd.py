@@ -32,7 +32,7 @@ from .helpers import Helpers
 
 
 class StableDiffusion(Setup, Helpers):
-    version: str = "0.5.5.1"
+    version: str = "0.5.5.2"
 
     def __init__(
         self,
@@ -297,7 +297,7 @@ class StableDiffusion(Setup, Helpers):
         assert self.is_true_inpainting
 
         B, C, H, W = images.shape
-        mask_latents = F.interpolate(masks.float(), size=(H // 8, W // 8)).bool()
+        mask_latents = F.interpolate(masks.float(), size=(H // 8, W // 8))
 
         assert masked_images is not None
         masked_image_latents = self.encode(masked_images, self.dtype)
@@ -325,6 +325,7 @@ class StableDiffusion(Setup, Helpers):
 
             input_latents = latents
             if masked_latents is not None:
+                assert scheduler.skip_step == 0 
                 input_latents = torch.cat([latents, masked_latents], dim=1)
 
             pred_noise = self.pred_noise(input_latents, timestep, context, context_weight, unconditional, scales)
