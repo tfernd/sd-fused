@@ -6,6 +6,8 @@ import torch
 def free_memory() -> int:
     """Amount of free memory available."""
 
+    assert torch.cuda.is_available()
+
     stats = torch.cuda.memory_stats()
 
     reserved = stats["reserved_bytes.all.current"]
