@@ -48,7 +48,6 @@ class BasicTransformer(nn.Module):
     ) -> Tensor:
         x = self.attn1(x)
         x = self.attn2(x, context=context, context_weights=context_weights)
-        del context
         x = self.ff(x)
 
         return x

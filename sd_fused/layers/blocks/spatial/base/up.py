@@ -71,9 +71,7 @@ class UpBlock2D(nn.Module):
             assert isinstance(resnet, ResnetBlock2D)
 
             x = torch.cat([x, state], dim=1)
-            del state
             x = resnet(x, temb=temb)
-        del states, temb
 
         x = self.upsampler(x)
 

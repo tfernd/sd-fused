@@ -50,7 +50,12 @@ class UNetMidBlock2DSelfAttention(nn.Module):
                 )
             )
 
-    def __call__(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
+    def __call__(
+        self,
+        x: Tensor,
+        *,
+        temb: Optional[Tensor] = None,
+    ) -> Tensor:
         first_resnet, *rest_resnets = self.resnets
 
         x = first_resnet(x, temb=temb)
@@ -61,6 +66,5 @@ class UNetMidBlock2DSelfAttention(nn.Module):
 
             x = attn(x)
             x = resnet(x, temb=temb)
-        del temb
 
         return x

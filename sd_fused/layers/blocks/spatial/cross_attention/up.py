@@ -91,10 +91,8 @@ class CrossAttentionUpBlock2D(nn.Module):
             assert isinstance(attn, SpatialTransformer)
 
             x = torch.cat([x, state], dim=1)
-            del state
             x = resnet(x, temb=temb)
             x = attn(x, context=context, context_weights=context_weights)
-        del states, temb, context
 
         x = self.upsampler(x)
 

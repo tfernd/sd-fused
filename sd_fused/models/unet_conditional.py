@@ -40,7 +40,7 @@ class UNet2DConditional(
 ):
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
-        """Creates a model from a config file."""
+        """Creates a model from a (diffusers) config file."""
 
         path = Path(path)
         if path.is_dir():
@@ -248,9 +248,6 @@ class UNet2DConditional(
         # TODO it is possible to make it a list[list[Tensor]]? or is the number of elements wrong?
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
-            assert isinstance(block, (CrossAttentionDownBlock2D, DownBlock2D))
-
-            states = None
             if isinstance(block, CrossAttentionDownBlock2D):
                 x, states = block(
                     x,
@@ -260,7 +257,8 @@ class UNet2DConditional(
                 )
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
-            assert states is not None  # ! hacky...
+            else:
+                raise ValueError
 
             all_states.extend(states)
             del states
@@ -301,7 +299,7 @@ class UNet2DConditional(
 
     @classmethod
     def from_diffusers(cls, path: str | Path) -> Self:
-        """Load Stable-Diffusion from diffusers checkpoint."""
+        """Load Stable-Diffusion from diffusers checkpoint folder."""
 
         path = Path(path)
         model = cls.from_config(path)

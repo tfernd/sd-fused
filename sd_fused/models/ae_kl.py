@@ -33,7 +33,7 @@ class AutoencoderKL(
 ):
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
-        """Creates a model from a config file."""
+        """Creates a model from a  (diffusers) config file."""
 
         path = Path(path)
         if path.is_dir():
@@ -76,7 +76,7 @@ class AutoencoderKL(
             out_channels=latent_channels,
             block_out_channels=block_out_channels,
             layers_per_block=layers_per_block,
-            norm_num_groups=norm_num_groups,
+            resnet_groups=norm_num_groups,
             double_z=True,
         )
 
@@ -85,7 +85,7 @@ class AutoencoderKL(
             out_channels=out_channels,
             block_out_channels=block_out_channels,
             layers_per_block=layers_per_block,
-            norm_num_groups=norm_num_groups,
+            resnet_groups=norm_num_groups,
         )
 
         # TODO very bad names...
@@ -93,7 +93,9 @@ class AutoencoderKL(
         self.post_quant_conv = Conv2d(latent_channels)
 
     def encode(
-        self, x: Tensor, dtype: Optional[torch.dtype] = None
+        self,
+        x: Tensor,
+        dtype: Optional[torch.dtype] = None,
     ) -> DiagonalGaussianDistribution:
         """Encode an byte-Tensor into a posterior distribution."""
 
@@ -117,7 +119,7 @@ class AutoencoderKL(
 
     @classmethod
     def from_diffusers(cls, path: str | Path) -> Self:
-        """Load Stable-Diffusion from diffusers checkpoint."""
+        """Load Stable-Diffusion from diffusers checkpoint folder."""
 
         path = Path(path)
         model = cls.from_config(path)

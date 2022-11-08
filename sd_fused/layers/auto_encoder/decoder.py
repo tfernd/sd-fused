@@ -16,7 +16,7 @@ class Decoder(nn.Module):
         out_channels: int,
         block_out_channels: tuple[int, ...],
         layers_per_block: int,
-        norm_num_groups: int,
+        resnet_groups: int,
     ) -> None:
         super().__init__()
 
@@ -24,7 +24,7 @@ class Decoder(nn.Module):
         self.out_channels = out_channels
         self.block_out_channels = block_out_channels
         self.layers_per_block = layers_per_block
-        self.norm_num_groups = norm_num_groups
+        self.resnet_groups = resnet_groups
 
         num_blocks = len(block_out_channels)
 
@@ -37,7 +37,7 @@ class Decoder(nn.Module):
             in_channels=block_out_channels[-1],
             temb_channels=None,
             num_layers=1,
-            resnet_groups=norm_num_groups,
+            resnet_groups=resnet_groups,
             attn_num_head_channels=None,
         )
 
@@ -55,7 +55,7 @@ class Decoder(nn.Module):
                 in_channels=prev_output_channel,
                 out_channels=output_channel,
                 num_layers=layers_per_block + 1,
-                resnet_groups=norm_num_groups,
+                resnet_groups=resnet_groups,
                 add_upsample=not is_final_block,
             )
 
@@ -64,7 +64,7 @@ class Decoder(nn.Module):
 
         # out
         self.post_process = GroupNormSiLUConv2d(
-            norm_num_groups,
+            resnet_groups,
             block_out_channels[0],
             out_channels,
             kernel_size=3,

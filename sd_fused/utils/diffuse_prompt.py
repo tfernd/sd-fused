@@ -26,7 +26,7 @@ def diffuse_prompt(
         generator.manual_seed(seed)
 
     weigths = torch.randn(size, n, generator=generator)
-    weigths = weigths.cumsum(0) / math.sqrt(size) / vmax
+    weigths = weigths.cumsum(0) / math.sqrt(size) * vmax
     weigths += 1 - weigths[[0]]  # start at the same weight
     weigths = weigths.tolist()
 

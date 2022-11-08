@@ -83,11 +83,12 @@ out = pipeline.generate(
 <!-- ### Prompt diffusion
 
 The function `diffuse_prompt` assigns a different attention weight for each word, starting from 1 to all words and slowly diffusing the weights to random values.
+This can add some gradual diversity to animations.
 
 ```python
 prompt = "portrait, full body, woman, steampunk, digital art, detailed, epic, beautiful"
 out = pipeline.generate(
-    prompt=diffuse_prompt(prompt, size=128),
+    prompt=diffuse_prompt(prompt, vmax=3.14, size=128, seed=42),
     steps=26,
     height=512,
     width=512,

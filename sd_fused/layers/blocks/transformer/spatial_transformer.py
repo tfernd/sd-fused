@@ -68,8 +68,6 @@ class SpatialTransformer(nn.Module):
             assert isinstance(block, BasicTransformer)
 
             x = block(x, context=context, context_weights=context_weights)
-        del context
-
         x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
 
         return xin + self.proj_out(x)

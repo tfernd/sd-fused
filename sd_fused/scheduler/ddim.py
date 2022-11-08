@@ -9,6 +9,7 @@ from torch import Tensor
 from einops import rearrange
 
 from ..utils.tensors import to_tensor, generate_noise
+from .scheduler import Scheduler
 
 TRAINED_STEPS = 1_000
 BETA_BEGIN = 0.00085
@@ -16,7 +17,7 @@ BETA_END = 0.012
 POWER = 2
 
 
-class DDIMScheduler:
+class DDIMScheduler(Scheduler):
     """Denoising Diffusion Implicit Models scheduler."""
 
     # https://arxiv.org/abs/2010.02502
@@ -28,6 +29,15 @@ class DDIMScheduler:
 
     skip_step: int = 0
     noises: Optional[Tensor] = None
+
+    @property
+    def info(self) -> dict[str, str | int]:
+        return dict(
+            name=self.__class__.__qualname__,
+            steps=self.steps,
+            renorm=self.renorm,
+            skip_step=self.skip_step,
+        )
 
     def __init__(
         self,
@@ -83,8 +93,6 @@ class DDIMScheduler:
         i: int,
         eta: float | Tensor = 0,
     ) -> Tensor:
-        """Get the previous latents according to the DDIM paper."""
-
         eta = to_tensor(
             eta, device=self.device, dtype=self.dtype, add_spatial=True
         )
@@ -125,8 +133,6 @@ class DDIMScheduler:
         eps: Tensor,
         i: int,
     ) -> Tensor:
-        """Add noise to latents according to the index i."""
-
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
 

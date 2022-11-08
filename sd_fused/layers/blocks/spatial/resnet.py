@@ -68,7 +68,6 @@ class ResnetBlock2D(nn.Module):
 
             temb = self.time_emb_proj(temb)
             x = x + temb
-            del temb
 
         x = self.post_process(x)
 

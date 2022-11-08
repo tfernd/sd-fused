@@ -88,7 +88,6 @@ class CrossAttentionDownBlock2D(nn.Module):
             x = attn(x, context=context, context_weights=context_weights)
 
             states.append(x)
-        del temb, context
 
         if self.downsampler is not None:
             x = self.downsampler(x)

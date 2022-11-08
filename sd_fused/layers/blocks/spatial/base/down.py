@@ -66,7 +66,6 @@ class DownBlock2D(nn.Module):
 
             x = resnet(x, temb=temb)
             states.append(x)
-        del temb
 
         if self.downsampler is not None:
             x = self.downsampler(x)

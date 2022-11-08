@@ -60,7 +60,6 @@ class CrossAttention(nn.Module):
     ) -> Tensor:
 
         xin = x
-
         x = self.norm(x)
         context = context if context is not None else x
 
@@ -68,7 +67,6 @@ class CrossAttention(nn.Module):
         q = self.heads_to_batch(self.to_q(x))
         k = self.heads_to_batch(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
-        del x, context
 
         x = attention(
             q,

@@ -56,17 +56,13 @@ class SelfAttention(nn.Module):
         B, C, H, W = x.shape
 
         xin = x
-
-        # normalization
         x = self.group_norm(x)
-
         x = self.channel_last_and_spatial_join(x)
 
         # key, query, value projections
         q = self.heads_to_batch(self.query(x))
         k = self.heads_to_batch(self.key(x))
         v = self.heads_to_batch(self.value(x))
-        del x
 
         x = attention(
             q,

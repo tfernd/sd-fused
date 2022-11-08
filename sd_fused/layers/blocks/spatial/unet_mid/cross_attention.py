@@ -73,6 +73,5 @@ class UNetMidBlock2DCrossAttention(nn.Module):
 
             x = attn(x, context=context, context_weights=context_weights)
             x = resnet(x, temb=temb)
-        del context, temb
 
         return x
