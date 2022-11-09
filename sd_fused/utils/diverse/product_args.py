@@ -7,10 +7,7 @@ from ..typing import MaybeIterable
 from .to_list import to_list
 
 # TODO types!
-def product_args(
-    repeat: int = 1,
-    **kwargs: Optional[MaybeIterable],
-) -> list[dict]:
+def product_args(**kwargs: Optional[MaybeIterable]) -> list[dict]:
     """All possible combintations of kwargs"""
 
     args = list(kwargs.values())
@@ -19,4 +16,4 @@ def product_args(
     args = tuple(map(to_list, args))
     perms = list(product(*args))
 
-    return [dict(zip(keys, args)) for args in perms for _ in range(repeat)]
+    return [dict(zip(keys, args)) for args in perms]

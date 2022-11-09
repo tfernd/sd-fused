@@ -6,6 +6,7 @@ from tqdm.auto import trange, tqdm
 from PIL import Image
 from IPython.display import display
 
+from copy import deepcopy
 import math
 import random
 import torch
@@ -95,7 +96,6 @@ class StableDiffusion(Setup, Helpers):
 
         if seed is not None:
             repeat = 1
-            seed = to_list(seed)
 
         if prompt is not None:
             prompt = prompts_choices(prompt)
@@ -113,21 +113,20 @@ class StableDiffusion(Setup, Helpers):
             mask=mask,
             strength=strength,
             interpolation=interpolation,
-            repeat=repeat,
         )
-
-        # generate seeds
         size = len(list_kwargs)
-        if seed is None:
-            seeds = random_seeds(repeat) if share_seed else random_seeds(size)
-        else:
-            # ! This part and the bottom one seems to be doing the same thing...
-            num_seeds = len(seed)
+        list_kwargs = deepcopy(list_kwargs * repeat)
 
-            # duplicate parameters for each seed
-            list_kwargs = [kwargs for kwargs in list_kwargs for _ in range(num_seeds)]
-            # duplicat seeds for each parameter
-            seeds = [s for _ in range(size) for s in seed]
+        # if seeds are given or share-seed set
+        # each repeated-iteration has the same seed
+        if seed is not None or share_seed:
+            if seed is None:
+                seed = random_seeds(repeat)
+            seeds = [s for s in to_list(seed) for _ in range(size)]
+
+        # otherwise each iteration has it's own unique seed
+        else:
+            seeds = random_seeds(size * repeat)
 
         # create parameters list and group/batch them
         parameters = [
@@ -137,7 +136,7 @@ class StableDiffusion(Setup, Helpers):
                 seed=seed,
                 sub_seed=sub_seed,
                 device=self.device,
-                dtype=self.dtype,
+                dtype=self.dtype
             )
             for (seed, kwargs) in zip(seeds, list_kwargs)
         ]
@@ -145,7 +144,7 @@ class StableDiffusion(Setup, Helpers):
         batched_parameters = batch_parameters(groups, batch_size)
 
         out: list[tuple[Image.Image, Path, Parameters]] = []
-        for params in tqdm(batched_parameters):
+        for params in tqdm(batched_parameters, desc='Generating batches'):
             ipp = self.generate_from_parameters(ParametersList(params))
             out.extend(ipp)
 
@@ -248,7 +247,7 @@ class StableDiffusion(Setup, Helpers):
         scales = torch.tensor([scale], device=self.device)
 
         clear_cuda()
-        for i in trange(scheduler.skip_step, len(scheduler), desc="Denoising latents."):
+        for i in trange(scheduler.skip_step, len(scheduler), desc="Denoising latents"):
             timestep = scheduler.timesteps[[i]]  # ndim=1
 
             for k in range(0, nH * nW, batch_size):
@@ -344,7 +343,7 @@ class StableDiffusion(Setup, Helpers):
         """Main loop where latents are denoised."""
 
         clear_cuda()
-        for i in trange(scheduler.skip_step, len(scheduler), desc="Denoising latents."):
+        for i in trange(scheduler.skip_step, len(scheduler), desc="Denoising latents"):
             timestep = scheduler.timesteps[[i]]  # ndim=1
 
             input_latents = latents
