@@ -48,6 +48,8 @@ def sequence_chunked_attention(
 ) -> Tensor:
     """Sequence-chunked attention computation."""
 
+    # https://github.com/Doggettx/stable-diffusion/blob/main/ldm/modules/attention.py#L209
+
     assert chunks >= 1
     B, T, C = q.shape
 

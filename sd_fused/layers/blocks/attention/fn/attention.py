@@ -45,11 +45,13 @@ def attention(
 
     if chunks == "auto":
         assert chunk_type is not None
+        
         chunks = auto_chunk_size(B, T, Tl, C, dtype, chunk_type)
 
     if chunks is not None:
         assert not use_flash_attention
         assert chunk_type is not None
+
         if chunk_type == "batch":
             return batch_chunked_attention(q, k, v, chunks, bias)
         else:
@@ -59,6 +61,7 @@ def attention(
         assert chunks is None
         assert chunk_type is None
         assert tome_r is None
+
         return flash_attention(q, k, v, bias)
 
     return standard_attention(q, k, v, bias)
