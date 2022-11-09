@@ -130,21 +130,14 @@ class StableDiffusion(Setup, Helpers):
 
         # create parameters list and group/batch them
         parameters = [
-            Parameters(
-                **kwargs,  # type: ignore
-                mode=mode,
-                seed=seed,
-                sub_seed=sub_seed,
-                device=self.device,
-                dtype=self.dtype
-            )
+            Parameters(**kwargs, mode=mode, seed=seed, sub_seed=sub_seed, device=self.device, dtype=self.dtype)  # type: ignore
             for (seed, kwargs) in zip(seeds, list_kwargs)
         ]
         groups = group_parameters(parameters)
         batched_parameters = batch_parameters(groups, batch_size)
 
         out: list[tuple[Image.Image, Path, Parameters]] = []
-        for params in tqdm(batched_parameters, desc='Generating batches'):
+        for params in tqdm(batched_parameters, desc="Generating batches"):
             ipp = self.generate_from_parameters(ParametersList(params))
             out.extend(ipp)
 

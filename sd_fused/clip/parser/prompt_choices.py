@@ -8,9 +8,10 @@ from ...utils.typing import MaybeIterable
 
 def prompt_choices(prompt: str) -> list[str]:
     """Create a set of prompt word-choices from
-    `{word 1 | another word | yet another one}`"""
+    `[word 1 | another word | yet another one]`
+    """
 
-    pattern = re.compile(r"{([^{}]+)}")
+    pattern = re.compile(r"\[([^\[\]]+)\]")
 
     temp: list[str] = [prompt]
     prompts: list[str] = []
@@ -37,6 +38,6 @@ def prompt_choices(prompt: str) -> list[str]:
 
 def prompts_choices(prompts: MaybeIterable[str]) -> list[str]:
     """Create a set of prompt word-choices from
-    `{word 1 | another word | yet another one}`"""
+    `[word 1 | another word | yet another one]`"""
 
     return [choice for prompt in to_list(prompts) for choice in prompt_choices(prompt)]

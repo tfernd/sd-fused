@@ -16,7 +16,7 @@ from .parser import (
     add_delimiter4words,
     expand_delimiters,
     add_split_maker4emphasis,
-    split_text,
+    split_prompt_into_segments,
 )
 
 MAX_TOKENS = 77
@@ -38,38 +38,38 @@ class ClipEmbedding:
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)  # type: ignore
 
     @staticmethod
-    def clean_spaces(text: str) -> str:
+    def clean_spaces(prompt: str) -> str:
         """Clean-up spaces/return characters."""
 
-        text = text.replace("\n", " ")
-        text = re.sub(r"[ ]+", r" ", text)
-        text = text.strip()
+        prompt = prompt.replace("\n", " ")
+        prompt = re.sub(r"[ ]+", r" ", prompt)
+        prompt = prompt.strip()
 
-        return text
+        return prompt
 
     @staticmethod
-    def parse_emphasis(text: str) -> str:
+    def parse_emphasis(prompt: str) -> str:
         """Parse emphasis notation."""
 
-        text = add_delimiter4words(text)
-        text = expand_delimiters(text)
-        text = add_split_maker4emphasis(text)
+        prompt = add_delimiter4words(prompt)
+        prompt = expand_delimiters(prompt)
+        prompt = add_split_maker4emphasis(prompt)
 
-        return text
+        return prompt
 
     @lru_cache(maxsize=None)
-    def get_ids_and_weights(self, text: str) -> TensorAndWeight:
-        """Get the token id and weight for a given text."""
+    def get_ids_and_weights(self, prompt: str) -> TensorAndWeight:
+        """Get the token id and weight for a given prompt."""
 
-        text = self.clean_spaces(text)
-        text = self.parse_emphasis(text)
+        prompt = self.clean_spaces(prompt)
+        prompt = self.parse_emphasis(prompt)
 
-        segments = [TextSegment(t) for t in split_text(text)]
+        segments = [TextSegment(t) for t in split_prompt_into_segments(prompt)]
 
         ids: list[int] = []
         weights: list[float] = []
         for n, seg in enumerate(segments):
-            seg_ids = self.tokenizer.encode(seg.text)
+            seg_ids = self.tokenizer.encode(seg.prompt)
 
             # remove initial/final ids
             seg_ids = seg_ids[1:-1]
@@ -96,25 +96,25 @@ class ClipEmbedding:
 
     @lru_cache(maxsize=None)
     @torch.no_grad()
-    def get_embedding(self, text: str) -> TensorAndWeight:
-        """Creates an embedding/weights for a text and cache it."""
+    def get_embedding(self, prompt: str) -> TensorAndWeight:
+        """Creates an embedding/weights for a prompt and cache it."""
 
-        ids, weight = self.get_ids_and_weights(text)
+        ids, weight = self.get_ids_and_weights(prompt)
         emb = self.text_encoder(ids)[0]
 
         return TensorAndWeight(emb, weight)
 
     def __call__(
         self,
-        text: str | list[str] = "",
+        prompt: str | list[str] = "",
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
     ) -> TensorAndMaybeWeight:
-        """Creates embeddings/weights for a text and send to the correct device/dtype."""
+        """Creates embeddings/weights for a prompt and send to the correct device/dtype."""
 
-        if isinstance(text, str):
-            text = [text]
-        values = [self.get_embedding(t) for t in text]
+        if isinstance(prompt, str):
+            prompt = [prompt]
+        values = [self.get_embedding(t) for t in prompt]
         emb = torch.cat([v.tensor for v in values])
         weight = torch.cat([v.weight for v in values])
 

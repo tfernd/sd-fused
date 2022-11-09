@@ -3,14 +3,16 @@ from __future__ import annotations
 import re
 
 
-def add_split_maker4emphasis(text: str) -> str:
-    """add ⏎ to the begginig and end of (..):value"""
+def add_split_maker4emphasis(prompt: str) -> str:
+    """Add ⏎ to the begginig and end of (..):value"""
 
     pattern = r"(\(.+?\):[+-]?\d+(?:.\d+)?)"
-    text = re.sub(pattern, r"⏎\1⏎", text)
+    prompt = re.sub(pattern, r"⏎\1⏎", prompt)
 
-    return text
+    return prompt
 
 
-def split_text(text: str) -> list[str]:
-    return text.split("⏎")
+def split_prompt_into_segments(prompt: str) -> list[str]:
+    """Split a prompt at ⏎ to give prompt-segments."""
+
+    return prompt.split("⏎")

@@ -15,14 +15,13 @@ Using the notation `(a few words):weight` you can give emphasis (high number), t
 The words (tokens) inside the parentheses are given a weight that is passed down to the attention calculation, enhancing, attenuating, or negative the attention to the given token.
 
 Below is a small test where the word `cyberpunk` is given a different emphasis.
-Note: the triple-brackets hell is due to python f-strings. To use `{}` inside a f-string you need to use double-brackets...
 
 ```python
 weight = torch.linspace(-1.2, 4.2, 32).tolist()
 choices = '|'.join(map(str, weight))
 
 out = pipeline.generate(
-    prompt=f"portrait, woman, cyberpunk:{{{choices}}}, digital art, detailed, epic, beautiful",
+    prompt=f"portrait, woman, cyberpunk:[{choices}], digital art, detailed, epic, beautiful",
     steps=24,
     scale=11,
     height=512,
@@ -105,14 +104,14 @@ out = pipeline.generate(
 <!-- 
 ### Prompt choices
 
-Using the format `{words | more words | and more more words}` you can create different prompts where each iteration a different word is selected and all possible combinations are made.
+Using the format `[words | more words | and more more words]` you can create different prompts where each iteration a different word is selected and all possible combinations are made.
 
 ```python
 age = torch.linspace(5, 100, 80).round().byte().tolist()
 choices = '|'.join(map(str, age))
 
 out = pipeline.generate(
-    prompt=f"portrait, {{{choices}}}-year-old woman, cyberpunk, digital art, detailed, epic, beautiful",
+    prompt=f"portrait, [{choices}]-year-old woman, cyberpunk, digital art, detailed, epic, beautiful",
     steps=24,
     height=512,
     width=512,
