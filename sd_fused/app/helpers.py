@@ -69,11 +69,10 @@ class Helpers:
     def encode(
         self,
         data: Tensor,
-        dtype: Optional[torch.dtype] = None,
     ) -> Tensor:
         """Encodes (stochastically) a RGB image into a latent vector."""
 
-        return self.vae.encode(data, dtype).sample().mul(MAGIC)
+        return self.vae.encode(data.to(self.device), self.dtype).sample().mul(MAGIC)
 
     @torch.no_grad()
     def decode(self, latents: Tensor) -> Tensor:

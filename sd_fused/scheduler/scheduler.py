@@ -1,11 +1,15 @@
 from __future__ import annotations
-import abc
 from typing import Optional
+from typing_extensions import Self
+import abc
 
+import math
 from torch import Tensor
 
 
 class Scheduler(abc.ABC):
+    skip_step: int
+
     @property
     @abc.abstractmethod
     def info(self) -> dict[str, str | int]:
@@ -30,9 +34,17 @@ class Scheduler(abc.ABC):
     ) -> Tensor:
         """Add noise to latents according to the index i."""
 
-    @abc.abstractmethod
-    def set_skip_step(self, strength: Optional[float]) -> None:
+    def set_skip_step(self, strength: Optional[float]) -> Self:
         """The index generation needs to start."""
+
+        if strength is None:
+            self.skip_step = 0
+        else:
+            assert 0 < strength <= 1
+
+            self.skip_step = math.ceil(len(self) * (1 - strength))
+
+        return self
 
     @abc.abstractmethod
     def __len__(self) -> int:

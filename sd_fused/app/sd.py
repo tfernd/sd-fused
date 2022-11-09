@@ -17,8 +17,8 @@ from ..clip import ClipEmbedding
 from ..clip.parser import prompts_choices
 from ..scheduler import DDIMScheduler
 from ..utils.cuda import clear_cuda
-from ..utils.diverse import to_list, product_args
-from ..utils.image import ResizeModes, tensor2images, image2tensor, ImageType
+from ..utils.diverse import to_list, product_args, separate
+from ..utils.image import ResizeModes, tensor2images, image2tensor, ImageType, image_size
 from ..utils.tensors import random_seeds
 from ..utils.typing import MaybeIterable
 from ..utils.parameters import (
@@ -32,7 +32,7 @@ from .helpers import Helpers
 
 
 class StableDiffusion(Setup, Helpers):
-    version: str = "0.5.5.2"
+    version: str = "0.5.5.3"
 
     def __init__(
         self,
@@ -68,11 +68,12 @@ class StableDiffusion(Setup, Helpers):
         *,
         eta: MaybeIterable[float] = 0,
         steps: MaybeIterable[int] = 32,
-        scale: MaybeIterable[float] = 7.5,  # ?Optional
+        scale: MaybeIterable[float] = 7.5,
+        # scale: Optional[MaybeIterable[float]] = 7.5,  # ?Optional
         height: MaybeIterable[int] = 512,
         width: MaybeIterable[int] = 512,
         negative_prompt: MaybeIterable[str] = "",
-        # optional
+        # optionals
         prompt: Optional[MaybeIterable[str]] = None,
         img: Optional[MaybeIterable[ImageType]] = None,
         mask: Optional[MaybeIterable[ImageType]] = None,
@@ -160,7 +161,6 @@ class StableDiffusion(Setup, Helpers):
         pL: ParametersList,
     ) -> list[tuple[Image.Image, Path, Parameters]]:
 
-        # fmt: off
         context, context_weight = self.get_context(pL.negative_prompts, pL.prompts)
         noise = self.generate_noise(pL.seeds, pL.sub_seeds, pL.interpolations, pL.height, pL.width, len(pL))
 
@@ -169,7 +169,9 @@ class StableDiffusion(Setup, Helpers):
         scheduler.set_skip_step(pL.strength)
 
         latents, masked_latents = self.prepare_latents(scheduler, noise, pL.images_data, pL.masks_data, pL.masked_images_data)
-        latents = self.denoise_latents(scheduler, latents, masked_latents, context, context_weight, pL.unconditional, pL.scales, pL.etas)
+        latents = self.denoise_latents(
+            scheduler, latents, masked_latents, context, context_weight, pL.unconditional, pL.scales, pL.etas
+        )
 
         data = self.decode(latents)
         images = tensor2images(data)
@@ -178,94 +180,114 @@ class StableDiffusion(Setup, Helpers):
         for parameter, image in zip(pL, images):
             path = self.save_image(image, parameter.png_info)
             paths.append(path)
-        # fmt: on
 
         return list(zip(images, paths, list(pL)))
 
-    #     def enhance(
-    #         self,
-    #         *,
-    #         img: str,
-    #         factor: int | float,
-    #         strength: float,
-    #         overlap: int = 64,
-    #         prompt: Optional[str] = None,
-    #         negative_prompt: str = "",
-    #         seed: Optional[int] = None,
-    #         eta: float = 0,
-    #         steps: int = 32,
-    #         scale: float = 7.5,
-    #         height: int = 512,
-    #         width: int = 512,
-    #         batch_size: int = 1,
-    #         show: bool = True,
-    #     ):
-    #         """Upscale an image."""
+    def enhance(
+        self,
+        *,
+        img: ImageType,
+        factor: int | float,
+        strength: float,
+        overlap: int = 64,
+        prompt: Optional[str] = None,
+        negative_prompt: str = "",
+        seed: Optional[int] = None,
+        eta: float = 0,
+        steps: int = 32,
+        scale: float = 7.5,
+        height: int = 512,
+        width: int = 512,
+        batch_size: int = 1,
+        show: bool = True,
+    ):
+        """Upscale an image."""
 
-    #         # not greate results. We have to stitch the latents to make sure
-    #         # the image is coherent at the end...
+        # upscaled final size
+        H, W = image_size(img)
+        H, W = round(H * factor / 8) * 8, round(W * factor / 8) * 8
 
-    #         raise NotImplemented
+        # image data and overlap weights
+        data = image2tensor(img, H, W, mode="resize")
+        weight = torch.zeros(1, self.latent_channels, H, W).to(self.device, self.dtype)
 
-    #         assert factor > 1
-    #         assert 0 < overlap < min(height, width)
+        # number of crops along the two dimensions
+        nH = math.ceil(H / (height - overlap / 2))
+        nW = math.ceil(W / (width - overlap / 2))
 
-    #         # upscale using standard methods
-    #         data = image2tensor(img, rescale=factor)
-    #         B, C, H, W = data.shape
+        # start indices for the crops
+        pi = torch.linspace(0, H - height - 1, nH).round().long()
+        pj = torch.linspace(0, W - width - 1, nW).round().long()
 
-    #         resized_data = torch.zeros_like(data).float()
-    #         weight = torch.zeros_like(data).float()
-    #         B, C, H, W = data.shape
+        # create latents of crops
+        latents_list: list[Tensor] = []
+        for n in trange(nH * nW, desc="Encoding latents"):
+            i, j = pi[n // nW], pj[n % nW]
 
-    #         # number of crops along the two dimensions
-    #         nH = math.ceil(H / (height - overlap / 2))
-    #         nW = math.ceil(W / (width - overlap / 2))
+            d = data[..., i : i + height, j : j + width]
+            weight[..., i : i + height, j : j + width] += 1
 
-    #         # start indices for the crops
-    #         pi = torch.linspace(0, H - height - 1, nH).round().long()
-    #         pj = torch.linspace(0, W - width - 1, nW).round().long()
+            latents_list.append(self.encode(d))
+        image_latents = torch.cat(latents_list, dim=0)
+        weight_latents = F.interpolate(weight, (H // 8, W // 8))
 
-    #         # cropped images
-    #         datas: list[Tensor] = []
-    #         for i in pi:
-    #             for j in pj:
-    #                 d = data[..., i : i + height, j : j + width]
-    #                 weight[..., i : i + height, j : j + width] += 1
-    #                 datas.append(d)
-    #         data = torch.cat(datas, dim=0)
-    #         imgs = tensor2images(data)
+        # Standard
+        unconditional = prompt is None
+        prompts = [prompt] if prompt is not None else None
+        context, context_weight = self.get_context([negative_prompt], prompts)
 
-    #         ipp_list = self.generate(
-    #             eta=eta,
-    #             steps=steps,
-    #             scale=scale,
-    #             height=height,
-    #             width=width,
-    #             negative_prompt=negative_prompt,
-    #             prompt=prompt,
-    #             img=imgs,
-    #             strength=strength,
-    #             mode="resize",
-    #             seed=seed,
-    #             # ? sub_seed/interpolation
-    #             batch_size=batch_size,
-    #             show=show,
-    #         )
+        seeds = random_seeds(1) * nH * nW
+        scheduler = DDIMScheduler(steps, self.device, self.dtype, seeds, self.renorm)
+        scheduler.set_skip_step(strength)
 
-    #         # stitch-images
-    #         for n, (image, path, param) in enumerate(ipp_list):
-    #             i, j = pi[n // nW], pj[n % nW]
+        sub_seeds = interpolations = None
+        noise = self.generate_noise(seeds, sub_seeds, interpolations, height, width, nH * nW)
+        latents = scheduler.add_noise(image_latents, noise, scheduler.skip_step)
 
-    #             d = image2tensor(image)
-    #             resized_data[..., i : i + height, j : j + width] += d.float()
-    #         resized_data /= weight
-    #         resized_data = resized_data.clamp(0, 255).byte()
+        scales = torch.tensor([scale], device=self.device)
 
-    #         image = tensor2images(resized_data)[0]
-    #         path = self.save_image(image)
+        clear_cuda()
+        for i in trange(scheduler.skip_step, len(scheduler), desc="Denoising latents."):
+            timestep = scheduler.timesteps[[i]]  # ndim=1
 
-    #         return path, image
+            for k in range(0, nH * nW, batch_size):
+                s = slice(k, k + batch_size)
+                pred_noise = self.pred_noise(latents[s], timestep, context, context_weight, unconditional, scales)
+                latents = scheduler.step(pred_noise, latents, i, eta)
+
+                del pred_noise
+
+            # stitch latents
+            big_latents = torch.zeros_like(weight_latents)
+            for n in range(nH * nW):
+                i, j = pi[n // nW] // 8, pj[n % nW] // 8
+
+                big_latents[..., i : i + height // 8, j : j + width // 8] += latents[[n]]
+            big_latents /= weight_latents
+
+            # crop latents
+            for n in range(nH * nW):
+                i, j = pi[n // nW] // 8, pj[n % nW] // 8
+
+                latents[[n]] = big_latents[..., i : i + height // 8, j : j + width // 8]
+        clear_cuda()
+
+        data_list: list[Tensor] = []
+        for n in trange(nH * nW, desc="Decoding latents"):
+            data_list.append(self.decode(latents[[n]].cuda()))
+
+        data = torch.zeros_like(data).float().cuda()
+        for n in range(nH * nW):
+            i, j = pi[n // nW], pj[n % nW]
+
+            data[..., i : i + height, j : j + width] += data_list[n]
+        data /= weight[:, :3]
+        data = data.clamp(0, 255).byte()
+
+        image = tensor2images(data)[0]
+        path = self.save_image(image)
+
+        return image
 
     def prepare_latents(
         self,
@@ -288,7 +310,7 @@ class StableDiffusion(Setup, Helpers):
         if masks is None:
             assert masked_images is None
 
-            images_latents = self.encode(images, self.dtype)
+            images_latents = self.encode(images)
             latents = scheduler.add_noise(images_latents, noise, scheduler.skip_step)
 
             return latents, None
@@ -301,7 +323,7 @@ class StableDiffusion(Setup, Helpers):
         mask_latents = F.interpolate(masks.float(), size=(H // 8, W // 8))
 
         assert masked_images is not None
-        masked_image_latents = self.encode(masked_images, self.dtype)
+        masked_image_latents = self.encode(masked_images)
 
         mask_and_masked_image_latents = torch.cat([mask_latents, masked_image_latents], dim=1)
 
@@ -349,7 +371,6 @@ class StableDiffusion(Setup, Helpers):
     ) -> Tensor:
         """Predict the noise from latents, context and current timestep."""
 
-        # fmt: off
         if unconditional:
             return self.unet(latents, timestep, context, context_weights)
 
@@ -368,10 +389,9 @@ class StableDiffusion(Setup, Helpers):
             pred_noise_all = self.unet(latents, timestep, context, context_weights)
             pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(2, dim=0)
 
-        scales = scales[:, None, None, None] # add fake channel/spatial dimensions
+        scales = scales[:, None, None, None]  # add fake channel/spatial dimensions
 
         latents = pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scales
-        # fmt: on
 
         return latents
 

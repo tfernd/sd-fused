@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Optional
-from typing_extensions import Self
 
 import math
 
@@ -131,16 +130,6 @@ class DDIMScheduler(Scheduler):
     ) -> Tensor:
         # eq 4
         return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
-
-    def set_skip_step(self, strength: Optional[float]) -> Self:
-        if strength is None:
-            self.skip_step = 0
-        else:
-            assert 0 < strength <= 1
-
-            self.skip_step = math.ceil(len(self) * (1 - strength))
-
-        return self
 
     def __len__(self) -> int:
         return self.steps

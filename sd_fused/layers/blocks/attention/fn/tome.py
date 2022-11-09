@@ -5,6 +5,8 @@ import torch
 from torch import Tensor
 import math
 
+from einops import rearrange
+
 from .....utils.typing import Protocol, Literal
 
 
@@ -12,7 +14,7 @@ Modes = Literal["sum", "mean"]
 
 
 class Merge(Protocol):
-    def __call__(self, x: Tensor, mode: Modes) -> Tensor:
+    def __call__(self, x: Tensor, mode: Modes = "mean") -> Tensor:
         ...
 
 
