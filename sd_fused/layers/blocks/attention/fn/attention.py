@@ -45,7 +45,7 @@ def attention(
 
     if chunks == "auto":
         assert chunk_type is not None
-        
+
         chunks = auto_chunk_size(B, T, Tl, C, dtype, chunk_type)
 
     if chunks is not None:
