@@ -87,6 +87,7 @@ class StableDiffusion(Setup, Helpers):
         batch_size: int = 1,
         repeat: int = 1,
         show: bool = True,
+        share_seed: bool = True,
     ) -> list[tuple[Image.Image, Path, Parameters]]:
         """Create a list of parameters and group them
         into batches to be processed.
@@ -95,7 +96,6 @@ class StableDiffusion(Setup, Helpers):
         if seed is not None:
             repeat = 1
             seed = to_list(seed)
-        # TODO add SHARE-seed, so parameters combinations share the same seed.
 
         if prompt is not None:
             prompt = prompts_choices(prompt)
@@ -119,8 +119,9 @@ class StableDiffusion(Setup, Helpers):
         # generate seeds
         size = len(list_kwargs)
         if seed is None:
-            seeds = random_seeds(size)
+            seeds = random_seeds(repeat) if share_seed else random_seeds(size)
         else:
+            # ! This part and the bottom one seems to be doing the same thing...
             num_seeds = len(seed)
 
             # duplicate parameters for each seed
