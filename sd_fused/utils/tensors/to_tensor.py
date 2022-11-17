@@ -4,15 +4,20 @@ from typing import Optional
 import torch
 from torch import Tensor
 
+from ...layers.base.types import Device
+
 
 def to_tensor(
-    x: int | float | Tensor,
+    x: Optional[int | float | Tensor],
     *,
-    device: Optional[torch.device] = None,
+    device: Optional[Device] = None,
     dtype: Optional[torch.dtype] = None,
     add_spatial: bool = False,
 ) -> Tensor:
     """Convert a number to a Tensor with fake channel/spatial dimensions."""
+
+    if x is None:
+        x = 0
 
     if isinstance(x, (int, float)):
         x = torch.tensor([x], device=device, dtype=dtype)

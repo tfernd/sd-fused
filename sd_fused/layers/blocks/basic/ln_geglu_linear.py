@@ -3,11 +3,12 @@ from __future__ import annotations
 import torch.nn as nn
 from torch import Tensor
 
-from ...base import Linear, LayerNorm
+from ...base import Sequential
+from ...basic import LayerNorm, Linear
 from ...activation import GEGLU
 
 
-class LayerNormGEGLULinear(nn.Sequential):
+class LayerNormGEGLULinear(Sequential):
     def __init__(self, dim: int, *, expand: float) -> None:
 
         self.dim = dim
@@ -25,4 +26,4 @@ class LayerNormGEGLULinear(nn.Sequential):
         super().__init__(*layers)
 
     def __call__(self, x: Tensor) -> Tensor:
-        return x + super().forward(x)
+        return x + super().__call__(x)

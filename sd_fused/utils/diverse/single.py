@@ -3,7 +3,9 @@ from typing import Optional, TypeVar, overload
 
 import torch
 
-T = TypeVar("T", int, float, torch.device, torch.dtype)
+from ...layers.base.types import Device
+
+T = TypeVar("T", int, float, Device, torch.dtype)
 
 
 @overload
@@ -12,11 +14,11 @@ def single(x: set[T]) -> T:
 
 
 @overload
-def single(x: set[T | None]) -> Optional[T]:
+def single(x: set[Optional[T]]) -> Optional[T]:
     ...
 
 
-def single(x: set[T | None] | set[T]) -> Optional[T]:
+def single(x: set[Optional[T]] | set[T]) -> Optional[T]:
     """Get the single element of a set."""
 
     assert len(x) == 1

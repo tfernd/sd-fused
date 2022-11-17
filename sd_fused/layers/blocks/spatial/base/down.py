@@ -4,12 +4,13 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
+from ....base import Module, ModuleList
 from ..resampling import Downsample2D
 from ..resnet import ResnetBlock2D
 from ..output_states import OutputStates
 
 
-class DownBlock2D(nn.Module):
+class DownBlock2D(Module):
     def __init__(
         self,
         *,
@@ -31,7 +32,7 @@ class DownBlock2D(nn.Module):
         self.add_downsample = add_downsample
         self.downsample_padding = downsample_padding
 
-        self.resnets = nn.ModuleList()
+        self.resnets = ModuleList()
         for i in range(num_layers):
             in_channels = in_channels if i == 0 else out_channels
 

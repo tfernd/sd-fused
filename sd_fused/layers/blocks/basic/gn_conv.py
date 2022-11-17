@@ -1,13 +1,11 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
-
-from ...base import GroupNorm, Conv2d
-from ...activation import SiLU
+from ...base import Sequential
+from ...basic import GroupNorm, Conv2d
 
 
-class GroupNormSiLUConv2d(nn.Sequential):
+class GroupNormConv2d(Sequential):
     def __init__(
         self,
         num_groups: int,
@@ -19,7 +17,6 @@ class GroupNormSiLUConv2d(nn.Sequential):
     ) -> None:
         layers = (
             GroupNorm(num_groups, in_channels),
-            SiLU(),
             Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
         )
 

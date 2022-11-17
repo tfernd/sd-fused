@@ -3,16 +3,17 @@ from typing import Optional
 
 from functools import lru_cache
 from pathlib import Path
-import re
 
 import torch
 
 from transformers.models.clip.modeling_clip import CLIPTextModel
 from transformers.models.clip.tokenization_clip import CLIPTokenizer
 
+from ..layers.base.types import Device
 from .text_segment import TextSegment
 from .container import TensorAndWeight, TensorAndMaybeWeight
 from .parser import (
+    clean_spaces,
     add_delimiter4words,
     expand_delimiters,
     add_split_maker4emphasis,
@@ -37,15 +38,14 @@ class ClipEmbedding:
         self.tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
         self.text_encoder = CLIPTextModel.from_pretrained(text_encoder_path)  # type: ignore
 
-    @staticmethod
-    def clean_spaces(prompt: str) -> str:
-        """Clean-up spaces/return characters."""
+        # token ids markers
+        assert self.tokenizer.bos_token_id is not None
+        assert self.tokenizer.eos_token_id is not None
+        assert self.tokenizer.pad_token_id is not None
 
-        prompt = prompt.replace("\n", " ")
-        prompt = re.sub(r"[ ]+", r" ", prompt)
-        prompt = prompt.strip()
-
-        return prompt
+        self.bos_token_id = self.tokenizer.bos_token_id
+        self.eos_token_id = self.tokenizer.eos_token_id
+        self.pad_token_id = self.tokenizer.pad_token_id
 
     @staticmethod
     def parse_emphasis(prompt: str) -> str:
@@ -61,7 +61,7 @@ class ClipEmbedding:
     def get_ids_and_weights(self, prompt: str) -> TensorAndWeight:
         """Get the token id and weight for a given prompt."""
 
-        prompt = self.clean_spaces(prompt)
+        prompt = clean_spaces(prompt)
         prompt = self.parse_emphasis(prompt)
 
         segments = [TextSegment(t) for t in split_prompt_into_segments(prompt)]
@@ -80,15 +80,12 @@ class ClipEmbedding:
         # add padding and initial/final ids
         pad_size = MAX_TOKENS - len(ids) - 2
         assert pad_size >= 0, "Text too big, it will result in truncation"
-        assert self.tokenizer.bos_token_id is not None
-        assert self.tokenizer.eos_token_id is not None
-        assert self.tokenizer.pad_token_id is not None
 
         ids = [
-            self.tokenizer.bos_token_id,
+            self.bos_token_id,
             *ids,
-            *[self.tokenizer.pad_token_id] * pad_size,
-            self.tokenizer.eos_token_id,
+            *[self.pad_token_id] * pad_size,
+            self.eos_token_id,
         ]
         weights = [1, *weights, *[1] * pad_size, 1]
 
@@ -107,7 +104,7 @@ class ClipEmbedding:
     def __call__(
         self,
         prompt: str | list[str] = "",
-        device: Optional[torch.device] = None,
+        device: Optional[Device] = None,
         dtype: Optional[torch.dtype] = None,
     ) -> TensorAndMaybeWeight:
         """Creates embeddings/weights for a prompt and send to the correct device/dtype."""

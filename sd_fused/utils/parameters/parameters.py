@@ -2,26 +2,25 @@ from __future__ import annotations
 from typing import Optional
 from typing_extensions import Self
 
-from pathlib import Path
 from dataclasses import dataclass, field
-from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 import torch
 from torch import Tensor
 
+from ...layers.base.types import Device
 from ..image import ResizeModes, image2tensor, image_base64, ImageType
 
 SAVE_ARGS = [
-    "eta",
-    "scale",
     "steps",
     "height",
     "width",
-    "negative_prompt",
     "seed",
+    "negative_prompt",
+    "scale",
+    "eta",
     "sub_seed",
-    "interpolation",
+    "seed_interpolation",
     "prompt",
     "strength",
     "mode",
@@ -34,23 +33,22 @@ SAVE_ARGS = [
 class Parameters:
     """Hold information from a single image generation."""
 
-    eta: float
     steps: int
     height: int
     width: int
     seed: int
     negative_prompt: str
-    scale: float
-    # ? scale: Optional[float] = None
+    scale: Optional[float] = None
+    eta: Optional[float] = None  # DDIM
     sub_seed: Optional[int] = None
-    interpolation: Optional[float] = None
+    seed_interpolation: Optional[float] = None
     prompt: Optional[str] = None
     img: Optional[ImageType] = None
     mask: Optional[ImageType] = None
     strength: Optional[float] = None
     mode: Optional[ResizeModes] = None
 
-    device: Optional[torch.device] = field(default=None, repr=False)
+    device: Optional[Device] = field(default=None, repr=False)
     dtype: Optional[torch.dtype] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
@@ -66,11 +64,14 @@ class Parameters:
             assert self.strength is not None
 
         if self.sub_seed is None:
-            assert self.interpolation is None
+            assert self.seed_interpolation is None
         else:
-            assert self.interpolation is not None
+            assert self.seed_interpolation is not None
 
-        # TODO eta and scale
+        if self.prompt is None:
+            assert self.scale is None
+        else:
+            assert self.scale is not None
 
     @property
     def unconditional(self) -> bool:

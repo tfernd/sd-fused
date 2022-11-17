@@ -1,14 +1,14 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
+from ...base import Module
 from ..attention import CrossAttention
-from ..simple import LayerNormGEGLULinear
+from ..basic import LayerNormGEGLULinear
 
 
-class BasicTransformer(nn.Module):
+class BasicTransformer(Module):
     def __init__(
         self,
         *,
@@ -44,10 +44,10 @@ class BasicTransformer(nn.Module):
         x: Tensor,
         *,
         context: Optional[Tensor] = None,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
         x = self.attn1(x)
-        x = self.attn2(x, context=context, context_weights=context_weights)
+        x = self.attn2(x, context=context, weights=weights)
         x = self.ff(x)
 
         return x

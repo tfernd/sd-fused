@@ -1,14 +1,15 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
+
 from torch import Tensor
 
+from ....base import Module, ModuleList
 from ...attention import SelfAttention
 from ..resnet import ResnetBlock2D
 
 
-class UNetMidBlock2DSelfAttention(nn.Module):
+class UNetMidBlock2DSelfAttention(Module):
     def __init__(
         self,
         *,
@@ -28,8 +29,8 @@ class UNetMidBlock2DSelfAttention(nn.Module):
 
         resnet_groups = resnet_groups or min(in_channels // 4, 32)
 
-        self.attentions = nn.ModuleList()
-        self.resnets = nn.ModuleList()
+        self.attentions = ModuleList()
+        self.resnets = ModuleList()
         for i in range(num_layers + 1):
             if i > 0:
                 self.attentions.append(

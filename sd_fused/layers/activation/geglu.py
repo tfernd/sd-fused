@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from ..base import Linear
+from ..base import Module
+from ..basic import Linear
 
 
-class GEGLU(nn.Module):
-    """GEGLU activation function (x*gelu(x))."""
-
+class GEGLU(Module):
     def __init__(self, dim_in: int, dim_out: int) -> None:
         super().__init__()
 

@@ -3,14 +3,14 @@ from typing import Callable, Optional
 
 from functools import partial
 
-import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from ....base import Conv2d
+from ....base import Module
+from ....basic import Conv2d
 
 
-class Downsample2D(nn.Module):
+class Downsample2D(Module):
     pad: Callable[[Tensor], Tensor]
 
     def __init__(

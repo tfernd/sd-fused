@@ -3,14 +3,14 @@ from typing import Optional
 
 from functools import partial
 
-import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from ....base import Conv2d
+from ....base import Module
+from ....basic import Conv2d
 
 
-class Upsample2D(nn.Module):
+class Upsample2D(Module):
     def __init__(
         self,
         channels: int,

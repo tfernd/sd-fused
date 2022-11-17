@@ -7,32 +7,32 @@ import torch
 from ..utils.typing import Literal
 from ..utils.cuda import clear_cuda
 from ..models import AutoencoderKL, UNet2DConditional
-from ..layers.blocks.attention import ChunkType
+from ..layers.blocks.attention.compute import ChunkType
+from ..layers.base.types import Device
+from ..layers.base.base import Base
 
 
-class Setup:
-    low_ram: bool
-
-    device: torch.device
-    dtype: torch.dtype
+class Setup(Base):
+    use_low_ram: bool
 
     vae: AutoencoderKL
     unet: UNet2DConditional
 
-    def set_low_ram(self, low_ram: bool = True) -> Self:
+    def low_ram(self, use: bool = True) -> Self:
         """Split context into two passes to save memory."""
 
-        self.low_ram = low_ram
+        self.use_low_ram = use
 
         return self
 
-    def to(self, device: Literal["cpu", "cuda"] | torch.device) -> Self:
-        """Send unet and auto-encoder to device."""
+    def to(self, *, device: Optional[Device] = None, dtype: Optional[torch.dtype] = None) -> Self:
+        if device is not None:
+            self.device = device
+        if dtype is not None:
+            self.dtype = dtype
 
-        self.device = device = torch.device(device)
-
-        self.unet.to(device=self.device, non_blocking=True)
-        self.vae.to(device=self.device, non_blocking=True)
+        self.unet.to(device=self.device, dtype=dtype)
+        self.vae.to(device=self.device, dtype=dtype)
 
         return self
 
@@ -41,41 +41,31 @@ class Setup:
 
         clear_cuda()
 
-        return self.to("cuda")
+        return self.to(device="cuda")
 
     def cpu(self) -> Self:
         """Send unet and auto-encoder to cpu."""
 
-        return self.to("cpu")
+        return self.to(device="cpu")
 
     def half(self) -> Self:
         """Use half-precision for unet and auto-encoder."""
 
-        self.unet.half()
-        self.vae.half()
-
-        self.dtype = torch.float16
-
-        return self
+        return self.to(dtype=torch.float16)
 
     def float(self) -> Self:
         """Use full-precision for unet and auto-encoder."""
 
-        self.unet.float()
-        self.vae.float()
+        return self.to(dtype=torch.float32)
 
-        self.dtype = torch.float32
-
-        return self
-
-    def half_weights(self, use_half_weights: bool = True) -> Self:
+    def half_weights(self, use: bool = True) -> Self:
         """Store the weights in half-precision but
         compute forward pass in full precision.
         Useful for GPUs that gives NaN when used in half-precision.
         """
 
-        self.unet.half_weights(use_half_weights)
-        self.vae.half_weights(use_half_weights)
+        self.unet.half_weights(use)
+        self.vae.half_weights(use)
 
         return self
 
@@ -86,6 +76,7 @@ class Setup:
     ) -> Self:
         """Split cross-attention computation into chunks."""
 
+        # TODO this should not be here...
         # default to batch if not set
         if chunks is not None and chunk_types is None:
             chunk_types = "batch"
@@ -108,11 +99,5 @@ class Setup:
 
         self.unet.tome(r)
         self.vae.tome(r)
-
-        return self
-
-    def scheduler_renorm(self, renorm: bool = False) -> Self:
-        # TODO this should not be here... ugly
-        self.renorm = renorm
 
         return self

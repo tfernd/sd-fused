@@ -13,6 +13,7 @@ from torch import Tensor
 
 from einops import rearrange
 
+from ...layers.base.types import Device
 from .open_image import open_image
 from .types import ResizeModes, ImageType
 
@@ -22,7 +23,7 @@ def image2tensor(
     height: Optional[int] = None,
     width: Optional[int] = None,
     mode: Optional[ResizeModes] = None,
-    device: Optional[torch.device] = None,
+    device: Optional[Device] = None,
     rescale: Optional[float] = None,
 ) -> Tensor:
     """Open an image/url as pytorch batched-Tensor (B=1 C H W)."""

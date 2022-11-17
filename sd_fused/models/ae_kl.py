@@ -1,36 +1,24 @@
 from __future__ import annotations
-from typing import Optional
 from typing_extensions import Self
 
 from pathlib import Path
 import json
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
-from ..utils.tensors import normalize, denormalize
-from ..layers.base import (
-    Conv2d,
-    HalfWeightsModel,
-    SplitAttentionModel,
-    FlashAttentionModel,
-    ToMe,
-)
-from ..layers.distribution import DiagonalGaussianDistribution
+from ..layers.base import Module
+from ..layers.basic import Conv2d
 from ..layers.auto_encoder import Encoder, Decoder
+from ..layers.distribution import DiagonalGaussianDistribution
+from ..utils.tensors import normalize, denormalize
 from .config import VaeConfig
 from .convert import diffusers2fused_vae
 from .convert.states import debug_state_replacements
+from .modifiers import HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel
 
 
-class AutoencoderKL(
-    HalfWeightsModel,
-    SplitAttentionModel,
-    FlashAttentionModel,
-    ToMe,
-    nn.Module,
-):
+class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel, Module):
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
         """Creates a model from a  (diffusers) config file."""
@@ -92,14 +80,10 @@ class AutoencoderKL(
         self.quant_conv = Conv2d(2 * latent_channels)
         self.post_quant_conv = Conv2d(latent_channels)
 
-    def encode(
-        self,
-        x: Tensor,
-        dtype: Optional[torch.dtype] = None,
-    ) -> DiagonalGaussianDistribution:
+    def encode(self, x: Tensor) -> DiagonalGaussianDistribution:
         """Encode an byte-Tensor into a posterior distribution."""
 
-        x = normalize(x, dtype)
+        x = normalize(x, self.dtype)
         x = self.encoder(x)
 
         moments = self.quant_conv(x)
@@ -117,6 +101,9 @@ class AutoencoderKL(
 
         return out
 
+    def __call__(self):
+        raise ValueError("This function is not callable")
+
     @classmethod
     def from_diffusers(cls, path: str | Path) -> Self:
         """Load Stable-Diffusion from diffusers checkpoint folder."""
@@ -128,7 +115,7 @@ class AutoencoderKL(
         old_state = torch.load(state_path, map_location="cpu")
         replaced_state = diffusers2fused_vae(old_state)
 
-        # debug_state_replacements(model.state_dict(), replaced_state)
+        debug_state_replacements(model.state_dict(), replaced_state)
 
         model.load_state_dict(replaced_state)
 

@@ -1,14 +1,14 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
+from ....base import Module, ModuleList
 from ...transformer import SpatialTransformer
 from ..resnet import ResnetBlock2D
 
 
-class UNetMidBlock2DCrossAttention(nn.Module):
+class UNetMidBlock2DCrossAttention(Module):
     def __init__(
         self,
         *,
@@ -30,8 +30,8 @@ class UNetMidBlock2DCrossAttention(nn.Module):
 
         resnet_groups = resnet_groups or min(in_channels // 4, 32)
 
-        self.attentions = nn.ModuleList()
-        self.resnets = nn.ModuleList()
+        self.attentions = ModuleList()
+        self.resnets = ModuleList()
         for i in range(num_layers + 1):
             if i > 0:
                 self.attentions.append(
@@ -61,7 +61,7 @@ class UNetMidBlock2DCrossAttention(nn.Module):
         *,
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
         first_resnet, *rest_resnets = self.resnets
 
@@ -71,7 +71,7 @@ class UNetMidBlock2DCrossAttention(nn.Module):
             assert isinstance(attn, SpatialTransformer)
             assert isinstance(resnet, ResnetBlock2D)
 
-            x = attn(x, context=context, context_weights=context_weights)
+            x = attn(x, context=context, weights=weights)
             x = resnet(x, temb=temb)
 
         return x

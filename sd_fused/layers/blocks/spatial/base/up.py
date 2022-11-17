@@ -5,11 +5,12 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from ....base import Module, ModuleList
 from ..resampling import Upsample2D
 from ..resnet import ResnetBlock2D
 
 
-class UpBlock2D(nn.Module):
+class UpBlock2D(Module):
     def __init__(
         self,
         *,
@@ -31,7 +32,7 @@ class UpBlock2D(nn.Module):
         self.resnet_groups = resnet_groups
         self.add_upsample = add_upsample
 
-        self.resnets = nn.ModuleList()
+        self.resnets = ModuleList()
         for i in range(num_layers):
             if i == num_layers - 1:
                 res_skip_channels = in_channels

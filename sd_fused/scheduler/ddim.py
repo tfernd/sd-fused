@@ -8,6 +8,7 @@ from torch import Tensor
 
 from einops import rearrange
 
+from ..layers.base.types import Device
 from ..utils.tensors import to_tensor, generate_noise
 from .scheduler import Scheduler
 
@@ -35,17 +36,15 @@ class DDIMScheduler(Scheduler):
         return dict(
             name=self.__class__.__qualname__,
             steps=self.steps,
-            renorm=self.renorm,
             skip_step=self.skip_step,
         )
 
     def __init__(
         self,
         steps: int,
-        device: Optional[torch.device] = None,
+        device: Optional[Device] = None,
         dtype: torch.dtype = torch.float32,
         seed: Optional[list[int]] = None,
-        renorm: bool = True,
     ) -> None:
         assert steps <= TRAINED_STEPS
 
@@ -53,8 +52,6 @@ class DDIMScheduler(Scheduler):
         self.device = device
         self.dtype = dtype
         self.seed = seed
-
-        self.renorm = renorm
 
         # scheduler betas and alphas
         β_begin = math.pow(BETA_BEGIN, 1 / POWER)
@@ -90,7 +87,7 @@ class DDIMScheduler(Scheduler):
         pred_noise: Tensor,
         latents: Tensor,
         i: int,
-        eta: float | Tensor = 0,
+        eta: Optional[float | Tensor] = None,
     ) -> Tensor:
         eta = to_tensor(eta, device=self.device, dtype=self.dtype, add_spatial=True)
 
@@ -115,10 +112,6 @@ class DDIMScheduler(Scheduler):
 
         # full eq (12)
         latents = pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
-
-        if self.renorm:
-            latents -= latents.mean(dim=(1, 2, 3), keepdim=True)
-            latents /= latents.std(dim=(1, 2, 3), keepdim=True)
 
         return latents
 

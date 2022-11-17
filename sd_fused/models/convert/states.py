@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+
+import torch.nn as nn
 from torch import Tensor
 
 
@@ -22,7 +24,7 @@ def replace_state(
 
 
 def debug_state_replacements(
-    state: dict[str, Tensor],
+    state: dict[str, Tensor] | dict[str, nn.Parameter],
     replaced_state: dict[str, Tensor],
 ) -> None:
     good_keys = set(state.keys())

@@ -6,11 +6,13 @@ import random
 import torch
 from torch import Tensor
 
+from ...layers.base.types import Device
+
 
 def generate_noise(
     shape: tuple[int, ...],
     seeds: list[int],
-    device: Optional[torch.device] = None,
+    device: Optional[Device] = None,
     dtype: Optional[torch.dtype] = None,
 ) -> Tensor:
     """Generate random noise with individual seeds per batch."""

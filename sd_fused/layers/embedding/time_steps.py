@@ -3,11 +3,12 @@ from __future__ import annotations
 import math
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
+from ..base import Module
 
-class Timesteps(nn.Module):
+
+class Timesteps(Module):
     freq: Tensor
     amplitude: Tensor
     phase: Tensor
@@ -51,12 +52,18 @@ class Timesteps(nn.Module):
             phase = reverse(phase, half_dim)
             amplitude = reverse(amplitude, half_dim)
 
-        self.register_buffer("freq", freq, persistent=False)
-        self.register_buffer("amplitude", amplitude, persistent=False)
-        self.register_buffer("phase", phase, persistent=False)
+        # TODO create nn.Buffer
+        self.freq = freq
+        self.phase = phase
+        self.amplitude = amplitude
 
     def __call__(self, x: Tensor) -> Tensor:
         x = x[..., None]
+
+        kwargs = dict(device=self.device, dtype=self.dtype, non_blocking=True)
+        self.freq = self.freq.to(**kwargs)
+        self.phase = self.phase.to(**kwargs)
+        self.amplitude = self.amplitude.to(**kwargs)
 
         return self.amplitude * torch.sin(x * self.freq + self.phase)
 

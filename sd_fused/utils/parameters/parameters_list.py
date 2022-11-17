@@ -6,8 +6,8 @@ from functools import lru_cache
 import torch
 from torch import Tensor
 
+from ...layers.base.types import Device
 from ..diverse import separate, single
-
 from .parameters import Parameters
 
 
@@ -50,21 +50,14 @@ class ParametersList:
         return sub_seeds
 
     @property
-    def interpolations(self) -> Optional[Tensor]:
-        interpolations = [p.interpolation for p in self.parameters]
-        interpolations = separate(interpolations)
+    def seeds_interpolation(self) -> Optional[Tensor]:
+        seed_interpolations = [p.seed_interpolation for p in self.parameters]
+        seed_interpolations = separate(seed_interpolations)
 
-        if interpolations is None:
+        if seed_interpolations is None:
             return None
 
-        return torch.tensor(interpolations, device=self.device, dtype=self.dtype)
-
-    # @property
-    # def size(self) -> tuple[int, int]:
-    #     height = set(p.height for p in self.parameters)
-    #     width = set(p.width for p in self.parameters)
-
-    #     return single(height), single(width)
+        return torch.tensor(seed_interpolations, device=self.device, dtype=self.dtype)
 
     @property
     def height(self) -> int:
@@ -91,7 +84,7 @@ class ParametersList:
         return single(strength)
 
     @property
-    def device(self) -> Optional[torch.device]:
+    def device(self) -> Optional[Device]:
         devices = set(p.device for p in self.parameters)
 
         return single(devices)
@@ -103,15 +96,22 @@ class ParametersList:
         return single(dtypes)
 
     @property
-    def scales(self) -> Tensor:
+    def scales(self) -> Optional[Tensor]:
         scales = [p.scale for p in self.parameters]
-        # ! could be none in the future
+        scales = separate(scales)
+
+        if scales is None:
+            return None
 
         return torch.tensor(scales, device=self.device, dtype=self.dtype)
 
     @property
-    def etas(self) -> Tensor:
+    def etas(self) -> Optional[Tensor]:
         etas = [p.eta for p in self.parameters]
+        etas = separate(etas)
+
+        if etas is None:
+            return None
 
         return torch.tensor(etas, device=self.device, dtype=self.dtype)
 

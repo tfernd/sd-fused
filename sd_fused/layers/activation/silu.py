@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import torch.nn as nn
 from torch import Tensor
 
+from ..base import Module
 
-class SiLU(nn.Module):
-    """SiLU activation function (sigmoid(x)*x)."""
 
+class SiLU(Module):
     def __call__(self, x: Tensor) -> Tensor:
         return x.sigmoid().mul_(x)

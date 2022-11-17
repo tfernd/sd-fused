@@ -1,18 +1,16 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
-from einops.layers.torch import Rearrange
-from einops import rearrange
-
-from ...base import Conv2d
-from ..simple import GroupNormConv2d
+from ...external import Rearrange
+from ...base import Module, ModuleList
+from ...basic import Conv2d
+from ..basic import GroupNormConv2d
 from .basic_transformer import BasicTransformer
 
 
-class SpatialTransformer(nn.Module):
+class SpatialTransformer(Module):
     def __init__(
         self,
         *,
@@ -37,7 +35,7 @@ class SpatialTransformer(nn.Module):
         self.proj_in = GroupNormConv2d(num_groups, in_channels, inner_dim)
         self.proj_out = Conv2d(inner_dim, in_channels)
 
-        self.transformer_blocks = nn.ModuleList()
+        self.transformer_blocks = ModuleList()
         for _ in range(depth):
             self.transformer_blocks.append(
                 BasicTransformer(
@@ -49,13 +47,14 @@ class SpatialTransformer(nn.Module):
             )
 
         self.channel_last_and_spatial_join = Rearrange("B C H W -> B (H W) C")
+        self.spatial_sparate_and_channel_first = Rearrange("B (H W) C -> B C H W")
 
     def __call__(
         self,
         x: Tensor,
         *,
         context: Optional[Tensor] = None,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
         B, C, H, W = x.shape
 
@@ -67,7 +66,7 @@ class SpatialTransformer(nn.Module):
         for block in self.transformer_blocks:
             assert isinstance(block, BasicTransformer)
 
-            x = block(x, context=context, context_weights=context_weights)
-        x = rearrange(x, "B (H W) C -> B C H W", H=H, W=W)
+            x = block(x, context=context, weights=weights)
+        x = self.spatial_sparate_and_channel_first(x, H=H, W=W)
 
         return xin + self.proj_out(x)

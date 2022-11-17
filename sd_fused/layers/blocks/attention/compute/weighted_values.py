@@ -7,7 +7,7 @@ from einops import repeat
 
 
 def weighted_values(x: Tensor, weights: Optional[Tensor] = None) -> Tensor:
-    """Modify the `values` by a given token-`weight`."""
+    "Modify the values to give emphasis to some tokens."
 
     if weights is None:
         return x

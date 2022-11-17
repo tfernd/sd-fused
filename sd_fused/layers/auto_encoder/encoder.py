@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import torch.nn as nn
 from torch import Tensor
 
-from ..base import Conv2d
-from ..blocks.simple import GroupNormSiLUConv2d
+from ..base import Module, ModuleList
+from ..basic import Conv2d
+from ..blocks.basic import GroupNormSiLUConv2d
 from ..blocks.spatial import DownEncoderBlock2D, UNetMidBlock2DSelfAttention
 
 
-class Encoder(nn.Module):
+class Encoder(Module):
     def __init__(
         self,
         *,
@@ -34,7 +34,7 @@ class Encoder(nn.Module):
 
         # down
         output_channel = block_out_channels[0]
-        self.down_blocks = nn.ModuleList()
+        self.down_blocks = ModuleList()
         for i in range(num_blocks):
             is_final_block = i == num_blocks - 1
 

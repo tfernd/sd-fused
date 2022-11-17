@@ -2,9 +2,9 @@ from __future__ import annotations
 from typing import Optional
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
-from .....utils.tensors import softmax
 from .scale_qk import scale_qk
 
 
@@ -30,7 +30,7 @@ def batch_chunked_attention(
         score = q[s] @ kT[s]
         if bias is not None:
             score += bias[s]
-        attn = softmax(score, dim=2)
+        attn = F.softmax(score, dim=2, dtype=q.dtype)
         del score
 
         out[s] = attn @ v[s]
@@ -63,7 +63,7 @@ def sequence_chunked_attention(
         score = q[:, s] @ kT
         if bias is not None:
             score += bias[:, s]  # ?
-        attn = softmax(score, dim=-1)
+        attn = F.softmax(score, dim=-1, dtype=q.dtype)
         del score
 
         out[:, s] = attn @ v

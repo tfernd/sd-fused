@@ -17,9 +17,7 @@ def auto_chunk_size(
     dtype: torch.dtype,
     chunk_type: ChunkType,
 ) -> Optional[int]:
-    """Determine the maximum chunk size according
-    to the available free memory.
-    """
+    """Determine the maximum chunk size according to the available free memory."""
 
     assert dtype in (torch.float32, torch.float16)
 

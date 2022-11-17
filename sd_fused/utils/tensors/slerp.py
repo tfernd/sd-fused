@@ -4,6 +4,7 @@ import torch
 from torch import Tensor
 
 
+# TODO DEBUG
 def slerp(a: Tensor, b: Tensor, t: Tensor) -> Tensor:
     "Spherical linear interpolation."
 

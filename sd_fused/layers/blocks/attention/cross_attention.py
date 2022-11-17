@@ -1,22 +1,15 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
-from einops.layers.torch import Rearrange
+from ...external import Rearrange
+from ...base import Module
+from ...basic import LayerNorm, Linear
+from .base_attention import BaseAttention
 
-from ....utils.typing import Literal
-from ...base import Linear, LayerNorm
-from .fn import attention, ChunkType
 
-
-class CrossAttention(nn.Module):
-    attention_chunks: Optional[int | Literal["auto"]] = None
-    chunk_type: Optional[ChunkType] = None
-    use_flash_attention: bool = False
-    tome_r: Optional[int | float] = None
-
+class CrossAttention(BaseAttention, Module):
     def __init__(
         self,
         *,
@@ -52,7 +45,7 @@ class CrossAttention(nn.Module):
         x: Tensor,
         *,
         context: Optional[Tensor] = None,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
 
         xin = x
@@ -64,16 +57,7 @@ class CrossAttention(nn.Module):
         k = self.heads_to_batch(self.to_k(context))
         v = self.heads_to_batch(self.to_v(context))
 
-        x = attention(
-            q,
-            k,
-            v,
-            chunks=self.attention_chunks,
-            chunk_type=self.chunk_type,
-            weights=context_weights,
-            use_flash_attention=self.use_flash_attention,
-            tome_r=self.tome_r,
-        )
+        x = self.attention(q, k, v, weights)
         del q, k, v
         x = self.heads_to_channel(x)
 

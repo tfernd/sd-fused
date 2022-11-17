@@ -3,12 +3,7 @@ from typing import Type
 
 from dataclasses import dataclass
 
-from ..layers.blocks.spatial import (
-    DownBlock2D,
-    UpBlock2D,
-    CrossAttentionDownBlock2D,
-    CrossAttentionUpBlock2D,
-)
+from ..layers.blocks.spatial import DownBlock2D, UpBlock2D, CrossAttentionDownBlock2D, CrossAttentionUpBlock2D
 
 
 @dataclass

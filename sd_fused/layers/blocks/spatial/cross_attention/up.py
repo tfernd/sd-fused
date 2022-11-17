@@ -5,12 +5,13 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from ....base import Module, ModuleList
 from ...transformer import SpatialTransformer
 from ..resampling import Upsample2D
 from ..resnet import ResnetBlock2D
 
 
-class CrossAttentionUpBlock2D(nn.Module):
+class CrossAttentionUpBlock2D(Module):
     def __init__(
         self,
         *,
@@ -36,8 +37,8 @@ class CrossAttentionUpBlock2D(nn.Module):
         self.cross_attention_dim = cross_attention_dim
         self.add_upsample = add_upsample
 
-        self.resnets = nn.ModuleList()
-        self.attentions = nn.ModuleList()
+        self.resnets = ModuleList()
+        self.attentions = ModuleList()
         for i in range(num_layers):
             if i == num_layers - 1:
                 res_skip_channels = in_channels
@@ -82,7 +83,7 @@ class CrossAttentionUpBlock2D(nn.Module):
         states: list[Tensor],
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
         assert len(states) == self.num_layers
 
@@ -92,7 +93,7 @@ class CrossAttentionUpBlock2D(nn.Module):
 
             x = torch.cat([x, state], dim=1)
             x = resnet(x, temb=temb)
-            x = attn(x, context=context, context_weights=context_weights)
+            x = attn(x, context=context, weights=weights)
 
         x = self.upsampler(x)
 

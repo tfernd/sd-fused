@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Optional
 
+import torch.nn.functional as F
 from torch import Tensor
 
-from .....utils.tensors import softmax
 from .scale_qk import scale_qk
 
 
@@ -19,7 +19,7 @@ def standard_attention(
     score = q @ k.transpose(1, 2)
     if bias is not None:
         score += bias
-    attn = softmax(score, dim=2)
+    attn = F.softmax(score, dim=2, dtype=q.dtype)
     del score
 
     return attn @ v

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import torch.nn as nn
-from torch import Tensor
-
+from ..base import Sequential
+from ..basic import Linear, Identity
 from ..activation import SiLU
-from ..base import Linear
 
 
-class TimestepEmbedding(nn.Sequential):
+class TimestepEmbedding(Sequential):
     def __init__(
         self,
         *,
@@ -22,11 +20,8 @@ class TimestepEmbedding(nn.Sequential):
 
         layers = (
             Linear(channel, time_embed_dim),
-            SiLU() if use_silu else nn.Identity(),
+            SiLU() if use_silu else Identity(),
             Linear(time_embed_dim, time_embed_dim),
         )
 
         super().__init__(*layers)
-
-    def __call__(self, x: Tensor) -> Tensor:
-        return super().forward(x)

@@ -1,17 +1,16 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
-from einops.layers.torch import Rearrange
-
+from ...external import Rearrange
+from ...base import Module, Sequential
 from ...activation import SiLU
-from ...base import Conv2d, Linear
-from ..simple import GroupNormSiLUConv2d
+from ...basic import Conv2d, Linear, Identity
+from ..basic import GroupNormSiLUConv2d
 
 
-class ResnetBlock2D(nn.Module):
+class ResnetBlock2D(Module):
     def __init__(
         self,
         *,
@@ -35,7 +34,7 @@ class ResnetBlock2D(nn.Module):
         if in_channels != out_channels:
             self.conv_shortcut = Conv2d(in_channels, out_channels)
         else:
-            self.conv_shortcut = nn.Identity()
+            self.conv_shortcut = Identity()
 
         self.pre_process = GroupNormSiLUConv2d(num_groups, in_channels, out_channels, kernel_size=3, padding=1)
 
@@ -48,10 +47,10 @@ class ResnetBlock2D(nn.Module):
         )
 
         if temb_channels is not None:
-            self.time_emb_proj = nn.Sequential(
+            self.time_emb_proj = Sequential(
                 SiLU(),
                 Linear(temb_channels, out_channels),
-                Rearrange("b c -> b c 1 1"),
+                Rearrange("b c -> b c 1 1"),  # TODO implement
             )
         else:
             self.time_emb_proj = None

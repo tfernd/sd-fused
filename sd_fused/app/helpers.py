@@ -20,7 +20,7 @@ MAGIC = 0.18215
 
 
 class Helpers:
-    version: str
+    # version: str
     model_name: str
 
     save_dir: Path
@@ -42,7 +42,7 @@ class Helpers:
     def is_true_inpainting(self) -> bool:
         """RunwayMl true inpainting model."""
 
-        return self.unet.in_channels != self.latent_channels
+        return self.unet.in_channels == 4 and self.latent_channels == 9
 
     def save_image(
         self,
@@ -66,13 +66,10 @@ class Helpers:
         return path
 
     @torch.no_grad()
-    def encode(
-        self,
-        data: Tensor,
-    ) -> Tensor:
+    def encode(self, data: Tensor) -> Tensor:
         """Encodes (stochastically) a RGB image into a latent vector."""
 
-        return self.vae.encode(data.to(self.device), self.dtype).sample().mul(MAGIC)
+        return self.vae.encode(data).sample().mul(MAGIC)
 
     @torch.no_grad()
     def decode(self, latents: Tensor) -> Tensor:

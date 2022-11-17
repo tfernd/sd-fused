@@ -6,19 +6,12 @@ from pathlib import Path
 import json
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
-from ..utils.tensors import to_tensor
+from ..layers.base import Module, ModuleList
+from ..layers.basic import Conv2d
 from ..layers.embedding import Timesteps, TimestepEmbedding
-from ..layers.base import (
-    Conv2d,
-    HalfWeightsModel,
-    SplitAttentionModel,
-    FlashAttentionModel,
-    ToMe,
-)
-from ..layers.blocks.simple import GroupNormSiLUConv2d
+from ..layers.blocks.basic import GroupNormSiLUConv2d
 from ..layers.blocks.spatial import (
     UNetMidBlock2DCrossAttention,
     DownBlock2D,
@@ -26,18 +19,14 @@ from ..layers.blocks.spatial import (
     CrossAttentionDownBlock2D,
     CrossAttentionUpBlock2D,
 )
+from ..utils.tensors import to_tensor
+from .modifiers import HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel
 from .config import UnetConfig
 from .convert import diffusers2fused_unet
 from .convert.states import debug_state_replacements
 
 
-class UNet2DConditional(
-    HalfWeightsModel,
-    SplitAttentionModel,
-    FlashAttentionModel,
-    ToMe,
-    nn.Module,
-):
+class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel, Module):
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
         """Creates a model from a (diffusers) config file."""
@@ -121,7 +110,7 @@ class UNet2DConditional(
 
         # down
         output_channel = block_out_channels[0]
-        self.down_blocks = nn.ModuleList()
+        self.down_blocks = ModuleList()
         for i, block in enumerate(down_blocks):
             input_channel = output_channel
             output_channel = block_out_channels[i]
@@ -167,7 +156,7 @@ class UNet2DConditional(
         # up
         reversed_block_out_channels = tuple(reversed(block_out_channels))
         output_channel = reversed_block_out_channels[0]
-        self.up_blocks = nn.ModuleList()
+        self.up_blocks = ModuleList()
         for i, block in enumerate(up_blocks):
             prev_output_channel = output_channel
             output_channel = reversed_block_out_channels[i]
@@ -217,7 +206,7 @@ class UNet2DConditional(
         x: Tensor,
         timestep: int | Tensor,
         context: Tensor,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> Tensor:
         B, C, H, W = x.shape
 
@@ -238,7 +227,7 @@ class UNet2DConditional(
         all_states: list[Tensor] = [x]
         for block in self.down_blocks:
             if isinstance(block, CrossAttentionDownBlock2D):
-                x, states = block(x, temb=temb, context=context, context_weights=context_weights)
+                x, states = block(x, temb=temb, context=context, weights=weights)
             elif isinstance(block, DownBlock2D):
                 x, states = block(x, temb=temb)
             else:
@@ -248,7 +237,7 @@ class UNet2DConditional(
             del states
 
         # 4. mid
-        x = self.mid_block(x, temb=temb, context=context, context_weights=context_weights)
+        x = self.mid_block(x, temb=temb, context=context, weights=weights)
 
         # 5. up
         for block in self.up_blocks:
@@ -258,7 +247,7 @@ class UNet2DConditional(
             states = list(all_states.pop() for _ in range(block.num_layers))
 
             if isinstance(block, CrossAttentionUpBlock2D):
-                x = block(x, states=states, temb=temb, context=context, context_weights=context_weights)
+                x = block(x, states=states, temb=temb, context=context, weights=weights)
             elif isinstance(block, UpBlock2D):
                 x = block(x, states=states, temb=temb)
 
@@ -281,7 +270,7 @@ class UNet2DConditional(
         old_state = torch.load(state_path, map_location="cpu")
         replaced_state = diffusers2fused_unet(old_state)
 
-        # debug_state_replacements(model.state_dict(), replaced_state)
+        debug_state_replacements(model.state_dict(), replaced_state)
 
         model.load_state_dict(replaced_state)
 

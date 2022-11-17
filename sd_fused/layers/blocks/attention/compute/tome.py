@@ -5,10 +5,7 @@ import torch
 from torch import Tensor
 import math
 
-from einops import rearrange
-
-from .....utils.typing import Protocol, Literal
-
+from .....utils.typing import Literal, Protocol
 
 Modes = Literal["sum", "mean"]
 

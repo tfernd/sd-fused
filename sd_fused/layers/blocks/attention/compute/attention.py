@@ -6,10 +6,7 @@ from torch import Tensor
 from .....utils.typing import Literal
 from .auto_chunk_size import auto_chunk_size, ChunkType
 from .standard_attention import standard_attention
-from .chunked_attention import (
-    batch_chunked_attention,
-    sequence_chunked_attention,
-)
+from .chunked_attention import batch_chunked_attention, sequence_chunked_attention
 from .flash_attention import flash_attention
 from .weighted_values import weighted_values
 from .tome import token_average

@@ -6,7 +6,7 @@ from torch import Tensor
 
 
 def scale_qk(q: Tensor, k: Tensor) -> tuple[Tensor, Tensor]:
-    """Scale the qk tensor by the channel-dimension."""
+    "Scale the query and key."
 
     C = q.size(2)
     scale = math.pow(C, -1 / 4)

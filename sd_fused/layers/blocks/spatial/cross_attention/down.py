@@ -4,13 +4,14 @@ from typing import Optional
 import torch.nn as nn
 from torch import Tensor
 
+from ....base import Module, ModuleList
 from ...transformer import SpatialTransformer
 from ..resampling import Downsample2D
 from ..resnet import ResnetBlock2D
 from ..output_states import OutputStates
 
 
-class CrossAttentionDownBlock2D(nn.Module):
+class CrossAttentionDownBlock2D(Module):
     def __init__(
         self,
         *,
@@ -36,8 +37,8 @@ class CrossAttentionDownBlock2D(nn.Module):
         self.downsample_padding = downsample_padding
         self.add_downsample = add_downsample
 
-        self.resnets = nn.ModuleList()
-        self.attentions = nn.ModuleList()
+        self.resnets = ModuleList()
+        self.attentions = ModuleList()
         for i in range(num_layers):
             in_channels = in_channels if i == 0 else out_channels
 
@@ -73,7 +74,7 @@ class CrossAttentionDownBlock2D(nn.Module):
         *,
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
-        context_weights: Optional[Tensor] = None,
+        weights: Optional[Tensor] = None,
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet, attn in zip(self.resnets, self.attentions):
@@ -81,7 +82,7 @@ class CrossAttentionDownBlock2D(nn.Module):
             assert isinstance(attn, SpatialTransformer)
 
             x = resnet(x, temb=temb)
-            x = attn(x, context=context, context_weights=context_weights)
+            x = attn(x, context=context, weights=weights)
 
             states.append(x)
 

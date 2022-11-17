@@ -4,7 +4,7 @@ from torch import Tensor
 
 from ..states import replace_state
 
-
+# ! Tensor/Parameter?
 def diffusers2fused(old_state: dict[str, Tensor]) -> dict[str, Tensor]:
     """Convert a diffusers checkpoint into a sd-fused one for the AutoencoderKL."""
 
