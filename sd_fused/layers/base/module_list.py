@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import Generator, Generic, NoReturn
-from typing_extensions import TypeVar, TypeVarTuple, Unpack
 
 import torch.nn as nn
 
+from ...utils.typing import TypeVar, TypeVarTuple, Unpack
 from .module import Module
+
 
 T = TypeVar("T", bound=Module)
 Ts = TypeVarTuple("Ts")  # ? bound

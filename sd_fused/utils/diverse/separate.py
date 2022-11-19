@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Optional, TypeVar
+from typing import Optional
 
 from torch import Tensor
+
+from ...utils.typing import TypeVar
 
 T = TypeVar("T", Tensor, int, float, str)
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Optional, TypeVar, overload
+from typing import Optional, overload
 
 import torch
 
+from ...utils.typing import TypeVar
 from ...layers.base.types import Device
 
 T = TypeVar("T", int, float, Device, torch.dtype)

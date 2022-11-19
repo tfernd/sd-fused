@@ -24,7 +24,7 @@ def auto_chunk_size(
     if chunks != "auto":
         return chunks
 
-    B *= heads # ! ugly but...
+    B *= heads  # ! ugly but...
 
     assert chunk_type is not None
     assert dtype in (torch.float32, torch.float16)
