@@ -13,7 +13,7 @@ def batch_chunked_attention(
     k: Tensor,  # (B, heads, T', C)
     v: Tensor,  # (B, heads, T', C)
     chunks: int,
-    bias: Optional[Tensor] = None,  # ? shape
+    bias: Optional[Tensor] = None,  # (B, heads, T', C)
 ) -> Tensor:
     """Batch-chunked attention computation."""
 
@@ -49,7 +49,7 @@ def sequence_chunked_attention(
     k: Tensor,  # (B, heads, T', C)
     v: Tensor,  # (B, heads, T', C)
     chunks: int,
-    bias: Optional[Tensor] = None,  # ? shape
+    bias: Optional[Tensor] = None,  # (B, heads, T', C)
 ) -> Tensor:
     """Sequence-chunked attention computation."""
 

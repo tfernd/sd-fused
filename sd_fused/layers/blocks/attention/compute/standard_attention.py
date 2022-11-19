@@ -11,7 +11,7 @@ def standard_attention(
     q: Tensor,  # (B, heads, T, C)
     k: Tensor,  # (B, heads, T', C)
     v: Tensor,  # (B, heads, T', C)
-    bias: Optional[Tensor] = None,  # ? shape?
+    bias: Optional[Tensor] = None,  # (B, heads, T', C)
 ) -> Tensor:
     """Standard attention computation."""
 

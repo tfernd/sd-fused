@@ -13,3 +13,11 @@ class Rearrange(Module):
 
     def __call__(self, x: Tensor, **axes_length: int) -> Tensor:
         return rearrange(x, self.pattern, **self.axes_length, **axes_length)
+
+    def make_inverse(self) -> Rearrange:
+        left, right = self.pattern.split('->')
+
+        new = Rearrange(f'{right} -> {left}')
+
+        return new
+
