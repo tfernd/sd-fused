@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional
 from typing_extensions import Self
 
-from abc import abstractmethod, ABC
+from abc import ABC
 
 import torch
 import torch.nn as nn
@@ -13,9 +13,9 @@ from .types import Device
 
 
 class Module(Base, ABC):
-    @abstractmethod
-    def __call__(self, *args, **kwargs) -> Tensor:  # ! type!
-        ...
+    # TODO Types?
+    def __call__(self, *args, **kwargs) -> Tensor:
+        raise NotImplementedError
 
     def named_modules(self) -> dict[str, Module]:
         modules: dict[str, Module] = {}
@@ -34,6 +34,7 @@ class Module(Base, ABC):
 
     def state_dict(self) -> dict[str, nn.Parameter]:
         params: dict[str, nn.Parameter] = {}
+
         for key, value in self.__dict__.items():
             # single parameter
             if isinstance(value, nn.Parameter):
@@ -82,6 +83,6 @@ class Module(Base, ABC):
 
         for key, value in self.state_dict().items():
             data = value.data
-            value.data = data.to(device, dtype, non_blocking=True)
+            value.data = data.to(device=device, dtype=dtype, non_blocking=True)
 
         return self

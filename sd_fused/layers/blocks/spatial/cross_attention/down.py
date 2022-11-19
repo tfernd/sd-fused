@@ -37,8 +37,8 @@ class CrossAttentionDownBlock2D(Module):
         self.downsample_padding = downsample_padding
         self.add_downsample = add_downsample
 
-        self.resnets = ModuleList()
-        self.attentions = ModuleList()
+        self.resnets = ModuleList[ResnetBlock2D]()
+        self.attentions = ModuleList[SpatialTransformer]()
         for i in range(num_layers):
             in_channels = in_channels if i == 0 else out_channels
 
@@ -78,9 +78,6 @@ class CrossAttentionDownBlock2D(Module):
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet, attn in zip(self.resnets, self.attentions):
-            assert isinstance(resnet, ResnetBlock2D)
-            assert isinstance(attn, SpatialTransformer)
-
             x = resnet(x, temb=temb)
             x = attn(x, context=context, weights=weights)
 

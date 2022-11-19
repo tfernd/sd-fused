@@ -4,8 +4,8 @@ from typing import Optional
 from ...base import Sequential
 from ...basic import GroupNorm, Conv2d
 
-
-class GroupNormConv2d(Sequential):
+# TODO improve types by using ModuleTuple
+class GroupNormConv2d(Sequential[GroupNorm | Conv2d]):
     def __init__(
         self,
         num_groups: int,

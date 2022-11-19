@@ -50,7 +50,7 @@ class ResnetBlock2D(Module):
             self.time_emb_proj = Sequential(
                 SiLU(),
                 Linear(temb_channels, out_channels),
-                Rearrange("b c -> b c 1 1"),  # TODO implement
+                Rearrange("b c -> b c 1 1"),
             )
         else:
             self.time_emb_proj = None

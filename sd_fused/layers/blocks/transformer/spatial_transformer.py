@@ -35,7 +35,7 @@ class SpatialTransformer(Module):
         self.proj_in = GroupNormConv2d(num_groups, in_channels, inner_dim)
         self.proj_out = Conv2d(inner_dim, in_channels)
 
-        self.transformer_blocks = ModuleList()
+        self.transformer_blocks = ModuleList[BasicTransformer]()
         for _ in range(depth):
             self.transformer_blocks.append(
                 BasicTransformer(
@@ -46,8 +46,8 @@ class SpatialTransformer(Module):
                 )
             )
 
-        self.channel_last_and_spatial_join = Rearrange("B C H W -> B (H W) C")
-        self.spatial_sparate_and_channel_first = Rearrange("B (H W) C -> B C H W")
+        self.channel_last = Rearrange("B C H W -> B H W C")
+        self.channel_first = Rearrange("B H W C -> B C H W")
 
     def __call__(
         self,
@@ -61,12 +61,10 @@ class SpatialTransformer(Module):
         xin = x
 
         x = self.proj_in(x)
-        x = self.channel_last_and_spatial_join(x)
+        x = self.channel_last(x)
 
         for block in self.transformer_blocks:
-            assert isinstance(block, BasicTransformer)
-
             x = block(x, context=context, weights=weights)
-        x = self.spatial_sparate_and_channel_first(x, H=H, W=W)
+        x = self.channel_first(x, H=H, W=W)
 
         return xin + self.proj_out(x)

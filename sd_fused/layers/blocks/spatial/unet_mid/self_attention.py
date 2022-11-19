@@ -29,8 +29,8 @@ class UNetMidBlock2DSelfAttention(Module):
 
         resnet_groups = resnet_groups or min(in_channels // 4, 32)
 
-        self.attentions = ModuleList()
-        self.resnets = ModuleList()
+        self.attentions = ModuleList[SelfAttention]()
+        self.resnets = ModuleList[ResnetBlock2D]()
         for i in range(num_layers + 1):
             if i > 0:
                 self.attentions.append(
@@ -62,9 +62,6 @@ class UNetMidBlock2DSelfAttention(Module):
         x = first_resnet(x, temb=temb)
 
         for attn, resnet in zip(self.attentions, rest_resnets):
-            assert isinstance(attn, SelfAttention)
-            assert isinstance(resnet, ResnetBlock2D)
-
             x = attn(x)
             x = resnet(x, temb=temb)
 

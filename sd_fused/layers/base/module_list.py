@@ -1,27 +1,17 @@
 from __future__ import annotations
-from typing import Generator
-from typing_extensions import Self
+from typing import Generator, Generic, NoReturn
+from typing_extensions import TypeVar, TypeVarTuple, Unpack
 
 import torch.nn as nn
 
 from .module import Module
 
+T = TypeVar("T", bound=Module)
+Ts = TypeVarTuple("Ts")  # ? bound
 
-class ModuleList(Module):
-    def __init__(self, *layers: Module) -> None:  # ! type!
-        self.layers = layers
 
-    def append(self, layer: Module) -> Self:
-        self.layers = (*self.layers, layer)
-
-        return self
-
-    def __call__(self):
-        raise ValueError("ModuleList cannot be called directly")
-
-    def __iter__(self) -> Generator[Module, None, None]:
-        for layer in self.layers:
-            yield layer
+class _ModuleSequence(Module):
+    layers: tuple[Module, ...] | list[Module]
 
     def state_dict(self) -> dict[str, nn.Parameter]:
         params: dict[str, nn.Parameter] = {}
@@ -35,9 +25,36 @@ class ModuleList(Module):
         modules: dict[str, Module] = {}
         for index, layer in enumerate(self.layers):
             for key, value in layer.named_modules().items():
-                if key != "":
-                    modules[f"{index}.{key}"] = value
-                else:
-                    modules[f"{index}"] = value
+                name = str(index) if key == "" else f"{index}.{key}"
+                modules[name] = value
 
         return modules
+
+    def __call__(self) -> NoReturn:
+        raise ValueError(f"{self.__class__.__qualname__} is not callable.")
+
+
+class ModuleList(_ModuleSequence, Generic[T]):
+    layers: list[T]
+
+    def __init__(self, *layers: T) -> None:
+        self.layers = list(layers)
+
+    def append(self, layer: T) -> None:
+        self.layers.append(layer)
+
+    def __iter__(self) -> Generator[T, None, None]:
+        for layer in self.layers:
+            yield layer
+
+
+# ! only for debug
+class ModuleTuple(Module, Generic[Unpack[Ts]]):
+    layers: tuple[Unpack[Ts]]
+
+    def __init__(self, *layers: Unpack[Ts]) -> None:
+        self.layers = layers
+
+    def __iter__(self):  # ? type?
+        for layer in self.layers:
+            yield layer

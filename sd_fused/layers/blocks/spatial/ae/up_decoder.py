@@ -26,7 +26,7 @@ class UpDecoderBlock2D(Module):
         self.resnet_groups = resnet_groups
         self.add_upsample = add_upsample
 
-        self.resnets = ModuleList()
+        self.resnets = ModuleList[ResnetBlock2D]()
         for i in range(num_layers):
             input_channels = in_channels if i == 0 else out_channels
 
@@ -47,8 +47,6 @@ class UpDecoderBlock2D(Module):
 
     def __call__(self, x: Tensor) -> Tensor:
         for resnet in self.resnets:
-            assert isinstance(resnet, ResnetBlock2D)
-
             x = resnet(x)
 
         x = self.upsampler(x)

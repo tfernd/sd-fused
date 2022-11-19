@@ -13,9 +13,9 @@ from .tome import token_average
 
 
 def attention(
-    q: Tensor,  # (B, T, C)
-    k: Tensor,  # (B, T', C)
-    v: Tensor,  # (B, T', C)
+    q: Tensor,  # (B-head, H, W, C)
+    k: Tensor,  # (B-head, *[H,W] | T', C)
+    v: Tensor,  # (B-head, *[H,W] | T', C)
     *,
     weights: Optional[Tensor] = None,  # (B, T')
     chunks: Optional[int | Literal["auto"]] = None,
@@ -24,6 +24,11 @@ def attention(
     tome_r: Optional[int | float] = None,
 ) -> Tensor:
     """General attention computation."""
+
+    is_self_attention = q.shape == k.shape
+    print(is_self_attention)
+
+    return q
 
     assert q.ndim == k.ndim == v.ndim == 3
     assert q.shape[0] == k.shape[0] == v.shape[0]

@@ -110,7 +110,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
 
         # down
         output_channel = block_out_channels[0]
-        self.down_blocks = ModuleList()
+        self.down_blocks = ModuleList[CrossAttentionDownBlock2D | DownBlock2D]()
         for i, block in enumerate(down_blocks):
             input_channel = output_channel
             output_channel = block_out_channels[i]
@@ -156,7 +156,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
         # up
         reversed_block_out_channels = tuple(reversed(block_out_channels))
         output_channel = reversed_block_out_channels[0]
-        self.up_blocks = ModuleList()
+        self.up_blocks = ModuleList[CrossAttentionUpBlock2D | UpBlock2D]()
         for i, block in enumerate(up_blocks):
             prev_output_channel = output_channel
             output_channel = reversed_block_out_channels[i]
@@ -250,6 +250,8 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
                 x = block(x, states=states, temb=temb, context=context, weights=weights)
             elif isinstance(block, UpBlock2D):
                 x = block(x, states=states, temb=temb)
+            else:
+                raise ValueError
 
             del states
         del all_states

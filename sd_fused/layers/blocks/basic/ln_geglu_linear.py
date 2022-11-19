@@ -8,7 +8,7 @@ from ...basic import LayerNorm, Linear
 from ...activation import GEGLU
 
 
-class LayerNormGEGLULinear(Sequential):
+class LayerNormGEGLULinear(Sequential[LayerNorm | GEGLU | Linear]):
     def __init__(self, dim: int, *, expand: float) -> None:
 
         self.dim = dim

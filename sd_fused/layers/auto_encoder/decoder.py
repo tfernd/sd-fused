@@ -42,7 +42,7 @@ class Decoder(Module):
         # up
         reversed_block_out_channels = list(reversed(block_out_channels))
         output_channel = reversed_block_out_channels[0]
-        self.up_blocks = ModuleList()
+        self.up_blocks = ModuleList[UpDecoderBlock2D]()
         for i in range(num_blocks):
             is_final_block = i == num_blocks - 1
 
@@ -74,8 +74,6 @@ class Decoder(Module):
         x = self.mid_block(x)
 
         for up_block in self.up_blocks:
-            assert isinstance(up_block, UpDecoderBlock2D)
-
             x = up_block(x)
 
         return self.post_process(x)

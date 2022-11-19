@@ -37,8 +37,8 @@ class CrossAttentionUpBlock2D(Module):
         self.cross_attention_dim = cross_attention_dim
         self.add_upsample = add_upsample
 
-        self.resnets = ModuleList()
-        self.attentions = ModuleList()
+        self.resnets = ModuleList[ResnetBlock2D]()
+        self.attentions = ModuleList[SpatialTransformer]()
         for i in range(num_layers):
             if i == num_layers - 1:
                 res_skip_channels = in_channels
@@ -88,9 +88,6 @@ class CrossAttentionUpBlock2D(Module):
         assert len(states) == self.num_layers
 
         for resnet, attn, state in zip(self.resnets, self.attentions, states):
-            assert isinstance(resnet, ResnetBlock2D)
-            assert isinstance(attn, SpatialTransformer)
-
             x = torch.cat([x, state], dim=1)
             x = resnet(x, temb=temb)
             x = attn(x, context=context, weights=weights)

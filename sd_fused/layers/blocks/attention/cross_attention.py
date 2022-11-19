@@ -20,6 +20,8 @@ class CrossAttention(BaseAttention, Module):
     ) -> None:
         super().__init__()
 
+        is_cross_attention = context_features is not None
+
         context_features = context_features or query_features
         inner_dim = head_features * num_heads
 
@@ -36,9 +38,12 @@ class CrossAttention(BaseAttention, Module):
 
         self.to_out = Linear(inner_dim, query_features)
 
-        self.heads_to_batch = Rearrange("B T (heads C) -> (B heads) T C", heads=num_heads)
+        self.heads_to_batch = Rearrange("B H W (heads C) -> B heads H W C", heads=num_heads)
+        self.heads_to_batch2 = self.heads_to_batch
+        if is_cross_attention:
+            self.heads_to_batch2 = Rearrange("B T (heads C) -> B heads T C", heads=num_heads)
 
-        self.heads_to_channel = Rearrange("(B heads) T C -> B T (heads C)", heads=num_heads)
+        self.heads_to_channel = Rearrange("B heads H W C -> B H W (heads C)")
 
     def __call__(
         self,
@@ -54,8 +59,8 @@ class CrossAttention(BaseAttention, Module):
 
         # key, query, value projections
         q = self.heads_to_batch(self.to_q(x))
-        k = self.heads_to_batch(self.to_k(context))
-        v = self.heads_to_batch(self.to_v(context))
+        k = self.heads_to_batch2(self.to_k(context))
+        v = self.heads_to_batch2(self.to_v(context))
 
         x = self.attention(q, k, v, weights)
         del q, k, v

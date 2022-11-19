@@ -6,7 +6,7 @@ from ...basic import GroupNorm, Conv2d
 from ...activation import SiLU
 
 
-class GroupNormSiLUConv2d(Sequential):
+class GroupNormSiLUConv2d(Sequential[GroupNorm | SiLU | Conv2d]):
     def __init__(
         self,
         num_groups: int,

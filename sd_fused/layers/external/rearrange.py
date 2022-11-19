@@ -11,5 +11,5 @@ class Rearrange(Module):
         self.pattern = pattern
         self.axes_length = axes_length
 
-    def __call__(self, x: Tensor, **axes_lngth: int) -> Tensor:
-        return rearrange(x, self.pattern, **self.axes_length, **axes_lngth)
+    def __call__(self, x: Tensor, **axes_length: int) -> Tensor:
+        return rearrange(x, self.pattern, **self.axes_length, **axes_length)
