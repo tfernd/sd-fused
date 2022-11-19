@@ -74,14 +74,25 @@ def merge_weighted_average(
 
 
 def token_average(
-    k: Tensor,
-    v: Tensor,
+    k: Tensor,  # (B, heads, T', C)
+    v: Tensor,  # (B, heads, T', C)
     r: int | float,
 ) -> tuple[Tensor, Tensor, Tensor]:
+    B, heads, Tl, C = k.shape
+
+    # join batch-heads
+    k = k.flatten(0, 1)
+    v = v.flatten(0, 1)
+
     merge = tome(k, r)
 
     k, size = merge_weighted_average(merge, k)
     v, size = merge_weighted_average(merge, v)
     bias = size.log()
+
+    # separate batch-heads
+    k = k.unflatten(0, (B, heads))
+    v = v.unflatten(0, (B, heads))
+    bias = bias.unflatten(0, (B, heads))
 
     return k, v, bias

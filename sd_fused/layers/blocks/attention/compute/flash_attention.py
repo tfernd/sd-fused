@@ -10,12 +10,14 @@ except ImportError:
 
 
 def flash_attention(
-    q: Tensor,  # (B, T, C)
-    k: Tensor,  # (B, T', C)
-    v: Tensor,  # (B, T', C)
+    q: Tensor,  # (B, heads, T, C)
+    k: Tensor,  # (B, heads, T', C)
+    v: Tensor,  # (B, heads, T', C)
     bias: Optional[Tensor] = None,
 ) -> Tensor:
     """xformers flash-attention computation."""
+
+    raise NotImplementedError
 
     assert memory_efficient_attention is not None
 

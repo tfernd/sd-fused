@@ -10,15 +10,23 @@ ChunkType = Literal["batch", "sequence"]
 
 
 def auto_chunk_size(
+    chunks: Optional[int | Literal["auto"]],
     B: int,
+    heads: int,
     T: int,
     Tl: int,
     C: int,
     dtype: torch.dtype,
-    chunk_type: ChunkType,
+    chunk_type: Optional[ChunkType],
 ) -> Optional[int]:
     """Determine the maximum chunk size according to the available free memory."""
 
+    if chunks != "auto":
+        return chunks
+
+    B *= heads # ! ugly but...
+
+    assert chunk_type is not None
     assert dtype in (torch.float32, torch.float16)
 
     num_bytes = 2 if dtype == torch.float16 else 4

@@ -4,6 +4,7 @@ from typing import Optional
 from torch import Tensor
 
 from .....utils.typing import Literal
+from .join_spatial_dim import join_spatial_dim
 from .auto_chunk_size import auto_chunk_size, ChunkType
 from .standard_attention import standard_attention
 from .chunked_attention import batch_chunked_attention, sequence_chunked_attention
@@ -13,9 +14,9 @@ from .tome import token_average
 
 
 def attention(
-    q: Tensor,  # (B-head, H, W, C)
-    k: Tensor,  # (B-head, *[H,W] | T', C)
-    v: Tensor,  # (B-head, *[H,W] | T', C)
+    q: Tensor,  # (B, heads, H, W, C)
+    k: Tensor,  # (B, heads, *[H,W] | T', C)
+    v: Tensor,  # (B, heads, *[H,W] | T', C)
     *,
     weights: Optional[Tensor] = None,  # (B, T')
     chunks: Optional[int | Literal["auto"]] = None,
@@ -25,45 +26,44 @@ def attention(
 ) -> Tensor:
     """General attention computation."""
 
+    # header
     is_self_attention = q.shape == k.shape
-    print(is_self_attention)
-
-    return q
-
-    assert q.ndim == k.ndim == v.ndim == 3
-    assert q.shape[0] == k.shape[0] == v.shape[0]
-    assert q.shape[2] == k.shape[2] == v.shape[2]
-    assert k.shape[1] == v.shape[1]
-
-    B, T, C = q.shape
-    B, Tl, C = k.shape
     dtype = q.dtype
+    B, heads, H, W, C = q.shape
+    T = H * W
 
-    v = weighted_values(v, weights)
+    if weights is not None:
+        assert not is_self_attention
 
-    if T == Tl and tome_r is not None:
+        # k = weighted_values(k, weights) #? worst ?
+        v = weighted_values(v, weights)
+
+    q, k, v = join_spatial_dim(q, k, v)
+    Tl = k.size(2)
+
+    chunks = auto_chunk_size(chunks, B, heads, T, Tl, C, dtype, chunk_type)
+
+    if is_self_attention and tome_r is not None:
         k, v, bias = token_average(k, v, tome_r)
-    bias = None  # ! bias not used yet
-
-    if chunks == "auto":
-        assert chunk_type is not None
-
-        chunks = auto_chunk_size(B, T, Tl, C, dtype, chunk_type)
+    bias = None  # ! not used for now.
 
     if chunks is not None:
         assert not use_flash_attention
-        assert chunk_type is not None
+        assert chunk_type is not None  # ! default?
 
         if chunk_type == "batch":
-            return batch_chunked_attention(q, k, v, chunks, bias)
+            out = batch_chunked_attention(q, k, v, chunks, bias)
         else:
-            return sequence_chunked_attention(q, k, v, chunks, bias)
+            out = sequence_chunked_attention(q, k, v, chunks, bias)
 
-    if use_flash_attention:
-        assert chunks is None
+    elif use_flash_attention:
         assert chunk_type is None
         assert tome_r is None
 
-        return flash_attention(q, k, v, bias)
+        out = flash_attention(q, k, v, bias)
+    else:
+        out = standard_attention(q, k, v, bias)
 
-    return standard_attention(q, k, v, bias)
+    out = out.unflatten(2, (H, W))  # separate-spatial-dim
+
+    return out
