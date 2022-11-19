@@ -15,9 +15,8 @@ class Rearrange(Module):
         return rearrange(x, self.pattern, **self.axes_length, **axes_length)
 
     def make_inverse(self) -> Rearrange:
-        left, right = self.pattern.split('->')
+        left, right = self.pattern.split("->")
 
-        new = Rearrange(f'{right} -> {left}')
+        new = Rearrange(f"{right} -> {left}")
 
         return new
-

@@ -1,11 +1,8 @@
 from __future__ import annotations
-from functools import partial
 from typing import Optional
 
-import torch.nn.functional as F
 from torch import Tensor
 
-from ....external import Rearrange
 from .....utils.typing import Literal
 from .join_spatial_dim import join_spatial_dim
 from .auto_chunk_size import auto_chunk_size, ChunkType
@@ -15,9 +12,6 @@ from .flash_attention import flash_attention
 from .weighted_values import weighted_values
 from .tome import token_average
 
-
-channel_first = Rearrange('B heads H W C -> (B heads) C H W')
-channel_last = channel_first.make_inverse()
 
 def attention(
     q: Tensor,  # (B, heads, H, W, C)
@@ -29,8 +23,6 @@ def attention(
     chunk_type: Optional[ChunkType] = None,
     use_flash_attention: bool = False,
     tome_r: Optional[int | float] = None,
-
-    scale: Optional[float] = 0.99
 ) -> Tensor:
     """General attention computation."""
 
@@ -40,25 +32,10 @@ def attention(
     B, heads, H, W, C = q.shape
     T = H * W
 
-    # ! resize qk
-    scaled = False
-    if is_self_attention and H*W > 128: # ! hard-coded
-        if scale is not None:
-            assert scale < 1
-
-            size = (round(H*scale), round(W*scale))
-            resize = partial(F.interpolate, size=size)
-
-            q = channel_last(resize(channel_first(q)), heads=heads)
-            k = channel_last(resize(channel_first(k)), heads=heads)
-
-            scaled = True
-
     if weights is not None:
         assert not is_self_attention
 
-        # k = weighted_values(k, weights) #? worst ?
-        v = weighted_values(v, weights)
+        v = weighted_values(v, weights) # ?keys is vad?
 
     q, k, v = join_spatial_dim(q, k, v)
     Tl = k.size(2)
@@ -84,7 +61,7 @@ def attention(
 
         out = flash_attention(q, k, v, bias)
     else:
-        out = standard_attention(q, k, v, bias, scaled)
+        out = standard_attention(q, k, v, bias)
 
     out = out.unflatten(2, (H, W))  # separate-spatial-dim
 
