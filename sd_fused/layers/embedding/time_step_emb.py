@@ -1,11 +1,12 @@
 from __future__ import annotations
+from typing import Union
 
 from ..base import Sequential
 from ..basic import Linear, Identity
 from ..activation import SiLU
 
 
-class TimestepEmbedding(Sequential[Linear | SiLU | Identity | Linear]):
+class TimestepEmbedding(Sequential[Union[Linear, SiLU, Identity, Linear]]):
     def __init__(
         self,
         *,
