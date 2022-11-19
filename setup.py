@@ -8,7 +8,7 @@ from sd_fused import StableDiffusion
 packages = list(set(str(p.parent) for p in Path("sd_fused").rglob("*.py")))
 
 with open("./requirements.txt") as handle:
-    requirements = handle.read().split()
+    requirements = [l.strip() for l in handle.read().split()]
 
 
 setup(
