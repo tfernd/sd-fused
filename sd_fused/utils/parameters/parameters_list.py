@@ -71,6 +71,9 @@ class ParametersList:
 
         return single(width)
 
+    def shape(self, channels: int) -> tuple[int, int, int, int]:
+        return (len(self), channels, self.height // 8, self.width // 8)
+
     @property
     def steps(self) -> int:
         steps = set(p.steps for p in self.parameters)

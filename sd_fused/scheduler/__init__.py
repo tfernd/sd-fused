@@ -1,1 +1,1 @@
-from .ddim import DDIMScheduler
+from .ddim import Scheduler, DDIMScheduler

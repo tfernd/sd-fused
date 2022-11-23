@@ -14,17 +14,29 @@ def generate_noise(
     seeds: list[int],
     device: Optional[Device] = None,
     dtype: Optional[torch.dtype] = None,
+    repeat: int = 1,  # TODO: support repeat
 ) -> Tensor:
     """Generate random noise with individual seeds per batch."""
 
-    noise = torch.empty(shape)
-    for i, s in enumerate(seeds):
-        generator = torch.Generator()
-        generator.manual_seed(s)
+    batch_size, *rest = shape
+    assert len(seeds) == batch_size
 
-        noise[i] = torch.randn(*shape[1:], generator=generator)
+    extended_shape = (repeat, batch_size, *rest)
 
-    return noise.to(device=device, dtype=dtype)
+    noise = torch.empty(extended_shape)
+    for n in range(repeat):
+        for i, s in enumerate(seeds):
+            generator = torch.Generator()
+            generator.manual_seed(s + n)
+
+            noise[n, i] = torch.randn(*rest, generator=generator)
+
+    noise = noise.to(device=device, dtype=dtype)
+
+    if repeat == 1:
+        return noise[0]
+
+    return noise
 
 
 def random_seeds(size: int) -> list[int]:

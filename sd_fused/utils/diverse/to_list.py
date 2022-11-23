@@ -26,4 +26,4 @@ def to_list(x: Optional[MaybeIterable[T]]) -> tuple[None] | list[T]:
     if isinstance(x, (int, float, str, Path, Image.Image)):
         return [x]  # type: ignore
 
-    return list(x)
+    return list(x)  # type: ignore

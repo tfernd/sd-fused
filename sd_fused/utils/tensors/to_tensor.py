@@ -9,9 +9,9 @@ from ...layers.base.types import Device
 
 def to_tensor(
     x: Optional[int | float | Tensor],
-    *,
     device: Optional[Device] = None,
     dtype: Optional[torch.dtype] = None,
+    *,
     add_spatial: bool = False,
 ) -> Tensor:
     """Convert a number to a Tensor with fake channel/spatial dimensions."""

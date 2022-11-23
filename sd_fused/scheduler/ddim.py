@@ -6,10 +6,8 @@ import math
 import torch
 from torch import Tensor
 
-from einops import rearrange
-
 from ..layers.base.types import Device
-from ..utils.tensors import to_tensor, generate_noise
+from ..utils.tensors import to_tensor
 from .scheduler import Scheduler
 
 TRAINED_STEPS = 1_000
@@ -23,35 +21,30 @@ class DDIMScheduler(Scheduler):
 
     # https://arxiv.org/abs/2010.02502
 
-    timesteps: Tensor
     ᾱ: Tensor
     ϖ: Tensor
     σ: Tensor
 
-    skip_step: int = 0
-    noises: Optional[Tensor] = None
-
-    @property
+    @property  # TODO Type
     def info(self) -> dict[str, str | int]:
         return dict(
             name=self.__class__.__qualname__,
             steps=self.steps,
-            skip_step=self.skip_step,
+            skip_timestep=self.skip_timestep,
         )
 
     def __init__(
         self,
         steps: int,
+        shape: tuple[int, ...],
+        seeds: list[int],
+        strength: Optional[float] = None,  # img2img/inpainting
         device: Optional[Device] = None,
         dtype: torch.dtype = torch.float32,
-        seed: Optional[list[int]] = None,
     ) -> None:
-        assert steps <= TRAINED_STEPS
+        super().__init__(steps, shape, seeds, strength, device, dtype)
 
-        self.steps = steps
-        self.device = device
-        self.dtype = dtype
-        self.seed = seed
+        assert steps <= TRAINED_STEPS
 
         # scheduler betas and alphas
         β_begin = math.pow(BETA_BEGIN, 1 / POWER)
@@ -82,50 +75,39 @@ class DDIMScheduler(Scheduler):
         self.ϖ = ϖ.to(device=device, dtype=dtype)
         self.σ = σ.to(device=device, dtype=dtype)
 
+    def add_noise(
+        self,
+        latents: Tensor,
+        noise: Tensor,
+        index: int,
+    ) -> Tensor:
+        # eq 4
+        return latents * self.ᾱ[index].sqrt() + noise * self.ϖ[index].sqrt()
+
     def step(
         self,
         pred_noise: Tensor,
         latents: Tensor,
-        i: int,
-        eta: Optional[float | Tensor] = None,
+        index: int,
+        etas: Optional[float | Tensor] = None,
     ) -> Tensor:
-        eta = to_tensor(eta, device=self.device, dtype=self.dtype, add_spatial=True)
+        etas = to_tensor(etas, self.device, self.dtype, add_spatial=True)
 
         # eq (12) part 1
-        pred_latent = latents - self.ϖ[i].sqrt() * pred_noise
-        pred_latent /= self.ᾱ[i].sqrt()
+        pred_latent = latents - self.ϖ[index].sqrt() * pred_noise
+        pred_latent /= self.ᾱ[index].sqrt()
 
         # eq (12) part 2
-        temp = 1 - self.ᾱ[i + 1] - self.σ[i].mul(eta).square()
+        temp = 1 - self.ᾱ[index + 1] - self.σ[index].mul(etas).square()
         pred_dir = temp.abs().sqrt() * pred_noise
 
         # eq (12) part 3
-        if self.noises is None:
-            assert self.seed is not None
-
-            # pre-generate noises for all steps # ! ugly... needs some work
-            shape = (*latents.shape, self.steps)
-            self.noises = generate_noise(shape, self.seed, self.device, self.dtype)
-            self.noises = rearrange(self.noises, "B C H W S -> S B C H W")
-        noise = self.noises[i]
-        noise *= self.σ[i] * eta
+        noise = self.noise[index] * self.σ[index] * etas
 
         # full eq (12)
-        latents = pred_latent * self.ᾱ[i + 1].sqrt() + pred_dir + noise
+        latents = pred_latent * self.ᾱ[index + 1].sqrt() + pred_dir + noise
 
         return latents
-
-    def add_noise(
-        self,
-        latents: Tensor,
-        eps: Tensor,
-        i: int,
-    ) -> Tensor:
-        # eq 4
-        return latents * self.ᾱ[i].sqrt() + eps * self.ϖ[i].sqrt()
-
-    def __len__(self) -> int:
-        return self.steps
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

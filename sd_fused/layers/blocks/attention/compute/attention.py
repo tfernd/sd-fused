@@ -35,7 +35,7 @@ def attention(
     if weights is not None:
         assert not is_self_attention
 
-        v = weighted_values(v, weights) # ?keys is vad?
+        v = weighted_values(v, weights)  # ?keys is vad?
 
     q, k, v = join_spatial_dim(q, k, v)
     Tl = k.size(2)

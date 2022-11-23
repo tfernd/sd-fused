@@ -7,20 +7,17 @@ from PIL import Image
 from IPython.display import display
 
 from copy import deepcopy
-import math
-import random
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
 from ..utils.cuda import clear_cuda
-from ..scheduler import DDIMScheduler
-from ..utils.image import tensor2images, image2tensor, image_size
+from ..scheduler import Scheduler, DDIMScheduler
+from ..utils.image import tensor2images
 from ..utils.image import ImageType, ResizeModes
 from ..utils.typing import MaybeIterable
-from ..utils.diverse import to_list, product_args, separate
+from ..utils.diverse import to_list, product_args
 from ..clip.parser import prompts_choices
 from ..utils.tensors import random_seeds
 from ..utils.parameters import Parameters, ParametersList, group_parameters, batch_parameters
@@ -73,8 +70,8 @@ class StableDiffusion(Setup, Helpers):
         strength: Optional[MaybeIterable[float]] = None,
         mode: Optional[ResizeModes] = None,
         seed: Optional[MaybeIterable[int]] = None,
-        sub_seed: Optional[int] = None,  # TODO Iterable?
-        seed_interpolation: Optional[MaybeIterable[float]] = None,
+        # sub_seed: Optional[int] = None,  # TODO Iterable?
+        # seed_interpolation: Optional[MaybeIterable[float]] = None,
         # latents: Optional[Tensor] = None, # TODO
         batch_size: int = 1,
         repeat: int = 1,
@@ -103,7 +100,7 @@ class StableDiffusion(Setup, Helpers):
             img=img,
             mask=mask,
             strength=strength,
-            seed_interpolation=seed_interpolation,
+            # seed_interpolation=seed_interpolation,
         )
         size = len(list_kwargs)
         list_kwargs = deepcopy(list_kwargs * repeat)
@@ -121,7 +118,7 @@ class StableDiffusion(Setup, Helpers):
 
         # create parameters list and group/batch them
         parameters = [
-            Parameters(**kwargs, mode=mode, seed=seed, sub_seed=sub_seed, device=self.device, dtype=self.dtype)
+            Parameters(**kwargs, mode=mode, seed=seed, device=self.device, dtype=self.dtype)  #  sub_seed=sub_seed
             for (seed, kwargs) in zip(seeds, list_kwargs)
         ]
         groups = group_parameters(parameters)
@@ -146,18 +143,20 @@ class StableDiffusion(Setup, Helpers):
     ) -> list[tuple[Image.Image, Path, Parameters]]:
 
         context, weight = self.get_context(pL.negative_prompts, pL.prompts)
-        noise = self.generate_noise(pL.seeds, pL.sub_seeds, pL.seeds_interpolation, pL.height, pL.width, len(pL))
 
-        # TODO move out from here
-        scheduler = DDIMScheduler(pL.steps, self.device, self.dtype, pL.seeds)
-        scheduler.set_skip_step(pL.strength)
+        # TODO make general
+        scheduler = DDIMScheduler(
+            pL.steps, pL.shape(self.latent_channels), pL.seeds, pL.strength, self.device, self.dtype
+        )
 
-        latents, masked_latents = self.prepare_latents(
-            scheduler, noise, pL.images_data, pL.masks_data, pL.masked_images_data
-        )
-        latents = self.denoise_latents(
-            scheduler, latents, masked_latents, context, weight, pL.unconditional, pL.scales, pL.etas
-        )
+        enc = lambda x: self.encode(x) if x is not None else None
+        image_latents = enc(pL.images_data)
+        mask_latents = enc(pL.masks_data)
+        masked_image_latents = enc(pL.masked_images_data)
+
+        latents = scheduler.prepare_latents(image_latents, mask_latents, masked_image_latents)
+        # TODO add to scheduler
+        latents = self.denoise_latents(scheduler, latents, context, weight, pL.unconditional, pL.scales, pL.etas)
 
         data = self.decode(latents)
         images = tensor2images(data)
@@ -169,52 +168,10 @@ class StableDiffusion(Setup, Helpers):
 
         return list(zip(images, paths, list(pL)))
 
-    def prepare_latents(
-        self,
-        scheduler: DDIMScheduler,
-        noise: Tensor,
-        images: Optional[Tensor],
-        masks: Optional[Tensor],
-        masked_images: Optional[Tensor],
-    ) -> tuple[Tensor, Optional[Tensor]]:
-        """Prepare initial latents for generation."""
-
-        # text2img
-        if images is None:
-            assert masks is None
-            assert masked_images is None
-
-            return noise, None
-
-        # img2img
-        if masks is None:
-            assert masked_images is None
-
-            images_latents = self.encode(images)
-            latents = scheduler.add_noise(images_latents, noise, scheduler.skip_step)
-
-            return latents, None
-
-        # inpainting
-        raise NotImplementedError  # TODO
-        # https://github.com/huggingface/diffusers/blob/32b0736d8ad7ec124affca3a00a266f5addcbd91/src/diffusers/pipelines/stable_diffusion/pipeline_onnx_stable_diffusion_inpaint.py#L371
-        assert self.is_true_inpainting
-
-        B, C, H, W = images.shape
-        mask_latents = F.interpolate(masks.float(), size=(H // 8, W // 8))
-
-        assert masked_images is not None
-        masked_image_latents = self.encode(masked_images)
-
-        mask_and_masked_image_latents = torch.cat([mask_latents, masked_image_latents], dim=1)
-
-        return noise, mask_and_masked_image_latents
-
     def denoise_latents(
         self,
-        scheduler: DDIMScheduler,
+        scheduler: Scheduler,
         latents: Tensor,
-        masked_latents: Optional[Tensor],
         context: Tensor,
         weight: Optional[Tensor],
         unconditional: bool,
@@ -224,58 +181,16 @@ class StableDiffusion(Setup, Helpers):
         """Main loop where latents are denoised."""
 
         clear_cuda()
-        for i in trange(scheduler.skip_step, len(scheduler), desc="Denoising latents"):
-            timestep = scheduler.timesteps[[i]]  # ndim=1
+        for index in trange(scheduler.skip_timestep, scheduler.steps, desc="Denoising latents"):
+            timestep = int(scheduler.timesteps[index].item())
 
-            input_latents = latents
-            if masked_latents is not None:
-                assert scheduler.skip_step == 0
-                input_latents = torch.cat([latents, masked_latents], dim=1)
-
-            pred_noise = self.pred_noise(input_latents, timestep, context, weight, unconditional, scales)
-            latents = scheduler.step(pred_noise, latents, i, etas)
+            pred_noise = scheduler.pred_noise(
+                self.unet, latents, timestep, context, weight, scales, unconditional, self.use_low_ram
+            )
+            latents = scheduler.step(pred_noise, latents, index, etas=etas)
 
             del pred_noise
         clear_cuda()
-
-        return latents
-
-    @torch.no_grad()
-    def pred_noise(
-        self,
-        latents: Tensor,
-        timestep: Tensor,
-        context: Tensor,
-        context_weights: Optional[Tensor],
-        unconditional: bool,
-        scales: Optional[Tensor],
-    ) -> Tensor:
-        """Predict the noise from latents, context and current timestep."""
-
-        if unconditional:
-            assert scales is None
-            return self.unet(latents, timestep, context, context_weights)
-
-        assert scales is not None
-
-        if self.low_ram:
-            negative_context, prompt_context = context.chunk(2, dim=0)
-            if context_weights is not None:
-                negative_weight, prompt_weight = context_weights.chunk(2, dim=0)
-            else:
-                negative_weight = prompt_weight = None
-
-            pred_noise_prompt = self.unet(latents, timestep, prompt_context, prompt_weight)
-            pred_noise_negative = self.unet(latents, timestep, negative_context, negative_weight)
-        else:
-            latents = torch.cat([latents] * 2, dim=0)
-
-            pred_noise_all = self.unet(latents, timestep, context, context_weights)
-            pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(2, dim=0)
-
-        scales = scales[:, None, None, None]  # add fake channel/spatial dimensions
-
-        latents = pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scales
 
         return latents
 
