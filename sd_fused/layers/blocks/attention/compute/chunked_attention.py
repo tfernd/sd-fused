@@ -59,9 +59,7 @@ def sequence_chunked_attention(
     B, heads, T, C = q.shape
 
     # join batch-heads
-    q = q.flatten(0, 1)
-    k = k.flatten(0, 1)
-    v = v.flatten(0, 1)
+    q, k, v = map(lambda x: x.flatten(0, 1), (q, k, v))
 
     q, k = scale_qk(q, k)
     kT = k.transpose(-1, -2)

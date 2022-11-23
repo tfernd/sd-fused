@@ -48,9 +48,8 @@ def attention(
 
     if chunks is not None:
         assert not use_flash_attention
-        assert chunk_type is not None  # ! default?
 
-        if chunk_type == "batch":
+        if chunk_type is None or chunk_type == "batch":
             out = batch_chunked_attention(q, k, v, chunks, bias)
         else:
             out = sequence_chunked_attention(q, k, v, chunks, bias)

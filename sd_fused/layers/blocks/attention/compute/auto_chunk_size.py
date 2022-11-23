@@ -32,7 +32,7 @@ def auto_chunk_size(
     num_bytes = 2 if dtype == torch.float16 else 4
     free = free_memory()
 
-    if chunk_type == "batch":
+    if chunk_type is None or chunk_type == "batch":
         # Memory used: (2*Bchunks*T*Tl + Bchunks*T*C) * num_bytes
         Bchunks = free // (num_bytes * T * (C + 2 * Tl))
 
