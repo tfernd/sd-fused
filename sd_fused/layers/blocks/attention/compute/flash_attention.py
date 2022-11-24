@@ -19,13 +19,9 @@ def flash_attention(
 
     assert memory_efficient_attention is not None
 
-    join = lambda x: x.contiguous()
-
     q, k, v = map(lambda x: x.contiguous(), (q, k, v))
+    bias = bias.contiguous() if bias is not None else None
 
-    q = q.contiguous()
-    k = k.contiguous()
-    v = v.contiguous()
-    bias = bias.contiguous()
+    out = memory_efficient_attention(q, k, v, bias)
 
-    return memory_efficient_attention(q, k, v, bias)
+    return out
