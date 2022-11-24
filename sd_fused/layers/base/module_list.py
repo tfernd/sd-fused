@@ -49,13 +49,13 @@ class ModuleList(_ModuleSequence, Generic[T]):
             yield layer
 
 
-# ! only for debug
-class ModuleTuple(Module, Generic[Unpack[Ts]]):
-    layers: tuple[Unpack[Ts]]
+# # ! only for debug
+# class ModuleTuple(Module, Generic[Unpack[Ts]]):
+#     layers: tuple[Unpack[Ts]]
 
-    def __init__(self, *layers: Unpack[Ts]) -> None:
-        self.layers = layers
+#     def __init__(self, *layers: Unpack[Ts]) -> None:
+#         self.layers = layers
 
-    def __iter__(self):  # ? type?
-        for layer in self.layers:
-            yield layer
+#     def __iter__(self):  # ? type?
+#         for layer in self.layers:
+#             yield layer

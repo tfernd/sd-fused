@@ -25,4 +25,4 @@ def flash_attention(
     k = k.contiguous()
     v = v.contiguous()
 
-    return memory_efficient_attention(q, k, v, memory_efficient_attention=bias)
+    return memory_efficient_attention(q, k, v, bias)
