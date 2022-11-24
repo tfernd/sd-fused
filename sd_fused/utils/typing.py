@@ -1,18 +1,24 @@
+# type: ignore
 from __future__ import annotations
 from typing import TypeVar, Union, Iterable
 from typing_extensions import Unpack
 
-import sys
-
-if sys.version_info >= (3, 8):
+try:
     from typing import Literal, Final, Protocol
-else:
+except ImportError:
     from typing_extensions import Literal, Final, Protocol
 
-if sys.version_info >= (3, 11):
+try:
     from typing import TypeVarTuple
-else:
+except ImportError:
     from typing_extensions import TypeVarTuple
+
+
+# import sys
+# if sys.version_info >= (3, 8):
+# else:
+# if sys.version_info >= (3, 11):
+# else:
 
 from .image import ImageType
 

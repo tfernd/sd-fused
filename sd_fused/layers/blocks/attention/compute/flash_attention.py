@@ -17,12 +17,15 @@ def flash_attention(
 ) -> Tensor:
     """xformers flash-attention computation."""
 
-    raise NotImplementedError
-
     assert memory_efficient_attention is not None
+
+    join = lambda x: x.contiguous()
+
+    q, k, v = map(lambda x: x.contiguous(), (q, k, v))
 
     q = q.contiguous()
     k = k.contiguous()
     v = v.contiguous()
+    bias = bias.contiguous()
 
     return memory_efficient_attention(q, k, v, bias)
