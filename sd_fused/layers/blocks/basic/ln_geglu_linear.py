@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Union
 
 from torch import Tensor
 
@@ -8,7 +7,7 @@ from ...basic import LayerNorm, Linear
 from ...activation import GEGLU
 
 
-class LayerNormGEGLULinear(Sequential):
+class LayerNormGEGLULinear(Sequential[LayerNorm | GEGLU | Linear]):
     def __init__(self, dim: int, *, expand: float) -> None:
 
         self.dim = dim
