@@ -5,7 +5,7 @@ from ..basic import Linear, Identity
 from ..activation import SiLU
 
 
-class TimestepEmbedding(Sequential[Linear | SiLU | Identity | Linear]):
+class TimestepEmbedding(Sequential):
     def __init__(
         self,
         *,
