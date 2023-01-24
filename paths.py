@@ -42,4 +42,4 @@ for d, must_exist, what, options in path_dirs:
             sys.path.insert(0, d)
         else:
             sys.path.append(d)
-        paths[what] = 
+        paths[what] = d
