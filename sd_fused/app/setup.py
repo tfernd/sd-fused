@@ -11,7 +11,7 @@ from .properties import Properties
 
 
 class Setup(Base, Properties):
-    use_low_ram: bool
+    use_low_ram: bool = False
 
     def low_ram(self, use: bool = True) -> Self:
         """Split context into two passes to save memory."""

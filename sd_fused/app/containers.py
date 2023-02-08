@@ -45,7 +45,7 @@ class StepInfo(Base):
         generator = torch.Generator()
         generator.manual_seed(self.seed + self.current_step)
 
-        noise = torch.randn(shape or self.latents.shape, generator=generator)
+        noise = torch.randn(shape or self.latents.shape[1:], generator=generator)
 
         return noise[None]
 
