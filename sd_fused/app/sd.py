@@ -1,28 +1,31 @@
 from __future__ import annotations
 from typing import Optional
-from typing_extensions import Self
 
 import datetime
 from pathlib import Path
 import json
 from PIL import Image
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
+
+from IPython.display import display
+import ipywidgets as widgets
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
+from einops import rearrange
 
 from ..clip import ClipEmbedding
 from ..models import AutoencoderKL, UNet2DConditional
+from ..models.approx import DecoderApproximationSmall
 from ..utils.cuda import clear_cuda
 from ..utils.image import tensor2image
 from .setup import Setup
-from .helpers import Helpers
+from .helpers import Helpers, MAGIC
 from .builder import Builder
 from .properties import Properties
-from .containers import StepInfo
 from .containers import (
+    StepInfo,
     cat_latents,
     stack_scales,
     cat_context,
@@ -31,7 +34,6 @@ from .containers import (
     stack_indices,
     cat_noises,
 )
-
 
 class StableDiffusion(Setup, Helpers, Builder, Properties):
     version: str = "0.7.1-alpha"
@@ -59,6 +61,8 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
         self.vae = AutoencoderKL.from_diffusers(path / "vae")
         self.unet = UNet2DConditional.from_diffusers(path / "unet")
 
+        self.decoder_approx = DecoderApproximationSmall.pretrained()
+
         self.builder()
 
     def get_batch(self) -> list[StepInfo]:
@@ -84,6 +88,9 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
         self.build()
 
         assert len(self._step_info) != 0
+
+        output = widgets.Output(layout={'border': '1px solid black'})
+        display(output)
 
         imgs: list[Image.Image] = []
         with tqdm(total=len(self._step_info) * self._steps) as pbar:
@@ -111,6 +118,13 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
                 pred_noise = self.predict_noise(latents, timesteps, scales, context, weights)
                 latents = self._scheduler.step(indices, latents, pred_noise, noises)
 
+                # preview
+                # approx = self.decoder_approx(latents/MAGIC)
+                # approx = rearrange(approx, 'b c h w -> 1 c h (b w)')
+                # img = tensor2image(approx)
+                # with output:
+                #     display(img)
+
                 # update Info and add to stack again.
                 # TODO add to it's own function
                 for i, info in enumerate(batch):
@@ -119,10 +133,12 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
 
                     # finished
                     if info.current_step == self._steps:
-                        print(info)
 
                         out = self.decode(info.latents)
                         img = tensor2image(out)
+                        with output:
+                            print(info)
+                            display(img)
                         imgs.append(img)
 
                         self.save_dir.mkdir(exist_ok=True, parents=True)
