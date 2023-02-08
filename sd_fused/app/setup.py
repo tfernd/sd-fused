@@ -20,7 +20,12 @@ class Setup(Base, Properties):
 
         return self
 
-    def to(self, *, device: Optional[str | torch.device] = None, dtype: Optional[torch.dtype] = None,) -> Self:
+    def to(
+        self,
+        *,
+        device: Optional[str | torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> Self:
         if device is not None:
             self.device = torch.device(device)
         if dtype is not None:

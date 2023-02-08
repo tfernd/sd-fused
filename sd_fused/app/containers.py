@@ -77,6 +77,7 @@ class StepInfo(Base):
 
         return self
 
+
 def send(x: Tensor, info: StepInfo) -> Tensor:
     device = info.device
     dtype = info.dtype

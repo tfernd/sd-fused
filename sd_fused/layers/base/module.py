@@ -75,10 +75,10 @@ class Module(Base, ABC):
 
         if isinstance(state, (str, Path)):
             state = Path(state)
-            assert state.suffix == '.pt'
+            assert state.suffix == ".pt"
 
-            w: dict[str, Tensor] = torch.load(state, map_location='cpu')
-            state = w # ! to make linter happy...
+            w: dict[str, Tensor] = torch.load(state, map_location="cpu")
+            state = w  # ! to make linter happy...
 
         current_state = self.state_dict()
         assert len(current_state) == len(state)
@@ -101,11 +101,11 @@ class Module(Base, ABC):
     @classmethod
     def from_config(cls, path: str | Path) -> Self:
         path = Path(path)
-        assert path.suffix == '.json'
+        assert path.suffix == ".json"
 
-        with open(path, 'r', encoding='UTF-8') as handle:
+        with open(path, "r", encoding="UTF-8") as handle:
             kwargs = json.load(handle)
-        
+
         return cls(**kwargs)
 
     def to(

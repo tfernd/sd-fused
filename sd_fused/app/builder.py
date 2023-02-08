@@ -129,7 +129,7 @@ class Builder(Base, Properties):
         for (prompt, negative_prompt, scale), seed in zip(pns, self._seeds):
             info = StepInfo(prompt, negative_prompt, self._steps, current_step, scale, seed)
             info.to(self.device, self.dtype)
-            info.init_latents(self._height, self._width, self.latent_size)
+            info.init_latents(self.latent_size, self._height, self._width)
             self._step_info.append(info)
 
         return self

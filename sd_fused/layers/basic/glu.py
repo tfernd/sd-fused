@@ -7,11 +7,9 @@ from torch import Tensor
 from ..base import Module
 from ..modifiers import HalfWeightsModule, half_weights
 
+
 class GLU(HalfWeightsModule, Module):
-    def __init__(
-        self,
-        dim: int = -1
-    ) -> None:
+    def __init__(self, dim: int = -1) -> None:
         super().__init__()
 
         self.dim = dim

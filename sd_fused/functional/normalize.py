@@ -5,7 +5,10 @@ import torch
 from torch import Tensor
 
 
-def normalize(data: Tensor, dtype: Optional[torch.dtype] = None,) -> Tensor:
+def normalize(
+    data: Tensor,
+    dtype: Optional[torch.dtype] = None,
+) -> Tensor:
     """Normalize a byte-Tensor to the [-1, 1] range."""
 
     assert data.dtype == torch.uint8
