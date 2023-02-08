@@ -1,10 +1,15 @@
 from __future__ import annotations
+from typing_extensions import Self
+
+from pathlib import Path
 
 from torch import Tensor
 
 from ...functional import denormalize
 from ...layers.base import Module, Sequential
 from ...layers.basic import Conv2d, GLU
+
+CURRENT_FOLDER = Path(__file__).parent # ! UGLY
 
 class DecoderApproximationSmall(Module):
     # https://discuss.huggingface.co/t/decoding-latents-to-rgb-without-upscaling/23204/2
@@ -16,7 +21,7 @@ class DecoderApproximationSmall(Module):
     ) -> None:
         super().__init__()
 
-        assert kernel_size % 3 == 1
+        assert kernel_size % 2 == 1
 
         self.kernel_size = kernel_size
         self.hidden_size = hidden_size
@@ -32,3 +37,11 @@ class DecoderApproximationSmall(Module):
         x = denormalize(x)
 
         return x
+
+    @classmethod
+    def pretrained(cls) -> Self:
+        # ! Hard-coded for now
+        model = cls.from_config(CURRENT_FOLDER /'pretrained/vae-1.5-approx_small.json')
+        model.load_state_dict(CURRENT_FOLDER / 'pretrained/vae-1.5-approx_small.pt')
+
+        return model

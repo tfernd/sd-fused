@@ -4,6 +4,9 @@ from typing_extensions import Self
 
 from abc import ABC, abstractmethod
 
+from pathlib import Path
+import json
+
 import torch
 from torch import Tensor
 
@@ -64,11 +67,18 @@ class Module(Base, ABC):
 
     def load_state_dict(
         self,
-        state: dict[str, Parameter] | dict[str, Tensor],
+        state: dict[str, Parameter] | dict[str, Tensor] | str | Path,
         *,
         strict: bool = False,
     ) -> Self:
         """Loads a state dictionary into the module."""
+
+        if isinstance(state, (str, Path)):
+            state = Path(state)
+            assert state.suffix == '.pt'
+
+            w: dict[str, Tensor] = torch.load(state, map_location='cpu')
+            state = w # ! to make linter happy...
 
         current_state = self.state_dict()
         assert len(current_state) == len(state)
@@ -87,6 +97,16 @@ class Module(Base, ABC):
         self.to(device=self.device, dtype=self.dtype)
 
         return self
+
+    @classmethod
+    def from_config(cls, path: str | Path) -> Self:
+        path = Path(path)
+        assert path.suffix == '.json'
+
+        with open(path, 'r', encoding='UTF-8') as handle:
+            kwargs = json.load(handle)
+        
+        return cls(**kwargs)
 
     def to(
         self,
