@@ -161,6 +161,7 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
             npn = self.unet(latents, timesteps=timesteps, context=nc, weights=nw)
         else:
             latents = torch.cat([latents] * 2, dim=0)
+            timesteps = torch.cat([timesteps]*2, dim=0)
 
             pn = self.unet(latents, timesteps=timesteps, context=context, weights=weights)
             ppn, npn = pn.chunk(2, dim=0)
