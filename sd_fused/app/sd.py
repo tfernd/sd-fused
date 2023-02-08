@@ -1,32 +1,39 @@
 from __future__ import annotations
 from typing import Optional
+from typing_extensions import Self
 
+import datetime
 from pathlib import Path
-from tqdm.auto import trange, tqdm
-from PIL import Image
-from IPython.display import display
+import json
 
-from copy import deepcopy
+from tqdm import tqdm
+
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
-from ..models import AutoencoderKL, UNet2DConditional
 from ..clip import ClipEmbedding
+from ..models import AutoencoderKL, UNet2DConditional
 from ..utils.cuda import clear_cuda
-from ..scheduler import Scheduler, DDIMScheduler
-from ..utils.image import tensor2images
-from ..utils.image import ImageType, ResizeModes
-from ..utils.typing import MaybeIterable
-from ..utils.diverse import to_list, product_args
-from ..clip.parser import prompts_choices
-from ..utils.tensors import random_seeds
-from ..utils.parameters import Parameters, ParametersList, group_parameters, batch_parameters
+from ..utils.image import tensor2image
 from .setup import Setup
 from .helpers import Helpers
+from .builder import Builder
+from .properties import Properties
+from .containers import StepInfo
+from .containers import (
+    cat_latents,
+    stack_scales,
+    cat_context,
+    stack_weights,
+    stack_timesteps,
+    stack_indices,
+    cat_noises,
+)
 
 
-class StableDiffusion(Setup, Helpers):
-    version: str = "0.6.0"
+class StableDiffusion(Setup, Helpers, Builder, Properties):
+    version: str = "0.7.1-alpha"
 
     def __init__(
         self,
@@ -35,7 +42,9 @@ class StableDiffusion(Setup, Helpers):
         save_dir: str | Path = "./gallery",
         model_name: Optional[str] = None,
     ) -> None:
-        """Load Stable-Diffusion diffusers checkpoint."""
+        """Load Stable-Diffusion from a diffusers checkpoint."""
+
+        super().__init__()
 
         self.path = path = Path(path)
         self.save_dir = Path(save_dir)
@@ -45,156 +54,119 @@ class StableDiffusion(Setup, Helpers):
 
         self.clip = ClipEmbedding(path / "tokenizer", path / "text_encoder")
 
+        clear_cuda()
         self.vae = AutoencoderKL.from_diffusers(path / "vae")
         self.unet = UNet2DConditional.from_diffusers(path / "unet")
 
-        # initialize
-        self.low_ram(False)
-        self.split_attention(None)
-        self.flash_attention(False)
-        self.tome(None)
+        self.builder()
 
-    def generate(
-        self,
-        *,
-        eta: MaybeIterable[float] = 0,
-        steps: MaybeIterable[int] = 32,
-        height: MaybeIterable[int] = 512,
-        width: MaybeIterable[int] = 512,
-        negative_prompt: MaybeIterable[str] = "",
-        # optionals
-        scale: Optional[MaybeIterable[float]] = 7.5,
-        prompt: Optional[MaybeIterable[str]] = None,
-        img: Optional[MaybeIterable[ImageType]] = None,
-        mask: Optional[MaybeIterable[ImageType]] = None,
-        strength: Optional[MaybeIterable[float]] = None,
-        mode: Optional[ResizeModes] = None,
-        seed: Optional[MaybeIterable[int]] = None,
-        # sub_seed: Optional[int] = None,  # TODO Iterable?
-        # seed_interpolation: Optional[MaybeIterable[float]] = None,
-        # latents: Optional[Tensor] = None, # TODO
-        batch_size: int = 1,
-        repeat: int = 1,
-        show: bool = True,
-        share_seed: bool = True,
-    ) -> list[tuple[Image.Image, Path, Parameters]]:
-        """Create a list of parameters and group them
-        into batches to be processed.
-        """
+    def get_batch(self) -> list[StepInfo]:
+        batch: list[StepInfo] = []
+        for _ in range(self._batch_size):
+            if len(self._step_info) == 0:
+                break
 
-        if seed is not None:
-            repeat = 1
+            batch.append(self._step_info.pop(-1))
 
-        if prompt is not None:
-            prompt = prompts_choices(prompt)
-        negative_prompt = prompts_choices(negative_prompt)
+        return batch
 
-        list_kwargs = product_args(
-            eta=eta,
-            steps=steps,
-            scale=scale,
-            height=height,
-            width=width,
-            negative_prompt=negative_prompt,
-            prompt=prompt,
-            img=img,
-            mask=mask,
-            strength=strength,
-            # seed_interpolation=seed_interpolation,
+    @property
+    def parameters(self) -> dict[str, int | dict[str, int | float | str]]:
+        return dict(
+            height=self._height,
+            width=self._width,
+            scheduler=self._scheduler.parameters,
         )
-        size = len(list_kwargs)
-        list_kwargs = deepcopy(list_kwargs * repeat)
-
-        # if seeds are given or share-seed set
-        # each repeated-iteration has the same seed
-        if seed is not None or share_seed:
-            if seed is None:
-                seed = random_seeds(repeat)
-            seeds = [s for s in to_list(seed) for _ in range(size)]
-
-        # otherwise each iteration has it's own unique seed
-        else:
-            seeds = random_seeds(size * repeat)
-
-        # create parameters list and group/batch them
-        parameters = [
-            Parameters(**kwargs, mode=mode, seed=seed, device=self.device, dtype=self.dtype)  #  sub_seed=sub_seed
-            for (seed, kwargs) in zip(seeds, list_kwargs)
-        ]
-        groups = group_parameters(parameters)
-        batched_parameters = batch_parameters(groups, batch_size)
-
-        out: list[tuple[Image.Image, Path, Parameters]] = []
-        for params in tqdm(batched_parameters, desc="Generating batches"):
-            ipp = self.generate_from_parameters(ParametersList(params))
-            out.extend(ipp)
-
-            if show:
-                for image, path, parameters in ipp:
-                    print(parameters)
-                    display(image)
-
-        return out
 
     @torch.no_grad()
-    def generate_from_parameters(
+    def generate(self) -> Self:
+        self.build()
+
+        assert len(self._step_info) != 0
+
+        with tqdm(total=len(self._step_info) * self._steps) as pbar:
+            while len(self._step_info) > 0:
+                clear_cuda()
+
+                batch = self.get_batch()
+
+                latents = cat_latents(batch)
+                scales = stack_scales(batch)
+                context = cat_context(batch)
+                weights = stack_weights(batch)
+                timesteps = stack_timesteps(batch, self._scheduler)
+                indices = stack_indices(batch)
+                noises = cat_noises(batch)
+
+                # if batch[0].current_step < 2:
+                #     _, _, height, width = latents.shape
+                #     pad = 1
+                #     # latents = F.interpolate(latents, size=(height + pad, width + pad),
+                #     # mode="bilinear", align_corners=True)
+                #     shape = (1, *latents.shape[1:])
+                #     noises = cat_noises(batch, shape=shape)
+
+                pred_noise = self.predict_noise(latents, timesteps, scales, context, weights)
+                latents = self._scheduler.step(indices, latents, pred_noise, noises)
+
+                # update Info and add to stack again.
+                # TODO add to it's own function
+                for i, info in enumerate(batch):
+                    info.clone_latents(latents[[i]])
+                    info.current_step += 1
+
+                    # finished
+                    if info.current_step == self._steps:
+                        print(info)
+
+                        out = self.decode(info.latents)
+                        img = tensor2image(out)
+
+                        self.save_dir.mkdir(exist_ok=True, parents=True)
+
+                        now = datetime.datetime.now()
+                        timestamp = now.strftime("%Y-%m-%d %H-%M-%S.%f")[:-3]
+                        filename = f"{timestamp}_{info.seed}_{info.hash}"
+
+                        img.save(self.save_dir / f"{filename}.png", bitmap_format="png")
+                        with open(self.save_dir / f"{filename}.txt", "w", encoding="UTF-8") as f:
+                            json.dump({**self.parameters, **info.parameters}, f, indent=2)
+
+                    else:
+                        self._step_info.append(info)
+
+                pbar.update()
+        clear_cuda()
+
+        return img
+
+        return self
+
+    def predict_noise(
         self,
-        pL: ParametersList,
-    ) -> list[tuple[Image.Image, Path, Parameters]]:
-
-        context, weight = self.get_context(pL.negative_prompts, pL.prompts)
-
-        # TODO make general
-        scheduler = DDIMScheduler(
-            pL.steps, pL.shape(self.latent_channels), pL.seeds, pL.strength, self.device, self.dtype
-        )
-
-        enc = lambda x: self.encode(x) if x is not None else None
-        image_latents = enc(pL.images_data)
-        mask_latents = enc(pL.masks_data)
-        masked_image_latents = enc(pL.masked_images_data)
-
-        latents = scheduler.prepare_latents(image_latents, mask_latents, masked_image_latents)
-        # TODO add to scheduler
-        latents = self.denoise_latents(scheduler, latents, context, weight, pL.unconditional, pL.scales, pL.etas)
-
-        data = self.decode(latents)
-        images = tensor2images(data)
-
-        paths: list[Path] = []
-        for parameter, image in zip(pL, images):
-            path = self.save_image(image, parameter.png_info)
-            paths.append(path)
-
-        return list(zip(images, paths, list(pL)))
-
-    def denoise_latents(
-        self,
-        scheduler: Scheduler,
         latents: Tensor,
+        timesteps: Tensor,
+        scales: Tensor,
         context: Tensor,
-        weight: Optional[Tensor],
-        unconditional: bool,
-        scales: Optional[Tensor],
-        etas: Optional[Tensor],
-    ) -> Tensor:
-        """Main loop where latents are denoised."""
+        weights: Tensor,
+    ):
+        if self.use_low_ram:
+            # prompt and negative prompt context
+            pc, nc = context.chunk(2, dim=0)
+            pw, nw = weights.chunk(2, dim=0)
 
-        clear_cuda()
-        for index in trange(scheduler.skip_timestep, scheduler.steps, desc="Denoising latents"):
-            timestep = int(scheduler.timesteps[index].item())
+            # predicted noise for prompt and negative prompt
+            ppn = self.unet(latents, timesteps=timesteps, context=pc, weights=pw)
+            npn = self.unet(latents, timesteps=timesteps, context=nc, weights=nw)
+        else:
+            latents = torch.cat([latents] * 2, dim=0)
 
-            pred_noise = scheduler.pred_noise(
-                self.unet, latents, timestep, context, weight, scales, unconditional, self.use_low_ram
-            )
-            latents = scheduler.step(pred_noise, latents, index, etas=etas)
+            pn = self.unet(latents, timesteps=timesteps, context=context, weights=weights)
+            ppn, npn = pn.chunk(2, dim=0)
 
-            del pred_noise
-        clear_cuda()
+        # add fake channel/spatial dimensions
+        scales = scales[:, None, None, None]
+
+        latents = npn + (ppn - npn) * scales
 
         return latents
-
-    def __repr__(self) -> str:
-        name = self.__class__.__qualname__
-
-        return f'{name}(model="{self.model_name}", version="{self.version}")'

@@ -5,13 +5,13 @@ import math
 import torch
 from torch import Tensor
 
-from ..base import Module
+from ..base import Module, Buffer
 
 
 class Timesteps(Module):
-    freq: Tensor
-    amplitude: Tensor
-    phase: Tensor
+    freq: Buffer
+    amplitude: Buffer
+    phase: Buffer
 
     def __init__(
         self,
@@ -52,20 +52,15 @@ class Timesteps(Module):
             phase = reverse(phase, half_dim)
             amplitude = reverse(amplitude, half_dim)
 
-        # TODO create nn.Buffer
-        self.freq = freq
-        self.phase = phase
-        self.amplitude = amplitude
+        self.freq = Buffer(freq)
+        self.phase = Buffer(phase)
+        self.amplitude = Buffer(amplitude)
 
     def __call__(self, x: Tensor) -> Tensor:
         x = x[..., None]
 
-        kwargs = dict(device=self.device, dtype=self.dtype, non_blocking=True)
-        self.freq = self.freq.to(**kwargs)
-        self.phase = self.phase.to(**kwargs)
-        self.amplitude = self.amplitude.to(**kwargs)
-
-        return self.amplitude * torch.sin(x * self.freq + self.phase)
+        with torch.set_grad_enabled(self.training):
+            return self.amplitude * torch.sin(x * self.freq + self.phase)
 
 
 def reverse(x: Tensor, half_dim: int) -> Tensor:

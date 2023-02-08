@@ -3,9 +3,9 @@ from typing import Optional
 
 from torch import Tensor
 
+from ....layers.basic import Conv2d
 from ...external import Rearrange
 from ...base import Module, ModuleList
-from ...basic import Conv2d
 from ..basic import GroupNormConv2d
 from .basic_transformer import BasicTransformer
 
@@ -35,7 +35,7 @@ class SpatialTransformer(Module):
         self.proj_in = GroupNormConv2d(num_groups, in_channels, inner_dim)
         self.proj_out = Conv2d(inner_dim, in_channels)
 
-        self.transformer_blocks = ModuleList[BasicTransformer]()
+        self.transformer_blocks = ModuleList()
         for _ in range(depth):
             self.transformer_blocks.append(
                 BasicTransformer(
@@ -64,6 +64,8 @@ class SpatialTransformer(Module):
         x = self.channel_last(x)
 
         for block in self.transformer_blocks:
+            assert isinstance(block, BasicTransformer)
+
             x = block(x, context=context, weights=weights)
         x = self.channel_first(x, H=H, W=W)
 

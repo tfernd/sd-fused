@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import Optional
 
 import torch
 from torch import Tensor
 
+from ..base import Module
 
-class DiagonalGaussianDistribution:
+
+class DiagonalGaussianDistribution(Module):
     def __init__(
         self,
         mean: Tensor,
@@ -13,16 +14,17 @@ class DiagonalGaussianDistribution:
     ) -> None:
         super().__init__()
 
-        self.device = mean.device
-        self.dtype = mean.dtype
-
         self.mean = mean
-
-        logvar = logvar.clamp(-30, 20)
         self.std = torch.exp(logvar / 2)
+        # ? std is always ultra small...
 
-    def sample(self, generator: Optional[torch.Generator] = None) -> Tensor:
-        # TODO use seeds?
-        noise = torch.randn(self.std.shape, generator=generator, device=self.device, dtype=self.dtype)
+    def __call__(self) -> Tensor:
+        with torch.set_grad_enabled(self.training):
+            return self.mean
 
-        return self.mean + self.std * noise
+    def sample(self) -> Tensor:
+        with torch.set_grad_enabled(self.training):
+            # TODO use seeds
+            noise = torch.randn(self.std.shape, device=self.device, dtype=self.dtype)
+
+            return self.mean + self.std * noise

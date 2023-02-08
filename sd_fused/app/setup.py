@@ -1,22 +1,17 @@
 from __future__ import annotations
 from typing import Optional
-from typing_extensions import Self
+from typing_extensions import Self, Literal
 
 import torch
 
-from ..utils.typing import Literal
+from ..layers.base import Base
 from ..utils.cuda import clear_cuda
-from ..models import AutoencoderKL, UNet2DConditional
-from ..layers.blocks.attention.compute import ChunkType
-from ..layers.base.types import Device
-from ..layers.base.base import Base
+from ..functional.attention import ChunkType
+from .properties import Properties
 
 
-class Setup(Base):
+class Setup(Base, Properties):
     use_low_ram: bool
-
-    vae: AutoencoderKL
-    unet: UNet2DConditional
 
     def low_ram(self, use: bool = True) -> Self:
         """Split context into two passes to save memory."""
@@ -25,9 +20,9 @@ class Setup(Base):
 
         return self
 
-    def to(self, *, device: Optional[Device] = None, dtype: Optional[torch.dtype] = None) -> Self:
+    def to(self, *, device: Optional[str | torch.device] = None, dtype: Optional[torch.dtype] = None,) -> Self:
         if device is not None:
-            self.device = device
+            self.device = torch.device(device)
         if dtype is not None:
             self.dtype = dtype
 
@@ -36,12 +31,12 @@ class Setup(Base):
 
         return self
 
-    def cuda(self) -> Self:
+    def cuda(self, index: int = 0) -> Self:
         """Send unet and auto-encoder to cuda."""
 
         clear_cuda()
 
-        return self.to(device="cuda")
+        return self.to(device=f"cuda:{index}")
 
     def cpu(self) -> Self:
         """Send unet and auto-encoder to cpu."""
@@ -71,15 +66,11 @@ class Setup(Base):
 
     def split_attention(
         self,
+        *,
         chunks: Optional[int | Literal["auto"]] = "auto",
         chunk_types: Optional[ChunkType] = None,
     ) -> Self:
         """Split cross-attention computation into chunks."""
-
-        # TODO this should not be here...
-        # default to batch if not set
-        if chunks is not None and chunk_types is None:
-            chunk_types = "batch"
 
         self.unet.split_attention(chunks, chunk_types)
         self.vae.split_attention(chunks, chunk_types)

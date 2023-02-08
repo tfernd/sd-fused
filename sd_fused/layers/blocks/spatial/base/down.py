@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
 from ....base import Module, ModuleList
@@ -32,7 +31,7 @@ class DownBlock2D(Module):
         self.add_downsample = add_downsample
         self.downsample_padding = downsample_padding
 
-        self.resnets = ModuleList[ResnetBlock2D]()
+        self.resnets = ModuleList()
         for i in range(num_layers):
             in_channels = in_channels if i == 0 else out_channels
 
@@ -59,6 +58,8 @@ class DownBlock2D(Module):
     ) -> OutputStates:
         states: list[Tensor] = []
         for resnet in self.resnets:
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = resnet(x, temb=temb)
             states.append(x)
 

@@ -4,11 +4,10 @@ from typing import Optional
 from functools import partial
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from ..base import Module
+from ..base import Module, Parameter
 from ..modifiers import HalfWeightsModule, half_weights
 
 
@@ -25,6 +24,8 @@ class Conv2d(HalfWeightsModule, Module):
         dilation: int = 1,
         bias: bool = True,
     ) -> None:
+        super().__init__()
+
         assert in_channels % groups == 0
 
         self.in_channels = in_channels
@@ -35,9 +36,8 @@ class Conv2d(HalfWeightsModule, Module):
         self.groups = groups
         self.dilation = dilation
 
-        # TODO duplication
         empty = partial(torch.empty, dtype=self.dtype, device=self.device)
-        parameter = partial(nn.Parameter, requires_grad=False)
+        parameter = partial(Parameter, requires_grad=False)
 
         w = empty(out_channels, in_channels // groups, kernel_size, kernel_size)
         self.weight = parameter(w)
@@ -45,4 +45,5 @@ class Conv2d(HalfWeightsModule, Module):
 
     @half_weights
     def __call__(self, x: Tensor) -> Tensor:
-        return F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        with torch.set_grad_enabled(self.training):
+            return F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)

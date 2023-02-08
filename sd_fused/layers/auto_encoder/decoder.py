@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 from torch import Tensor
 
@@ -42,7 +43,7 @@ class Decoder(Module):
         # up
         reversed_block_out_channels = list(reversed(block_out_channels))
         output_channel = reversed_block_out_channels[0]
-        self.up_blocks = ModuleList[UpDecoderBlock2D]()
+        self.up_blocks = ModuleList()
         for i in range(num_blocks):
             is_final_block = i == num_blocks - 1
 
@@ -69,11 +70,18 @@ class Decoder(Module):
             padding=1,
         )
 
-    def __call__(self, x: Tensor) -> Tensor:
+    def __call__(
+        self,
+        x: Tensor,
+        *,
+        size: Optional[tuple[int, int]] = None,
+    ) -> Tensor:
         x = self.pre_process(x)
         x = self.mid_block(x)
 
         for up_block in self.up_blocks:
-            x = up_block(x)
+            assert isinstance(up_block, UpDecoderBlock2D)
+
+            x = up_block(x, size=size)
 
         return self.post_process(x)

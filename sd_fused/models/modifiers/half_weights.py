@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing_extensions import Self
 
 from ...layers.base import Module
-from ...layers.blocks.attention import CrossAttention, SelfAttention
 from ...layers.modifiers import HalfWeightsModule
 
 

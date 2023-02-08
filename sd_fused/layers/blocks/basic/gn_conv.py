@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import Optional
 
+from ....layers.basic import GroupNorm, Conv2d
 from ...base import Sequential
-from ...basic import GroupNorm, Conv2d
 
-# TODO improve types by using ModuleTuple
+
 class GroupNormConv2d(Sequential):
     def __init__(
         self,

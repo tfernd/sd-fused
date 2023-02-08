@@ -19,7 +19,6 @@ from ..layers.blocks.spatial import (
     CrossAttentionDownBlock2D,
     CrossAttentionUpBlock2D,
 )
-from ..utils.tensors import to_tensor
 from .modifiers import HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel
 from .config import UnetConfig
 from .convert import diffusers2fused_unet
@@ -28,7 +27,7 @@ from .convert.states import debug_state_replacements
 
 class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel, Module):
     @classmethod
-    def from_config(cls, path: str | Path) -> Self:
+    def init_from_config(cls, path: str | Path) -> Self:
         """Creates a model from a (diffusers) config file."""
 
         path = Path(path)
@@ -36,7 +35,8 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
             path /= "config.json"
         assert path.suffix == ".json"
 
-        db = json.load(open(path, "r"))
+        with open(path, "r") as handle:
+            db = json.load(handle)
         config = UnetConfig(**db)
 
         return cls(
@@ -106,11 +106,13 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
         )
         timestep_input_dim = block_out_channels[0]
 
-        self.time_embedding = TimestepEmbedding(channel=timestep_input_dim, time_embed_dim=time_embed_dim)
+        self.time_embedding = TimestepEmbedding(
+            num_channels=timestep_input_dim, time_embed_dim=time_embed_dim
+        )
 
         # down
         output_channel = block_out_channels[0]
-        self.down_blocks = ModuleList[CrossAttentionDownBlock2D | DownBlock2D]()
+        self.down_blocks = ModuleList()
         for i, block in enumerate(down_blocks):
             input_channel = output_channel
             output_channel = block_out_channels[i]
@@ -156,7 +158,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
         # up
         reversed_block_out_channels = tuple(reversed(block_out_channels))
         output_channel = reversed_block_out_channels[0]
-        self.up_blocks = ModuleList[CrossAttentionUpBlock2D | UpBlock2D]()
+        self.up_blocks = ModuleList()
         for i, block in enumerate(up_blocks):
             prev_output_channel = output_channel
             output_channel = reversed_block_out_channels[i]
@@ -204,19 +206,18 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
     def __call__(
         self,
         x: Tensor,
-        timestep: int | Tensor,
+        *,
+        timesteps: Tensor,
         context: Tensor,
         weights: Optional[Tensor] = None,
     ) -> Tensor:
         B, C, H, W = x.shape
 
         # 1. time embedding
-        timestep = to_tensor(timestep, device=x.device, dtype=x.dtype)
-        if timestep.size(0) != B:
-            assert timestep.size(0) == 1
-            timestep = timestep.expand(B)
+        if timesteps.size(0) != B:
+            timesteps = timesteps.expand(B)
 
-        temb = self.time_proj(timestep)
+        temb = self.time_proj(timesteps)
         temb = self.time_embedding(temb)
 
         # 2. pre-process
@@ -246,12 +247,13 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
             # ! I don't like the construction of this...
             states = list(all_states.pop() for _ in range(block.num_layers))
 
+            # determine size for the upscaler # ! ugly
+            size = all_states[-1].shape[-2:] if len(all_states) > 0 else None
+
             if isinstance(block, CrossAttentionUpBlock2D):
-                x = block(x, states=states, temb=temb, context=context, weights=weights)
+                x = block(x, states=states, temb=temb, context=context, weights=weights, size=size)
             elif isinstance(block, UpBlock2D):
-                x = block(x, states=states, temb=temb)
-            else:
-                raise ValueError
+                x = block(x, states=states, temb=temb, size=size)
 
             del states
         del all_states
@@ -266,7 +268,7 @@ class UNet2DConditional(HalfWeightsModel, SplitAttentionModel, FlashAttentionMod
         """Load Stable-Diffusion from diffusers checkpoint folder."""
 
         path = Path(path)
-        model = cls.from_config(path)
+        model = cls.init_from_config(path)
 
         state_path = next(path.glob("*.bin"))
         old_state = torch.load(state_path, map_location="cpu")

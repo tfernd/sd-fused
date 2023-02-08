@@ -1,26 +1,24 @@
 from __future__ import annotations
 
+from ...layers.basic import Linear
+from ...layers.activation import SiLU
 from ..base import Sequential
-from ..basic import Linear, Identity
-from ..activation import SiLU
 
 
 class TimestepEmbedding(Sequential):
     def __init__(
         self,
         *,
-        channel: int,
+        num_channels: int,
         time_embed_dim: int,
-        use_silu: bool = True,  # !always true
     ) -> None:
 
-        self.channel = channel
+        self.num_channels = num_channels
         self.time_embed_dim = time_embed_dim
-        self.use_silu = use_silu
 
         layers = (
-            Linear(channel, time_embed_dim),
-            SiLU() if use_silu else Identity(),  # ? silu always true?
+            Linear(num_channels, time_embed_dim),
+            SiLU(),
             Linear(time_embed_dim, time_embed_dim),
         )
 

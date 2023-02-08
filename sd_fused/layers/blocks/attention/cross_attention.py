@@ -62,7 +62,7 @@ class CrossAttention(BaseAttention, Module):
         k = self.heads_to_batch2(self.to_k(context))
         v = self.heads_to_batch2(self.to_v(context))
 
-        x = self.attention(q, k, v, weights)
+        x = self.attention(q, k, v, weights=weights)
         del q, k, v
         x = self.heads_to_channel(x)
 

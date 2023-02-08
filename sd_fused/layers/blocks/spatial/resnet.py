@@ -36,7 +36,13 @@ class ResnetBlock2D(Module):
         else:
             self.conv_shortcut = Identity()
 
-        self.pre_process = GroupNormSiLUConv2d(num_groups, in_channels, out_channels, kernel_size=3, padding=1)
+        self.pre_process = GroupNormSiLUConv2d(
+            num_groups,
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            padding=1,
+        )
 
         self.post_process = GroupNormSiLUConv2d(
             num_out_groups,
@@ -55,7 +61,12 @@ class ResnetBlock2D(Module):
         else:
             self.time_emb_proj = None
 
-    def __call__(self, x: Tensor, *, temb: Optional[Tensor] = None) -> Tensor:
+    def __call__(
+        self,
+        x: Tensor,
+        *,
+        temb: Optional[Tensor] = None,
+    ) -> Tensor:
         xin = self.conv_shortcut(x)
 
         x = self.pre_process(x)

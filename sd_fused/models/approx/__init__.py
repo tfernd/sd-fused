@@ -1,0 +1,1 @@
+from .cheap import DecoderApproximationSmall

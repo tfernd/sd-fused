@@ -11,16 +11,16 @@ from ..layers.base import Module
 from ..layers.basic import Conv2d
 from ..layers.auto_encoder import Encoder, Decoder
 from ..layers.distribution import DiagonalGaussianDistribution
-from ..utils.tensors import normalize, denormalize
+from ..functional import normalize, denormalize
+from .modifiers import HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel
 from .config import VaeConfig
 from .convert import diffusers2fused_vae
 from .convert.states import debug_state_replacements
-from .modifiers import HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel
 
 
 class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, ToMeModel, Module):
     @classmethod
-    def from_config(cls, path: str | Path) -> Self:
+    def init_from_config(cls, path: str | Path) -> Self:
         """Creates a model from a  (diffusers) config file."""
 
         path = Path(path)
@@ -28,7 +28,8 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, 
             path /= "config.json"
         assert path.suffix == ".json"
 
-        db = json.load(open(path, "r"))
+        with open(path, "r") as handle:
+            db = json.load(handle)
         config = VaeConfig(**db)
 
         return cls(
@@ -109,7 +110,7 @@ class AutoencoderKL(HalfWeightsModel, SplitAttentionModel, FlashAttentionModel, 
         """Load Stable-Diffusion from diffusers checkpoint folder."""
 
         path = Path(path)
-        model = cls.from_config(path)
+        model = cls.init_from_config(path)
 
         state_path = next(path.glob("*.bin"))
         old_state = torch.load(state_path, map_location="cpu")

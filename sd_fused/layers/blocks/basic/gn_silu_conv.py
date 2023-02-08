@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Optional
 
+from ....layers.basic import GroupNorm, Conv2d
+from ....layers.activation import SiLU
 from ...base import Sequential
-from ...basic import GroupNorm, Conv2d
-from ...activation import SiLU
 
 
 class GroupNormSiLUConv2d(Sequential):

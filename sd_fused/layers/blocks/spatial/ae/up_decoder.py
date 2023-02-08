@@ -1,9 +1,10 @@
 from __future__ import annotations
+from typing import Optional
 
-import torch.nn as nn
 from torch import Tensor
 
 from ....base import Module, ModuleList
+from ....basic import Identity
 from ..resampling import Upsample2D
 from ..resnet import ResnetBlock2D
 
@@ -26,7 +27,7 @@ class UpDecoderBlock2D(Module):
         self.resnet_groups = resnet_groups
         self.add_upsample = add_upsample
 
-        self.resnets = ModuleList[ResnetBlock2D]()
+        self.resnets = ModuleList()
         for i in range(num_layers):
             input_channels = in_channels if i == 0 else out_channels
 
@@ -43,12 +44,19 @@ class UpDecoderBlock2D(Module):
         if add_upsample:
             self.upsampler = Upsample2D(out_channels, out_channels)
         else:
-            self.upsampler = nn.Identity()
+            self.upsampler = Identity()
 
-    def __call__(self, x: Tensor) -> Tensor:
+    def __call__(
+        self,
+        x: Tensor,
+        *,
+        size: Optional[tuple[int, int]] = None,
+    ) -> Tensor:
         for resnet in self.resnets:
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = resnet(x)
 
-        x = self.upsampler(x)
+        x = self.upsampler(x, size=size)
 
         return x

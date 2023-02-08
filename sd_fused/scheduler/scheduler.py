@@ -1,125 +1,85 @@
 from __future__ import annotations
-from typing import Optional
 
-from abc import ABC, abstractmethod
+from abc import ABC
 
-import math
-
-import torch
 from torch import Tensor
 
-from ..layers.base.types import Device
-from ..models import UNet2DConditional
-from ..utils.tensors import generate_noise
+from ..layers.base import Base
 
 
-class Scheduler(ABC):
+class Scheduler(ABC, Base):
     """Base-class for all schedulers."""
 
-    timesteps: Tensor
+    steps: int
+    timesteps: Tensor  # time-embedding step
+
+    noise_latents: Tensor
+    noise_noise: Tensor
+
+    step_latents: Tensor
+    step_pred_noise: Tensor
+    step_noise: Tensor
+
+    # for repr
+    _parameters: dict[str, int | float]
 
     def __init__(
         self,
         steps: int,
-        shape: tuple[int, ...],
-        seeds: list[int],
-        strength: Optional[float] = None,  # img2img/inpainting
-        device: Optional[Device] = None,
-        dtype: torch.dtype = torch.float32,
     ) -> None:
-        if strength is not None:
-            assert 0 < strength <= 1
+        assert steps >= 1
 
         self.steps = steps
-        self.shape = shape
-        self.seeds = seeds
-        self.strength = strength
-        self.device = device
-        self.dtype = dtype
 
-        # TODO add sub-seeds
-        self.noise = generate_noise(shape, seeds, device, dtype, steps)
+        self._parameters = dict(steps=steps)
 
-    @property
-    def skip_timestep(self) -> int:
-        """Text-to-Image generation starting timestep."""
-
-        if self.strength is None:
-            return 0
-
-        return math.ceil(self.steps * (1 - self.strength))
-
-    @abstractmethod
-    def add_noise(self, latents: Tensor, noise: Tensor, index: int) -> Tensor:
-        """Add noise for a timestep."""
-
-    def prepare_latents(
+    def add_noise(
         self,
-        image_latents: Optional[Tensor] = None,
-        mask_latents: Optional[Tensor] = None,  # ! old-stype inpainting
-        masked_image_latents: Optional[Tensor] = None,  # ! new-style inpainting
+        index: Tensor,
+        latents: Tensor,
+        noise: Tensor,
     ) -> Tensor:
-        """Prepare initial latents for generation."""
+        index = index.view(-1, 1, 1, 1)
 
-        noise = self.noise[0]
+        out = self.noise_latents[index] * latents
+        out += self.noise_noise[index] * noise
 
-        if image_latents is None:
-            return noise
+        return out
 
-        if mask_latents is None and masked_image_latents is None:
-            return self.add_noise(image_latents, noise, self.skip_timestep)
-
-        # TODO inpainting
-        raise NotImplementedError
-
-    @abstractmethod
     def step(
         self,
+        index: Tensor,
+        latents: Tensor,
         pred_noise: Tensor,
-        latents: Tensor,
-        index: int,
-        **kwargs,  # ! type
+        noise: Tensor,
     ) -> Tensor:
-        """Get the previous timestep for the latents."""
+        index = index.view(-1, 1, 1, 1)
 
-    @torch.no_grad()
-    def pred_noise(
-        self,
-        unet: UNet2DConditional,
-        latents: Tensor,
-        timestep: int,
-        context: Tensor,
-        weights: Optional[Tensor],
-        scale: Optional[Tensor],
-        unconditional: bool,
-        low_ram: bool,
-    ) -> Tensor:
-        """Noise prediction for a given timestep."""
+        out = self.step_latents[index] * latents
+        out += self.step_pred_noise[index] * pred_noise
+        out += self.step_noise[index] * noise
 
-        if unconditional:
-            assert scale is None
+        return out
 
-            return unet(latents, timestep, context, weights)
+    @property
+    def parameters(self) -> dict[str, int | float | str]:
+        return dict(name=self.__class__.__qualname__, **self._parameters)
 
-        assert scale is not None
+    def __repr__(self) -> str:
+        name = self.__class__.__qualname__
 
-        if low_ram:
-            negative_context, prompt_context = context.chunk(2, dim=0)
-            if weights is not None:
-                negative_weight, prompt_weight = weights.chunk(2, dim=0)
-            else:
-                negative_weight = prompt_weight = None
+        args = [f"{name}={value}" for (name, value) in self._parameters.items()]
+        args = ", ".join(args)
 
-            pred_noise_prompt = unet(latents, timestep, prompt_context, prompt_weight)
-            pred_noise_negative = unet(latents, timestep, negative_context, negative_weight)
-        else:
-            latents = torch.cat([latents] * 2, dim=0)
+        return f"{name}({args})"
 
-            pred_noise_all = unet(latents, timestep, context, weights)
-            pred_noise_negative, pred_noise_prompt = pred_noise_all.chunk(2, dim=0)
+    def plot(self) -> None:
+        import matplotlib.pyplot as plt
 
-        scale = scale[:, None, None, None]  # add fake channel/spatial dimensions
-
-        latents = pred_noise_negative + (pred_noise_prompt - pred_noise_negative) * scale
-
-        return latents
+        plt.plot(self.noise_latents.cpu(), label="noise_latents", linestyle="dashed")
+        plt.plot(self.noise_noise.cpu(), label="noise_noise", linestyle="dashed")
+        plt.plot(self.step_latents.cpu(), label="step_latents")
+        plt.plot(self.step_pred_noise.cpu(), label="step_pred_noise")
+        plt.plot(self.step_noise.cpu(), label="step_noise")
+        plt.legend()
+        plt.xlabel("steps")

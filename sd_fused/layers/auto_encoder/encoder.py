@@ -34,7 +34,7 @@ class Encoder(Module):
 
         # down
         output_channel = block_out_channels[0]
-        self.down_blocks = ModuleList[DownEncoderBlock2D]()
+        self.down_blocks = ModuleList()
         for i in range(num_blocks):
             is_final_block = i == num_blocks - 1
 
@@ -74,6 +74,8 @@ class Encoder(Module):
         x = self.pre_process(x)
 
         for down_block in self.down_blocks:
+            assert isinstance(down_block, DownEncoderBlock2D)
+
             x = down_block(x)
 
         x = self.mid_block(x)

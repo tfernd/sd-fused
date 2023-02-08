@@ -37,11 +37,11 @@ REPLACEMENTS: list[tuple[str, str]] = [
     # resnet-time-embedding
     (r"time_emb_proj.(bias|weight)", r"time_emb_proj.1.\1"),
     # spatial transformer fused
-    (r"attentions.(\d).norm.(bias|weight)", r"attentions.\1.proj_in.0.\2"),
+    (r"attentions.(\d).norm.(bias|weight)"   , r"attentions.\1.proj_in.0.\2"),
     (r"attentions.(\d).proj_in.(bias|weight)", r"attentions.\1.proj_in.1.\2"),
     # post-processing
     (r"conv_norm_out.(bias|weight)", r"post_process.0.\1"),
-    (r"conv_out.(bias|weight)", r"post_process.2.\1"),
+    (r"conv_out.(bias|weight)"     , r"post_process.2.\1"),
     # pre-processing
     (r'conv_in.(bias|weight)', r'pre_process.\1')
 ]

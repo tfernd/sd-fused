@@ -2,10 +2,10 @@ from __future__ import annotations
 from typing import Optional
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
 from ....base import Module, ModuleList
+from ....basic import Identity
 from ...transformer import SpatialTransformer
 from ..resampling import Upsample2D
 from ..resnet import ResnetBlock2D
@@ -37,8 +37,8 @@ class CrossAttentionUpBlock2D(Module):
         self.cross_attention_dim = cross_attention_dim
         self.add_upsample = add_upsample
 
-        self.resnets = ModuleList[ResnetBlock2D]()
-        self.attentions = ModuleList[SpatialTransformer]()
+        self.resnets = ModuleList()
+        self.attentions = ModuleList()
         for i in range(num_layers):
             if i == num_layers - 1:
                 res_skip_channels = in_channels
@@ -74,7 +74,7 @@ class CrossAttentionUpBlock2D(Module):
         if add_upsample:
             self.upsampler = Upsample2D(out_channels)
         else:
-            self.upsampler = nn.Identity()
+            self.upsampler = Identity()
 
     def __call__(
         self,
@@ -84,14 +84,18 @@ class CrossAttentionUpBlock2D(Module):
         temb: Optional[Tensor] = None,
         context: Optional[Tensor] = None,
         weights: Optional[Tensor] = None,
+        size: Optional[tuple[int, int]] = None,
     ) -> Tensor:
         assert len(states) == self.num_layers
 
         for resnet, attn, state in zip(self.resnets, self.attentions, states):
+            assert isinstance(resnet, ResnetBlock2D)
+            assert isinstance(attn, SpatialTransformer)
+
             x = torch.cat([x, state], dim=1)
             x = resnet(x, temb=temb)
             x = attn(x, context=context, weights=weights)
 
-        x = self.upsampler(x)
+        x = self.upsampler(x, size=size)
 
         return x

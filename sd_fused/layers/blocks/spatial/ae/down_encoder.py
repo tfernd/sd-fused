@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import torch.nn as nn
 from torch import Tensor
 
 from ....base import Module, ModuleList
+from ....basic import Identity
 from ..resampling import Downsample2D
 from ..resnet import ResnetBlock2D
 
@@ -28,7 +28,7 @@ class DownEncoderBlock2D(Module):
         self.add_downsample = add_downsample
         self.downsample_padding = downsample_padding
 
-        self.resnets = ModuleList[ResnetBlock2D]()
+        self.resnets = ModuleList()
         for i in range(num_layers):
             in_channels = in_channels if i == 0 else out_channels
 
@@ -45,10 +45,12 @@ class DownEncoderBlock2D(Module):
         if add_downsample:
             self.downsampler = Downsample2D(in_channels, out_channels, padding=downsample_padding)
         else:
-            self.downsampler = nn.Identity()
+            self.downsampler = Identity()
 
     def __call__(self, x: Tensor) -> Tensor:
         for resnet in self.resnets:
+            assert isinstance(resnet, ResnetBlock2D)
+
             x = resnet(x)
 
         x = self.downsampler(x)

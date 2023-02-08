@@ -3,8 +3,8 @@ from typing import Optional
 
 from torch import Tensor
 
+from ....layers.blocks.attention import CrossAttention
 from ...base import Module
-from ..attention import CrossAttention
 from ..basic import LayerNormGEGLULinear
 
 

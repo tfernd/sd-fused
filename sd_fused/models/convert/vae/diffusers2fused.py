@@ -4,7 +4,7 @@ from torch import Tensor
 
 from ..states import replace_state
 
-# ! Tensor/Parameter?
+
 def diffusers2fused(old_state: dict[str, Tensor]) -> dict[str, Tensor]:
     """Convert a diffusers checkpoint into a sd-fused one for the AutoencoderKL."""
 
@@ -18,7 +18,7 @@ REPLACEMENTS: list[tuple[str, str]] = [
     (r"(up|down)samplers.0", r"\1sampler"),
     # post_process
     (r"(decoder|encoder).conv_norm_out.(bias|weight)", r"\1.post_process.0.\2"),
-    (r"(decoder|encoder).conv_out.(bias|weight)", r"\1.post_process.2.\2"),
+    (r"(decoder|encoder).conv_out.(bias|weight)"     , r"\1.post_process.2.\2"),
     # resnet-blocks pre/post-process
     (r"resnets.(\d).norm1.(bias|weight)", r"resnets.\1.pre_process.0.\2"),
     (r"resnets.(\d).conv1.(bias|weight)", r"resnets.\1.pre_process.2.\2"),

@@ -83,14 +83,15 @@ class UnetConfig:
     def up_blocks(
         self,
     ) -> tuple[Type[CrossAttentionUpBlock2D] | Type[UpBlock2D], ...]:
-        def get_block(
-            block: str,
-        ) -> Type[CrossAttentionUpBlock2D] | Type[UpBlock2D]:
-            if block == "CrossAttnUpBlock2D":
-                return CrossAttentionUpBlock2D
-            if block == "UpBlock2D":
-                return UpBlock2D
-
-            raise ValueError("Invalid")
-
         return tuple(get_block(block) for block in self.up_block_types)
+
+
+def get_block(
+    block: str,
+) -> Type[CrossAttentionUpBlock2D] | Type[UpBlock2D]:
+    if block == "CrossAttnUpBlock2D":
+        return CrossAttentionUpBlock2D
+    if block == "UpBlock2D":
+        return UpBlock2D
+
+    raise ValueError("Invalid")

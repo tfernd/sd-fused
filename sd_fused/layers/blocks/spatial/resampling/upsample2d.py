@@ -24,9 +24,17 @@ class Upsample2D(Module):
         out_channels = out_channels or channels
 
         self.conv = Conv2d(channels, out_channels, kernel_size=3, padding=1)
-        self.upscale = partial(F.interpolate, mode="nearest", scale_factor=2)
+        self.upscale = partial(F.interpolate, mode="nearest")
 
-    def __call__(self, x: Tensor) -> Tensor:
-        x = self.upscale(x)
+    def __call__(
+        self,
+        x: Tensor,
+        *,
+        size: Optional[tuple[int, int]],
+    ) -> Tensor:
+        if size is not None:
+            x = self.upscale(x, size=size)
+        else:
+            x = self.upscale(x, scale_factor=2)
 
         return self.conv(x)

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from torch import Tensor
 
+from ....layers.basic import LayerNorm, Linear
+from ....layers.activation import GEGLU
 from ...base import Sequential
-from ...basic import LayerNorm, Linear
-from ...activation import GEGLU
 
 
 class LayerNormGEGLULinear(Sequential):

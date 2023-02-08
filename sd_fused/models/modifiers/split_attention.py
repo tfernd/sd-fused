@@ -1,11 +1,10 @@
 from __future__ import annotations
 from typing import Optional
-from typing_extensions import Self
+from typing_extensions import Self, Literal
 
 from ...layers.base import Module
-from ...utils.typing import Literal
 from ...layers.blocks.attention import CrossAttention, SelfAttention
-from ...layers.blocks.attention.compute import ChunkType
+from ...functional.attention import ChunkType
 
 
 class SplitAttentionModel(Module):
