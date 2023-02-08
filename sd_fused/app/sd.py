@@ -5,6 +5,7 @@ from typing_extensions import Self
 import datetime
 from pathlib import Path
 import json
+from PIL import Image
 
 from tqdm import tqdm
 
@@ -79,11 +80,12 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
         )
 
     @torch.no_grad()
-    def generate(self) -> Self:
+    def generate(self) -> list[Image.Image]:
         self.build()
 
         assert len(self._step_info) != 0
 
+        imgs: list[Image.Image] = []
         with tqdm(total=len(self._step_info) * self._steps) as pbar:
             while len(self._step_info) > 0:
                 clear_cuda()
@@ -121,6 +123,7 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
 
                         out = self.decode(info.latents)
                         img = tensor2image(out)
+                        imgs.append(img)
 
                         self.save_dir.mkdir(exist_ok=True, parents=True)
 
@@ -138,9 +141,7 @@ class StableDiffusion(Setup, Helpers, Builder, Properties):
                 pbar.update()
         clear_cuda()
 
-        return img
-
-        return self
+        return imgs
 
     def predict_noise(
         self,
